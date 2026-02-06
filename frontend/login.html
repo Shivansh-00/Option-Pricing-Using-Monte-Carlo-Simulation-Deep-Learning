@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Option Pricing Platform</title>
+    <link rel="stylesheet" href="/frontend/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Platform Login</h1>
+      <p>Use demo credentials (password: demo)</p>
+    </header>
+    <main>
+      <section class="card">
+        <label>Username <input id="username" type="text" placeholder="analyst" /></label>
+        <label>Password <input id="password" type="password" /></label>
+        <button id="loginBtn">Login</button>
+        <pre id="loginStatus">-</pre>
+      </section>
+    </main>
+    <script>
+      document.getElementById("loginBtn").addEventListener("click", () => {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        const status = document.getElementById("loginStatus");
+        if (username && password === "demo") {
+          status.textContent = `Authenticated as ${username}`;
+        } else {
+          status.textContent = "Invalid credentials";
+        }
+      });
+    </script>
+  </body>
+</html>

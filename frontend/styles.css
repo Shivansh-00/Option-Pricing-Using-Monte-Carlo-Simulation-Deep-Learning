@@ -1,0 +1,107 @@
+:root {
+  color-scheme: dark;
+  font-family: "Inter", system-ui, sans-serif;
+  background: #0f1117;
+  color: #f5f6fa;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #0f1117;
+}
+
+header {
+  padding: 32px 48px;
+  background: linear-gradient(120deg, #1f2a44, #172033);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+main {
+  padding: 32px 48px;
+  display: grid;
+  gap: 24px;
+}
+
+.card {
+  background: #171b26;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+input,
+select,
+textarea {
+  background: #0f1117;
+  border: 1px solid #2a3042;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f5f6fa;
+}
+
+button {
+  margin-top: 16px;
+  background: #4c7fff;
+  border: none;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.metrics {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.metrics div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: #0f1117;
+  border-radius: 12px;
+}
+
+.metrics strong {
+  font-size: 20px;
+}
+
+canvas {
+  margin-top: 16px;
+  width: 100%;
+  background: #0f1117;
+  border: 1px solid #2a3042;
+  border-radius: 12px;
+}
+
+footer {
+  padding: 24px 48px;
+  color: #8b92a5;
+}
+
+pre {
+  white-space: pre-wrap;
+  background: #0f1117;
+  padding: 12px;
+  border-radius: 8px;
+}
