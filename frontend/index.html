@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Intelligent Option Pricing Platform</title>
+    <link rel="stylesheet" href="/frontend/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Intelligent Option Pricing & Risk Analytics</h1>
+      <p>Monte Carlo + Deep Learning + Explainability</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Pricing Controls</h2>
+        <div class="grid">
+          <label>Spot <input id="spot" type="number" value="100" /></label>
+          <label>Strike <input id="strike" type="number" value="100" /></label>
+          <label>Maturity (yrs) <input id="maturity" type="number" step="0.1" value="1" /></label>
+          <label>Rate <input id="rate" type="number" step="0.001" value="0.02" /></label>
+          <label>Volatility <input id="vol" type="number" step="0.01" value="0.2" /></label>
+          <label>Type
+            <select id="optionType">
+              <option value="call">Call</option>
+              <option value="put">Put</option>
+            </select>
+          </label>
+        </div>
+        <button id="runPricing">Run Pricing</button>
+      </section>
+
+      <section class="card">
+        <h2>Pricing Comparison</h2>
+        <div class="metrics">
+          <div>
+            <span>Black-Scholes</span>
+            <strong id="bsPrice">-</strong>
+          </div>
+          <div>
+            <span>Monte Carlo</span>
+            <strong id="mcPrice">-</strong>
+          </div>
+          <div>
+            <span>Hybrid DL</span>
+            <strong id="dlPrice">-</strong>
+          </div>
+        </div>
+        <canvas id="comparisonChart" width="520" height="180"></canvas>
+      </section>
+
+      <section class="card">
+        <h2>Greeks & Regime</h2>
+        <div class="metrics">
+          <div><span>Delta</span><strong id="delta">-</strong></div>
+          <div><span>Gamma</span><strong id="gamma">-</strong></div>
+          <div><span>Vega</span><strong id="vega">-</strong></div>
+          <div><span>Theta</span><strong id="theta">-</strong></div>
+          <div><span>Rho</span><strong id="rho">-</strong></div>
+          <div><span>Regime</span><strong id="regime">-</strong></div>
+        </div>
+        <canvas id="greeksChart" width="520" height="180"></canvas>
+      </section>
+
+      <section class="card">
+        <h2>Monte Carlo Path Sketch</h2>
+        <canvas id="mcPaths" width="520" height="180"></canvas>
+      </section>
+
+      <section class="card">
+        <h2>Explainability (RAG)</h2>
+        <textarea id="question" rows="3" placeholder="Why is the hybrid model different?"></textarea>
+        <button id="askExplain">Ask AI</button>
+        <pre id="explainAnswer">-</pre>
+      </section>
+    </main>
+
+    <footer>
+      <span>Built for final-year project demonstration.</span>
+      <a href="/frontend/login.html">Login</a>
+    </footer>
+
+    <script type="module" src="/frontend/app.js"></script>
+  </body>
+</html>
