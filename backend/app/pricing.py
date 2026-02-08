@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import math
+import os
 import random
+
+import numpy as np
 from dataclasses import dataclass
 
 
@@ -37,22 +40,33 @@ def black_scholes(inputs: PricingInputs) -> float:
 
 
 def monte_carlo_gbm(inputs: PricingInputs, seed: int | None = None) -> float:
+    max_paths = int(os.getenv("MAX_MC_PATHS", "200000"))
+    max_steps = int(os.getenv("MAX_MC_STEPS", "2000"))
+    paths = min(inputs.paths, max_paths)
+    steps = min(inputs.steps, max_steps)
     if seed is not None:
+        np.random.seed(seed)
         random.seed(seed)
-    dt = inputs.maturity / inputs.steps
+    dt = inputs.maturity / steps
     drift = (inputs.rate - 0.5 * inputs.volatility**2) * dt
     diffusion = inputs.volatility * math.sqrt(dt)
-    payoffs = []
-    for _ in range(inputs.paths):
-        price = inputs.spot
-        for _ in range(inputs.steps):
-            z = random.gauss(0, 1)
-            price *= math.exp(drift + diffusion * z)
+
+    batch = int(os.getenv("MC_BATCH", "50000"))
+    payoffs_sum = 0.0
+    simulated = 0
+    while simulated < paths:
+        size = min(batch, paths - simulated)
+        shocks = np.random.normal(0, 1, (size, steps))
+        increments = drift + diffusion * shocks
+        log_paths = np.cumsum(increments, axis=1)
+        prices = inputs.spot * np.exp(log_paths[:, -1])
         if inputs.option_type == "call":
-            payoffs.append(max(price - inputs.strike, 0.0))
+            payoffs = np.maximum(prices - inputs.strike, 0.0)
         else:
-            payoffs.append(max(inputs.strike - price, 0.0))
-    discounted = math.exp(-inputs.rate * inputs.maturity) * (sum(payoffs) / len(payoffs))
+            payoffs = np.maximum(inputs.strike - prices, 0.0)
+        payoffs_sum += float(np.sum(payoffs))
+        simulated += size
+    discounted = math.exp(-inputs.rate * inputs.maturity) * (payoffs_sum / paths)
     return discounted
 
 

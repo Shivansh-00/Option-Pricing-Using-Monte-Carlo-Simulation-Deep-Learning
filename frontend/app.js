@@ -1,89 +1,666 @@
-import { drawComparisonChart } from "./charts/comparison_chart.js";
-import { drawGreeksChart } from "./charts/greeks_chart.js";
-import { drawMonteCarloPaths } from "./charts/monte_carlo_paths.js";
+/* ═══════════════════════════════════════════════════════════════
+   OptionQuant — Application Logic (Conference-Grade)
+   ═══════════════════════════════════════════════════════════════ */
 
-const apiBase = "";
+// ── 1. Auth Guard ──────────────────────────────────────────────
+(function authGuard() {
+  const token   = localStorage.getItem('oq-token');
+  const expires = localStorage.getItem('oq-expires');
+  if (!token || !expires || Date.now() >= Number(expires)) {
+    // Try silent refresh
+    const refresh = localStorage.getItem('oq-refresh');
+    if (refresh) {
+      fetch('/api/v1/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refresh })
+      })
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(d => {
+          localStorage.setItem('oq-token', d.access_token);
+          if (d.refresh_token) localStorage.setItem('oq-refresh', d.refresh_token);
+          localStorage.setItem('oq-expires', (Date.now() + (d.expires_in || 1800) * 1000).toString());
+        })
+        .catch(() => { redirectToLogin(); });
+      return;
+    }
+    redirectToLogin();
+  }
+})();
 
-function getPayload() {
+function redirectToLogin() {
+  localStorage.removeItem('oq-token');
+  localStorage.removeItem('oq-refresh');
+  localStorage.removeItem('oq-expires');
+  window.location.href = '/login.html';
+}
+
+// ── 2. Helpers ─────────────────────────────────────────────────
+function getAuthHeaders() {
   return {
-    spot: Number(document.getElementById("spot").value),
-    strike: Number(document.getElementById("strike").value),
-    maturity: Number(document.getElementById("maturity").value),
-    rate: Number(document.getElementById("rate").value),
-    volatility: Number(document.getElementById("vol").value),
-    option_type: document.getElementById("optionType").value,
-    steps: 252,
-    paths: 10000,
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('oq-token')}`
   };
 }
 
-async function postJson(path, payload) {
-  const response = await fetch(`${apiBase}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+function handleAuthError(status) {
+  if (status === 401) { redirectToLogin(); return true; }
+  return false;
+}
+
+async function api(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body)
   });
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
-  }
-  return response.json();
+  if (handleAuthError(res.status)) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || `API error ${res.status}`);
+  return data;
 }
 
-async function runPricing() {
+async function apiGet(url) {
+  const res = await fetch(url, { headers: getAuthHeaders() });
+  if (handleAuthError(res.status)) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || `API error ${res.status}`);
+  return data;
+}
+
+// ── 3. UI Utilities ────────────────────────────────────────────
+const $ = (s) => document.getElementById(s);
+const loadingOverlay = $('loadingOverlay');
+
+function showLoading() { loadingOverlay.classList.add('active'); }
+function hideLoading() { loadingOverlay.classList.remove('active'); }
+
+// Toast system — classes match CSS: .toast-success, .toast-error, etc.
+const toastIcons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+function toast(type, title, msg = '') {
+  const container = $('toasts');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `
+    <span class="toast-icon">${toastIcons[type] || 'ℹ️'}</span>
+    <div class="toast-body">
+      <div class="toast-title">${title}</div>
+      ${msg ? `<div class="toast-msg">${msg}</div>` : ''}
+    </div>
+    <span class="toast-close">✕</span>
+  `;
+  container.appendChild(el);
+  // Trigger reflow then animate in
+  requestAnimationFrame(() => { el.classList.add('show'); });
+  el.querySelector('.toast-close').onclick = () => dismissToast(el);
+  setTimeout(() => dismissToast(el), 4500);
+}
+function dismissToast(el) {
+  el.classList.remove('show');
+  setTimeout(() => el.remove(), 300);
+}
+
+// Number formatting
+function fmt(v, d = 4) {
+  if (v == null || isNaN(v)) return '—';
+  return Number(v).toFixed(d);
+}
+function fmtPct(v) { return v == null ? '—' : (Number(v) * 100).toFixed(1) + '%'; }
+
+// ── 4. Navigation ──────────────────────────────────────────────
+const sections = {
+  pricing:        { title: 'Option Pricing',       sub: 'Black-Scholes & Monte Carlo engines' },
+  greeks:         { title: 'Greeks Analysis',       sub: 'Sensitivity surface visualisation' },
+  'monte-carlo':  { title: 'Monte Carlo',           sub: 'GBM path simulation & convergence' },
+  'deep-learning':{ title: 'Deep Learning',         sub: 'LSTM & Transformer neural pricing' },
+  'ml-volatility':{ title: 'ML Volatility',         sub: 'Implied volatility prediction' },
+  explainability: { title: 'AI Explainability',     sub: 'RAG-powered Q&A engine' }
+};
+
+const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+navItems.forEach(item => {
+  item.addEventListener('click', () => navigate(item.dataset.section));
+});
+
+function navigate(key) {
+  navItems.forEach(n => n.classList.toggle('active', n.dataset.section === key));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const sec = document.getElementById(`sec-${key}`);
+  if (sec) sec.classList.add('active');
+  const info = sections[key] || {};
+  $('pageTitle').textContent   = info.title || '';
+  $('pageSubtitle').textContent = info.sub || '';
+  // Close mobile sidebar
+  $('sidebar').classList.remove('open');
+  $('sidebarOverlay').classList.remove('active');
+}
+
+// Mobile sidebar toggle
+$('mobileToggle').addEventListener('click', () => {
+  $('sidebar').classList.toggle('open');
+  $('sidebarOverlay').classList.toggle('active');
+});
+$('sidebarOverlay').addEventListener('click', () => {
+  $('sidebar').classList.remove('open');
+  $('sidebarOverlay').classList.remove('active');
+});
+
+// ── 5. Theme Toggle ────────────────────────────────────────────
+$('themeToggle').addEventListener('click', () => {
+  const html = document.documentElement;
+  const isDark = html.dataset.theme === 'dark';
+  html.dataset.theme = isDark ? 'light' : 'dark';
+  $('themeIcon').textContent = isDark ? '☀️' : '🌙';
+  localStorage.setItem('oq-theme', html.dataset.theme);
+});
+// Restore saved theme
+(function restoreTheme() {
+  const saved = localStorage.getItem('oq-theme');
+  if (saved) {
+    document.documentElement.dataset.theme = saved;
+    $('themeIcon').textContent = saved === 'dark' ? '🌙' : '☀️';
+  }
+})();
+
+// ── 6. Health Check ────────────────────────────────────────────
+async function checkHealth() {
   try {
-    const payload = getPayload();
-    const [bs, mc, dl, greeks, iv] = await Promise.all([
-      postJson("/api/v1/pricing/bs", payload),
-      postJson("/api/v1/pricing/mc", payload),
-      postJson("/api/v1/dl/forecast", payload),
-      postJson("/api/v1/pricing/greeks", payload),
-      postJson("/api/v1/ml/iv-predict", {
-        spot: payload.spot,
-        rate: payload.rate,
-        maturity: payload.maturity,
-        realized_vol: payload.volatility,
-        vix: payload.volatility * 1.1,
-        skew: 0.1,
-      }),
+    const res = await fetch('/health');
+    const ok = res.ok;
+    $('statusDot').classList.toggle('online', ok);
+    $('statusText').textContent = ok ? 'API Online' : 'API Error';
+    return ok;
+  } catch {
+    $('statusDot').classList.remove('online');
+    $('statusText').textContent = 'API Offline';
+    return false;
+  }
+}
+$('healthBtn').addEventListener('click', async () => {
+  $('healthLabel').textContent = 'Checking…';
+  const ok = await checkHealth();
+  $('healthLabel').textContent = ok ? 'API Online ✓' : 'API Error ✗';
+  toast(ok ? 'success' : 'error', ok ? 'Backend Online' : 'Backend Unreachable');
+});
+$('healthBtn2').addEventListener('click', () => $('healthBtn').click());
+// Auto-check on load
+checkHealth();
+
+// ── 7. User Profile ───────────────────────────────────────────
+(async function loadProfile() {
+  try {
+    const user = await apiGet('/api/v1/auth/me');
+    if (!user) return;
+    const name = user.full_name || user.username || 'User';
+    $('userName').textContent = name;
+    $('userAvatar').textContent = name.charAt(0).toUpperCase();
+    $('userRole').textContent = user.role || 'Analyst';
+  } catch {
+    $('userName').textContent = 'User';
+    $('userAvatar').textContent = 'U';
+  }
+})();
+
+// ── 8. Logout (direct fetch — not api()) ───────────────────────
+$('logoutBtn').addEventListener('click', async () => {
+  try {
+    const token = localStorage.getItem('oq-token');
+    if (token) {
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    }
+  } catch { /* ignore */ }
+  localStorage.removeItem('oq-token');
+  localStorage.removeItem('oq-refresh');
+  localStorage.removeItem('oq-expires');
+  window.location.href = '/login.html';
+});
+
+// ── 9. Chart Defaults ──────────────────────────────────────────
+function chartDefaults() {
+  const isDark = document.documentElement.dataset.theme !== 'light';
+  const gridColor = isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+  const textColor = isDark ? '#9ba1b7' : '#5a6178';
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: textColor, font: { family: "'Inter',sans-serif", size: 12 } } },
+      tooltip: {
+        backgroundColor: isDark ? '#1e2338' : '#ffffff',
+        titleColor: isDark ? '#f0f1f5' : '#1a1d2b',
+        bodyColor: isDark ? '#9ba1b7' : '#5a6178',
+        borderColor: isDark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.1)',
+        borderWidth: 1, cornerRadius: 8, padding: 10
+      }
+    },
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } },
+      y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } }
+    }
+  };
+}
+
+// Chart instance registry (destroy before re-create)
+const charts = {};
+function getOrCreateChart(id, config) {
+  if (charts[id]) { charts[id].destroy(); }
+  charts[id] = new Chart(document.getElementById(id), config);
+  return charts[id];
+}
+
+// ── 10. Get Pricing Parameters ─────────────────────────────────
+function getParams() {
+  return {
+    spot:        parseFloat($('spot').value)     || 100,
+    strike:      parseFloat($('strike').value)   || 100,
+    rate:        parseFloat($('rate').value)      || 0.05,
+    volatility:  parseFloat($('sigma').value)     || 0.2,
+    maturity:    parseFloat($('maturity').value)  || 1,
+    option_type: $('optType').value               || 'call'
+  };
+}
+
+// ── 11. Price Option (parallel BS + MC + Greeks) ───────────────
+$('priceBtn').addEventListener('click', priceOption);
+async function priceOption() {
+  const params = getParams();
+  showLoading();
+  try {
+    const [bs, mc, greeks] = await Promise.all([
+      api('/api/v1/pricing/bs',     params),
+      api('/api/v1/pricing/mc',     params),
+      api('/api/v1/pricing/greeks', params)
     ]);
+    if (!bs || !mc || !greeks) return;
 
-    document.getElementById("bsPrice").textContent = bs.price.toFixed(4);
-    document.getElementById("mcPrice").textContent = mc.price.toFixed(4);
-    document.getElementById("dlPrice").textContent = dl.forecast_price.toFixed(4);
-    document.getElementById("delta").textContent = greeks.delta.toFixed(4);
-    document.getElementById("gamma").textContent = greeks.gamma.toFixed(4);
-    document.getElementById("vega").textContent = greeks.vega.toFixed(4);
-    document.getElementById("theta").textContent = greeks.theta.toFixed(4);
-    document.getElementById("rho").textContent = greeks.rho.toFixed(4);
-    document.getElementById("regime").textContent = iv.regime;
+    // Results
+    $('pricingResults').style.display = '';
+    $('bsPrice').textContent = fmt(bs.price);
+    $('mcPrice').textContent = fmt(mc.price);
 
-    drawComparisonChart(
-      document.getElementById("comparisonChart"),
-      bs.price,
-      mc.price,
-      dl.forecast_price,
-    );
-    drawGreeksChart(document.getElementById("greeksChart"), greeks);
-    drawMonteCarloPaths(document.getElementById("mcPaths"));
-  } catch (error) {
-    alert(error.message);
+    // Backend returns {model, price, metadata} — compute error from price difference
+    const diff = Math.abs(bs.price - mc.price);
+    const se = diff > 0 ? diff / 1.96 : 0;
+    $('mcStd').textContent = se > 0 ? fmt(se) : '< 0.0001';
+    $('mcCI').textContent = se > 0
+      ? `[${fmt(mc.price - 1.96 * se, 2)}, ${fmt(mc.price + 1.96 * se, 2)}]`
+      : `≈ ${fmt(mc.price, 2)}`;
+
+    $('resultBadge').style.display = '';
+    $('resultBadge').textContent = `BS: $${fmt(bs.price, 2)}`;
+
+    // Greeks quick view
+    $('greeksQuick').style.display = '';
+    $('qDelta').textContent = fmt(greeks.delta);
+    $('qGamma').textContent = fmt(greeks.gamma, 6);
+    $('qTheta').textContent = fmt(greeks.theta);
+    $('qVega').textContent  = fmt(greeks.vega);
+    $('qRho').textContent   = fmt(greeks.rho);
+
+    toast('success', 'Pricing Complete', `BS=$${fmt(bs.price,2)}  MC=$${fmt(mc.price,2)}`);
+  } catch (err) {
+    toast('error', 'Pricing Failed', err.message);
+  } finally {
+    hideLoading();
   }
 }
 
-async function askExplain() {
+// Reset button
+$('resetBtn').addEventListener('click', () => {
+  $('spot').value = 100; $('strike').value = 100; $('rate').value = 0.05;
+  $('sigma').value = 0.2; $('maturity').value = 1; $('optType').value = 'call';
+  $('pricingResults').style.display = 'none';
+  $('greeksQuick').style.display = 'none';
+  $('resultBadge').style.display = 'none';
+});
+
+// ── 12. Greeks Surface Plot ────────────────────────────────────
+$('plotGreekBtn').addEventListener('click', plotGreekSurface);
+async function plotGreekSurface() {
+  const params  = getParams();
+  const greek   = $('greekSelect').value;
+  const range   = (parseFloat($('greekRange').value) || 30) / 100;
+  const lo      = params.spot * (1 - range);
+  const hi      = params.spot * (1 + range);
+  const steps   = 30;
+  const spots   = Array.from({ length: steps }, (_, i) => lo + (hi - lo) * i / (steps - 1));
+
+  showLoading();
   try {
-    const question = document.getElementById("question").value || "Explain pricing";
-    const response = await postJson("/api/v1/ai/explain", {
-      question,
-      context: { model: "hybrid", focus: "volatility regime" },
+    const results = await Promise.all(
+      spots.map(s => api('/api/v1/pricing/greeks', { ...params, spot: s }))
+    );
+
+    const values = results.map(r => r ? r[greek] : null);
+    $('greekChartWrap').style.display = '';
+    const colors = { delta:'#6d5cff', gamma:'#00e5a0', theta:'#ff5c7c', vega:'#ffc044', rho:'#3ea8ff' };
+
+    getOrCreateChart('greekChart', {
+      type: 'line',
+      data: {
+        labels: spots.map(s => s.toFixed(1)),
+        datasets: [{
+          label: `${greek.charAt(0).toUpperCase() + greek.slice(1)} vs Spot`,
+          data: values,
+          borderColor: colors[greek] || '#6d5cff',
+          backgroundColor: (colors[greek] || '#6d5cff') + '22',
+          fill: true, tension: .3, pointRadius: 2
+        }]
+      },
+      options: { ...chartDefaults(), plugins: { ...chartDefaults().plugins } }
     });
-    document.getElementById("explainAnswer").textContent = response.answer;
-  } catch (error) {
-    alert(error.message);
+
+    toast('success', 'Surface Plotted', `${greek} across ${steps} spot points`);
+  } catch (err) {
+    toast('error', 'Greeks Failed', err.message);
+  } finally {
+    hideLoading();
   }
 }
 
-document.getElementById("runPricing").addEventListener("click", runPricing);
-document.getElementById("askExplain").addEventListener("click", askExplain);
+// ── 13. Monte Carlo Simulation (client-side GBM) ──────────────
+$('simBtn').addEventListener('click', runMonteCarlo);
+function runMonteCarlo() {
+  const params = getParams();
+  const nPaths = parseInt($('mcPaths').value) || 200;
+  const nSteps = parseInt($('mcSteps').value) || 252;
+  const dt     = params.maturity / nSteps;
+  const drift  = (params.rate - 0.5 * params.volatility ** 2) * dt;
+  const vol    = params.volatility * Math.sqrt(dt);
 
-runPricing();
+  showLoading();
+  setTimeout(() => {
+    try {
+      const paths = [];
+      const payoffs = [];
+      const convergence = [];
+      let payoffSum = 0;
+
+      for (let p = 0; p < nPaths; p++) {
+        const path = [params.spot];
+        let S = params.spot;
+        for (let s = 0; s < nSteps; s++) {
+          const z = boxMullerRandom();
+          S *= Math.exp(drift + vol * z);
+          path.push(S);
+        }
+        paths.push(path);
+
+        // Payoff
+        const payoff = params.option_type === 'call'
+          ? Math.max(S - params.strike, 0)
+          : Math.max(params.strike - S, 0);
+        payoffs.push(payoff);
+        payoffSum += payoff;
+        convergence.push(Math.exp(-params.rate * params.maturity) * payoffSum / (p + 1));
+      }
+
+      // Show charts
+      $('mcChartsWrap').style.display = '';
+
+      // Paths chart (show subset)
+      const maxDisplay = Math.min(nPaths, 80);
+      const labels = Array.from({ length: nSteps + 1 }, (_, i) => i);
+      const datasets = [];
+      for (let p = 0; p < maxDisplay; p++) {
+        const hue = (p * 360 / maxDisplay) % 360;
+        datasets.push({
+          data: paths[p],
+          borderColor: `hsla(${hue},70%,60%,.4)`,
+          borderWidth: 1, pointRadius: 0, fill: false, tension: 0
+        });
+      }
+      getOrCreateChart('mcChart', {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          ...chartDefaults(),
+          plugins: { ...chartDefaults().plugins, legend: { display: false } },
+          scales: {
+            ...chartDefaults().scales,
+            x: { ...chartDefaults().scales.x, title: { display: true, text: 'Time Step', color: '#9ba1b7' } },
+            y: { ...chartDefaults().scales.y, title: { display: true, text: 'Price ($)', color: '#9ba1b7' } }
+          },
+          animation: false
+        }
+      });
+
+      // Convergence chart
+      getOrCreateChart('convChart', {
+        type: 'line',
+        data: {
+          labels: Array.from({ length: nPaths }, (_, i) => i + 1),
+          datasets: [{
+            label: 'MC Price Convergence',
+            data: convergence,
+            borderColor: '#00e5a0',
+            backgroundColor: 'rgba(0,229,160,.08)',
+            fill: true, tension: .2, pointRadius: 0
+          }]
+        },
+        options: {
+          ...chartDefaults(),
+          scales: {
+            ...chartDefaults().scales,
+            x: { ...chartDefaults().scales.x, title: { display: true, text: 'Number of Paths', color: '#9ba1b7' } },
+            y: { ...chartDefaults().scales.y, title: { display: true, text: 'Estimated Price ($)', color: '#9ba1b7' } }
+          }
+        }
+      });
+
+      const finalPrice = convergence[convergence.length - 1];
+      toast('success', 'Simulation Complete', `${nPaths} paths · Price ≈ $${fmt(finalPrice, 2)}`);
+    } catch (err) {
+      toast('error', 'Simulation Failed', err.message);
+    } finally {
+      hideLoading();
+    }
+  }, 50);
+}
+
+function boxMullerRandom() {
+  let u, v, s;
+  do { u = Math.random() * 2 - 1; v = Math.random() * 2 - 1; s = u * u + v * v; } while (s >= 1 || s === 0);
+  return u * Math.sqrt(-2 * Math.log(s) / s);
+}
+
+// ── 14. Deep Learning Forecast ─────────────────────────────────
+$('dlBtn').addEventListener('click', dlForecast);
+async function dlForecast() {
+  const body = {
+    spot:        parseFloat($('dlSpot').value)     || 100,
+    strike:      parseFloat($('dlStrike').value)   || 100,
+    maturity:    parseFloat($('dlMaturity').value)  || 1,
+    rate:        parseFloat($('dlRate').value)      || 0.05,
+    volatility:  parseFloat($('dlSigma').value)     || 0.2,
+    option_type: $('dlType').value                  || 'call'
+  };
+  showLoading();
+  try {
+    const d = await api('/api/v1/dl/forecast', body);
+    if (!d) return;
+
+    $('dlResults').style.display = '';
+    $('dlForecast').textContent = fmt(d.forecast_price);
+    $('dlVol').textContent      = d.forecast_vol != null ? fmtPct(d.forecast_vol) : '—';
+    $('dlResidual').textContent = d.residual != null ? fmt(d.residual) : '—';
+
+    const bench = d.benchmarks || {};
+    $('dlBS').textContent = bench.bs != null ? fmt(bench.bs) : '—';
+    $('dlMC').textContent = bench.mc != null ? fmt(bench.mc) : '—';
+
+    // Comparison chart
+    $('compChartWrap').style.display = '';
+    getOrCreateChart('compChart', {
+      type: 'bar',
+      data: {
+        labels: ['Deep Learning', 'Black-Scholes', 'Monte Carlo'],
+        datasets: [{
+          label: 'Option Price ($)',
+          data: [d.forecast_price, bench.bs, bench.mc],
+          backgroundColor: ['#6d5cff', '#00e5a0', '#3ea8ff'],
+          borderRadius: 8, barThickness: 50
+        }]
+      },
+      options: {
+        ...chartDefaults(),
+        plugins: { ...chartDefaults().plugins, legend: { display: false } },
+        scales: {
+          ...chartDefaults().scales,
+          y: { ...chartDefaults().scales.y, beginAtZero: true,
+               title: { display: true, text: 'Price ($)', color: '#9ba1b7' } }
+        }
+      }
+    });
+
+    toast('success', 'DL Forecast', `Price ≈ $${fmt(d.forecast_price, 2)}`);
+  } catch (err) {
+    toast('error', 'DL Forecast Failed', err.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// ── 15. ML Implied Volatility ──────────────────────────────────
+$('mlBtn').addEventListener('click', mlPredict);
+async function mlPredict() {
+  const body = {
+    spot:          parseFloat($('mlSpot').value)  || 100,
+    rate:          parseFloat($('mlRate').value)   || 0.05,
+    maturity:      parseFloat($('mlMat').value)    || 0.5,
+    realized_vol:  parseFloat($('mlRvol').value)   || 0.18,
+    vix:           parseFloat($('mlVix').value)    || 20,
+    skew:          parseFloat($('mlSkew').value)   || -0.15
+  };
+  showLoading();
+  try {
+    const d = await api('/api/v1/ml/iv-predict', body);
+    if (!d) return;
+    $('mlResults').style.display = '';
+    $('mlIV').textContent     = d.implied_vol != null ? fmtPct(d.implied_vol) : '—';
+    $('mlRegime').textContent = d.regime || '—';
+    toast('success', 'IV Predicted', `IV = ${fmtPct(d.implied_vol)} · Regime: ${d.regime || '—'}`);
+  } catch (err) {
+    toast('error', 'ML Prediction Failed', err.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// ── 16. AI / RAG Explainability ────────────────────────────────
+const chatArea  = $('chatArea');
+const ragInput  = $('ragInput');
+const ragBtn    = $('ragBtn');
+
+ragBtn.addEventListener('click', askRAG);
+ragInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askRAG(); }
+});
+
+// Quick chips
+document.querySelectorAll('#quickChips .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    ragInput.value = chip.dataset.q;
+    askRAG();
+  });
+});
+
+async function askRAG() {
+  const q = ragInput.value.trim();
+  if (!q) return;
+
+  // Add user bubble
+  addBubble('user', q);
+  ragInput.value = '';
+
+  // Show typing indicator
+  const typing = document.createElement('div');
+  typing.className = 'typing-indicator';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+  chatArea.appendChild(typing);
+  chatArea.scrollTop = chatArea.scrollHeight;
+
+  try {
+    const d = await api('/api/v1/ai/explain', { question: q, context: getParams() });
+    typing.remove();
+    if (!d) return;
+
+    // Assistant bubble with rendered markdown
+    addBubble('assistant', renderMarkdown(d.answer || 'No answer received.'));
+
+    // Confidence & sources
+    if (d.confidence != null || (d.sources && d.sources.length)) {
+      $('ragMeta').style.display = '';
+      if (d.confidence != null) {
+        const pct = Math.round(d.confidence * 100);
+        $('confFill').style.width = pct + '%';
+        $('confLabel').textContent = pct + '%';
+      }
+      const srcList = $('sourceList');
+      srcList.innerHTML = '';
+      (d.sources || []).forEach(s => {
+        const tag = document.createElement('span');
+        tag.className = 'source-tag';
+        tag.textContent = typeof s === 'string' ? s : s.title || s.name || 'Source';
+        srcList.appendChild(tag);
+      });
+    }
+    toast('info', 'Answer Ready');
+  } catch (err) {
+    typing.remove();
+    addBubble('assistant', `⚠️ Error: ${err.message}`);
+    toast('error', 'AI Error', err.message);
+  }
+}
+
+function addBubble(role, html) {
+  const div = document.createElement('div');
+  div.className = `chat-bubble ${role}`;
+  if (role === 'user') {
+    div.textContent = html;
+  } else {
+    div.innerHTML = html;
+  }
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function renderMarkdown(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/^/, '<p>')
+    .replace(/$/, '</p>');
+}
+
+// ── 17. Keyboard Shortcuts ─────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    // Find the active section and trigger its primary action
+    const active = document.querySelector('.section.active');
+    if (!active) return;
+    const id = active.id;
+    if (id === 'sec-pricing')        $('priceBtn').click();
+    else if (id === 'sec-greeks')    $('plotGreekBtn').click();
+    else if (id === 'sec-monte-carlo') $('simBtn').click();
+    else if (id === 'sec-deep-learning') $('dlBtn').click();
+    else if (id === 'sec-ml-volatility') $('mlBtn').click();
+    else if (id === 'sec-explainability') ragBtn.click();
+  }
+});
+
+// ── 18. Initialization ────────────────────────────────────────
+console.log('%c🚀 OptionQuant loaded', 'color:#6d5cff;font-size:14px;font-weight:700');

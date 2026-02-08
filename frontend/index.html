@@ -1,86 +1,455 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Intelligent Option Pricing Platform</title>
-    <link rel="stylesheet" href="/frontend/styles.css" />
-  </head>
-  <body>
-    <header>
-      <h1>Intelligent Option Pricing & Risk Analytics</h1>
-      <p>Monte Carlo + Deep Learning + Explainability</p>
-    </header>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OptionQuant — Monte Carlo & Deep Learning Pricing</title>
+  <meta name="description" content="Conference-grade option pricing platform using Monte Carlo simulation & deep learning" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Ambient BG -->
+  <div class="ambient-bg"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
 
-    <main>
-      <section class="card">
-        <h2>Pricing Controls</h2>
-        <div class="grid">
-          <label>Spot <input id="spot" type="number" value="100" /></label>
-          <label>Strike <input id="strike" type="number" value="100" /></label>
-          <label>Maturity (yrs) <input id="maturity" type="number" step="0.1" value="1" /></label>
-          <label>Rate <input id="rate" type="number" step="0.001" value="0.02" /></label>
-          <label>Volatility <input id="vol" type="number" step="0.01" value="0.2" /></label>
-          <label>Type
-            <select id="optionType">
-              <option value="call">Call</option>
-              <option value="put">Put</option>
-            </select>
-          </label>
+  <!-- Sidebar Overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="app-shell">
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo">OQ</div>
+        <h1>OptionQuant<span>Monte Carlo &amp; Deep Learning</span></h1>
+      </div>
+
+      <nav class="sidebar-nav" id="nav">
+        <div class="nav-label">Analytics</div>
+        <div class="nav-item active" data-section="pricing">
+          <span class="icon">📊</span> Option Pricing
         </div>
-        <button id="runPricing">Run Pricing</button>
-      </section>
+        <div class="nav-item" data-section="greeks">
+          <span class="icon">Δ</span> Greeks Analysis
+        </div>
+        <div class="nav-item" data-section="monte-carlo">
+          <span class="icon">🎲</span> Monte Carlo
+        </div>
 
-      <section class="card">
-        <h2>Pricing Comparison</h2>
-        <div class="metrics">
-          <div>
-            <span>Black-Scholes</span>
-            <strong id="bsPrice">-</strong>
-          </div>
-          <div>
-            <span>Monte Carlo</span>
-            <strong id="mcPrice">-</strong>
-          </div>
-          <div>
-            <span>Hybrid DL</span>
-            <strong id="dlPrice">-</strong>
+        <div class="nav-label">Intelligence</div>
+        <div class="nav-item" data-section="deep-learning">
+          <span class="icon">🧠</span> Deep Learning
+        </div>
+        <div class="nav-item" data-section="ml-volatility">
+          <span class="icon">📈</span> ML Volatility
+        </div>
+
+        <div class="nav-label">Research</div>
+        <div class="nav-item" data-section="explainability">
+          <span class="icon">💡</span> AI Explainability
+        </div>
+      </nav>
+
+      <!-- User Card -->
+      <div class="sidebar-user">
+        <div class="user-card" id="userCard">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <div class="user-info">
+            <div class="user-name" id="userName">Loading…</div>
+            <div class="user-role" id="userRole">Analyst</div>
           </div>
         </div>
-        <canvas id="comparisonChart" width="520" height="180"></canvas>
-      </section>
+      </div>
 
-      <section class="card">
-        <h2>Greeks & Regime</h2>
-        <div class="metrics">
-          <div><span>Delta</span><strong id="delta">-</strong></div>
-          <div><span>Gamma</span><strong id="gamma">-</strong></div>
-          <div><span>Vega</span><strong id="vega">-</strong></div>
-          <div><span>Theta</span><strong id="theta">-</strong></div>
-          <div><span>Rho</span><strong id="rho">-</strong></div>
-          <div><span>Regime</span><strong id="regime">-</strong></div>
+      <!-- Actions -->
+      <div class="sidebar-actions">
+        <div class="action-btn" id="themeToggle">
+          <span class="icon" id="themeIcon">🌙</span> Toggle Theme
         </div>
-        <canvas id="greeksChart" width="520" height="180"></canvas>
-      </section>
+        <div class="action-btn" id="healthBtn">
+          <span class="icon">🔗</span> <span id="healthLabel">Check API</span>
+        </div>
+        <div class="action-btn danger" id="logoutBtn">
+          <span class="icon">🚪</span> Sign Out
+        </div>
+      </div>
+    </aside>
 
-      <section class="card">
-        <h2>Monte Carlo Path Sketch</h2>
-        <canvas id="mcPaths" width="520" height="180"></canvas>
-      </section>
+    <!-- ═══ Main ═══ -->
+    <main class="main-content">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle sidebar">☰</button>
+          <div>
+            <div class="page-title" id="pageTitle">Option Pricing</div>
+            <div class="page-subtitle" id="pageSubtitle">Black-Scholes & Monte Carlo engines</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="status-pill" id="healthBtn2" title="Click to check backend health">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Checking…</span>
+          </div>
+        </div>
+      </header>
 
-      <section class="card">
-        <h2>Explainability (RAG)</h2>
-        <textarea id="question" rows="3" placeholder="Why is the hybrid model different?"></textarea>
-        <button id="askExplain">Ask AI</button>
-        <pre id="explainAnswer">-</pre>
-      </section>
+      <div class="content-area">
+        <!-- ═══════════ 1. PRICING ═══════════ -->
+        <div class="section active" id="sec-pricing">
+          <div class="section-header">
+            <div class="section-title">⚡ Option Pricing Engine</div>
+            <div class="section-desc">Compute fair values using Black-Scholes analytics and Monte Carlo simulation simultaneously</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">📐</span> Parameters</div>
+              <span class="result-badge" id="resultBadge" style="display:none">—</span>
+            </div>
+
+            <div class="form-grid">
+              <div class="field">
+                <label for="spot">Spot Price ($)</label>
+                <input type="number" id="spot" value="100" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="strike">Strike Price ($)</label>
+                <input type="number" id="strike" value="100" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="rate">Risk-Free Rate</label>
+                <input type="number" id="rate" value="0.05" step="0.001" />
+              </div>
+              <div class="field">
+                <label for="sigma">Volatility (σ)</label>
+                <input type="number" id="sigma" value="0.2" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="maturity">Maturity (years)</label>
+                <input type="number" id="maturity" value="1" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="optType">Option Type</label>
+                <select id="optType">
+                  <option value="call">Call Option</option>
+                  <option value="put">Put Option</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="btn-group">
+              <button class="btn btn-primary" id="priceBtn">⚡ Price Option</button>
+              <button class="btn btn-secondary" id="resetBtn">↻ Reset</button>
+            </div>
+          </div>
+
+          <!-- Pricing Results -->
+          <div class="metrics-row" id="pricingResults" style="display:none">
+            <div class="metric-card">
+              <div class="metric-label">Black-Scholes</div>
+              <div class="metric-value highlight" id="bsPrice">—</div>
+              <div class="metric-sub">Analytical Solution</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Monte Carlo</div>
+              <div class="metric-value highlight" id="mcPrice">—</div>
+              <div class="metric-sub">Simulation Estimate</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">MC Std Error</div>
+              <div class="metric-value" id="mcStd">—</div>
+              <div class="metric-sub">Standard Deviation</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">95% Confidence</div>
+              <div class="metric-value" id="mcCI">—</div>
+              <div class="metric-sub">Interval</div>
+            </div>
+          </div>
+
+          <!-- Greeks Quick View -->
+          <div class="greeks-grid" id="greeksQuick" style="display:none">
+            <div class="greek-card" data-greek="delta">
+              <div class="greek-symbol">Δ</div>
+              <div class="greek-name">Delta</div>
+              <div class="greek-value" id="qDelta">—</div>
+            </div>
+            <div class="greek-card" data-greek="gamma">
+              <div class="greek-symbol">Γ</div>
+              <div class="greek-name">Gamma</div>
+              <div class="greek-value" id="qGamma">—</div>
+            </div>
+            <div class="greek-card" data-greek="theta">
+              <div class="greek-symbol">Θ</div>
+              <div class="greek-name">Theta</div>
+              <div class="greek-value" id="qTheta">—</div>
+            </div>
+            <div class="greek-card" data-greek="vega">
+              <div class="greek-symbol">ν</div>
+              <div class="greek-name">Vega</div>
+              <div class="greek-value" id="qVega">—</div>
+            </div>
+            <div class="greek-card" data-greek="rho">
+              <div class="greek-symbol">ρ</div>
+              <div class="greek-name">Rho</div>
+              <div class="greek-value" id="qRho">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 2. GREEKS ═══════════ -->
+        <div class="section" id="sec-greeks">
+          <div class="section-header">
+            <div class="section-title">Δ Greeks Surface Analysis</div>
+            <div class="section-desc">Visualise sensitivity across the strike/spot spectrum</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">🎯</span> Surface Parameters</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="greekSelect">Greek</label>
+                <select id="greekSelect">
+                  <option value="delta">Delta (Δ)</option>
+                  <option value="gamma">Gamma (Γ)</option>
+                  <option value="theta">Theta (Θ)</option>
+                  <option value="vega">Vega (ν)</option>
+                  <option value="rho">Rho (ρ)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="greekRange">Spot Range (%)</label>
+                <input type="number" id="greekRange" value="30" min="5" max="80" step="5" />
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="plotGreekBtn">📈 Plot Surface</button>
+            </div>
+          </div>
+
+          <div class="chart-container" style="display:none" id="greekChartWrap">
+            <canvas id="greekChart"></canvas>
+          </div>
+        </div>
+
+        <!-- ═══════════ 3. MONTE CARLO ═══════════ -->
+        <div class="section" id="sec-monte-carlo">
+          <div class="section-header">
+            <div class="section-title">🎲 Monte Carlo Simulation</div>
+            <div class="section-desc">Geometric Brownian Motion path simulation with convergence analysis</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">⚙️</span> Simulation Settings</div>
+            </div>
+            <div class="mc-controls">
+              <div class="field">
+                <label for="mcPaths">Paths</label>
+                <input type="number" id="mcPaths" value="200" min="10" max="2000" step="10" />
+              </div>
+              <div class="field">
+                <label for="mcSteps">Steps</label>
+                <input type="number" id="mcSteps" value="252" min="50" max="1000" step="1" />
+              </div>
+              <button class="btn btn-accent" id="simBtn">▶ Run Simulation</button>
+            </div>
+          </div>
+
+          <div class="charts-grid" id="mcChartsWrap" style="display:none">
+            <div class="chart-container">
+              <div class="card-title mb-4"><span class="icon">📉</span> Price Paths (GBM)</div>
+              <canvas id="mcChart"></canvas>
+            </div>
+            <div class="chart-container">
+              <div class="card-title mb-4"><span class="icon">📊</span> Convergence</div>
+              <canvas id="convChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 4. DEEP LEARNING ═══════════ -->
+        <div class="section" id="sec-deep-learning">
+          <div class="section-header">
+            <div class="section-title">🧠 Deep Learning Forecast</div>
+            <div class="section-desc">LSTM &amp; Transformer neural-network pricing with benchmark comparison</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">🔬</span> Model Input</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="dlSpot">Spot</label>
+                <input type="number" id="dlSpot" value="100" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="dlStrike">Strike</label>
+                <input type="number" id="dlStrike" value="100" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="dlMaturity">Maturity</label>
+                <input type="number" id="dlMaturity" value="1" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="dlRate">Rate</label>
+                <input type="number" id="dlRate" value="0.05" step="0.001" />
+              </div>
+              <div class="field">
+                <label for="dlSigma">Volatility</label>
+                <input type="number" id="dlSigma" value="0.2" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="dlType">Type</label>
+                <select id="dlType">
+                  <option value="call">Call</option>
+                  <option value="put">Put</option>
+                </select>
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="dlBtn">🧠 Forecast</button>
+            </div>
+          </div>
+
+          <div class="dl-results" id="dlResults" style="display:none">
+            <div class="metric-card">
+              <div class="metric-label">DL Forecast</div>
+              <div class="metric-value highlight" id="dlForecast">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Forecast Vol</div>
+              <div class="metric-value" id="dlVol">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Residual</div>
+              <div class="metric-value" id="dlResidual">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">BS Benchmark</div>
+              <div class="metric-value" id="dlBS">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">MC Benchmark</div>
+              <div class="metric-value" id="dlMC">—</div>
+            </div>
+          </div>
+
+          <div class="chart-container" id="compChartWrap" style="display:none">
+            <div class="card-title mb-4"><span class="icon">📊</span> Model Comparison</div>
+            <canvas id="compChart"></canvas>
+          </div>
+        </div>
+
+        <!-- ═══════════ 5. ML VOLATILITY ═══════════ -->
+        <div class="section" id="sec-ml-volatility">
+          <div class="section-header">
+            <div class="section-title">📈 ML Implied Volatility</div>
+            <div class="section-desc">Machine learning implied volatility prediction with regime detection</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">🔮</span> Market Features</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="mlSpot">Spot Price</label>
+                <input type="number" id="mlSpot" value="100" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="mlRate">Interest Rate</label>
+                <input type="number" id="mlRate" value="0.05" step="0.001" />
+              </div>
+              <div class="field">
+                <label for="mlMat">Maturity</label>
+                <input type="number" id="mlMat" value="0.5" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="mlRvol">Realized Vol</label>
+                <input type="number" id="mlRvol" value="0.18" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="mlVix">VIX Level</label>
+                <input type="number" id="mlVix" value="20" step="0.1" />
+              </div>
+              <div class="field">
+                <label for="mlSkew">Skew Index</label>
+                <input type="number" id="mlSkew" value="-0.15" step="0.01" />
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="mlBtn">📈 Predict IV</button>
+            </div>
+          </div>
+
+          <div class="metrics-row" id="mlResults" style="display:none">
+            <div class="metric-card">
+              <div class="metric-label">Implied Volatility</div>
+              <div class="metric-value highlight" id="mlIV">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Market Regime</div>
+              <div class="metric-value" id="mlRegime">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 6. AI EXPLAINABILITY ═══════════ -->
+        <div class="section" id="sec-explainability">
+          <div class="section-header">
+            <div class="section-title">💡 AI Explainability Engine</div>
+            <div class="section-desc">RAG-powered Q&amp;A — ask anything about quantitative finance</div>
+          </div>
+
+          <div class="card">
+            <div class="chat-area" id="chatArea"></div>
+
+            <div class="chat-input-row">
+              <input type="text" id="ragInput" placeholder="Ask about Black-Scholes, Greeks, Monte Carlo…" />
+              <button class="btn btn-primary" id="ragBtn">Ask →</button>
+            </div>
+
+            <div class="quick-chips" id="quickChips">
+              <span class="chip" data-q="Explain the Black-Scholes formula">Black-Scholes</span>
+              <span class="chip" data-q="What are the Greeks in option pricing?">Greeks Basics</span>
+              <span class="chip" data-q="How does Monte Carlo simulation price options?">Monte Carlo</span>
+              <span class="chip" data-q="Compare LSTM vs Transformer for pricing">DL Comparison</span>
+              <span class="chip" data-q="What is implied volatility surface?">IV Surface</span>
+            </div>
+          </div>
+
+          <div class="rag-meta" id="ragMeta" style="display:none">
+            <div class="confidence-label">
+              <span>Confidence</span>
+              <span id="confLabel">0%</span>
+            </div>
+            <div class="confidence-bar">
+              <div class="confidence-fill" id="confFill"></div>
+            </div>
+            <div class="source-list" id="sourceList"></div>
+          </div>
+        </div>
+      </div>
     </main>
+  </div>
 
-    <footer>
-      <span>Built for final-year project demonstration.</span>
-      <a href="/frontend/login.html">Login</a>
-    </footer>
+  <!-- Toast Container -->
+  <div class="toast-container" id="toasts"></div>
 
-    <script type="module" src="/frontend/app.js"></script>
-  </body>
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div>
+      <div class="spinner"></div>
+      <div class="loading-text">Computing…</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
 </html>

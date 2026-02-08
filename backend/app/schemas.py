@@ -45,9 +45,10 @@ class VolatilityResponse(BaseModel):
 
 class ExplainRequest(BaseModel):
     question: str
-    context: dict
+    context: dict = {}
 
 
 class ExplainResponse(BaseModel):
     answer: str
     sources: list[str]
+    confidence: float = 0.0

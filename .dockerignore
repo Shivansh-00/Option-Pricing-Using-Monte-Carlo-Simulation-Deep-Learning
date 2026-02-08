@@ -1,0 +1,13 @@
+.git
+.gitignore
+.dockerignore
+.env.local
+*.pyc
+__pycache__
+docs/
+*.md
+!README.md
+backend/data/
+backend/scripts/
+.vscode/
+*.log
