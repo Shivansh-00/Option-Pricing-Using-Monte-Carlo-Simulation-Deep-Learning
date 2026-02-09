@@ -6,3 +6,4 @@ numpy==2.1.2
 scikit-learn==1.5.2
 PyPDF2==3.0.1
 PyJWT==2.9.0
+httpx==0.28.1

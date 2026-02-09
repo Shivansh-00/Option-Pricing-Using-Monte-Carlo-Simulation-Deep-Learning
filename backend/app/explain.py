@@ -1,11 +1,25 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 from pathlib import Path
 
+import time
+
+import httpx
+
+from .config import settings
 from .rag import retriever, vector_store
 from .schemas import ExplainRequest
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Gemini REST API (lightweight – no heavy SDK needed)
+# ---------------------------------------------------------------------------
+
+_GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
 # ---------------------------------------------------------------------------
 # Domain scope
@@ -74,7 +88,7 @@ def _select_evidence(
     return selected
 
 # ---------------------------------------------------------------------------
-# Answer synthesis
+# Confidence scoring
 # ---------------------------------------------------------------------------
 
 def _compute_confidence(results: list[retriever.RetrievalResult]) -> tuple[float, str]:
@@ -103,31 +117,93 @@ def _format_sources(results: list[retriever.RetrievalResult]) -> list[str]:
             sources.append(label)
     return sources
 
+# ---------------------------------------------------------------------------
+# Gemini answer synthesis  (Retrieval-Augmented Generation)
+# ---------------------------------------------------------------------------
 
-def _synthesize_answer(
+_SYSTEM_PROMPT = """You are OptionQuant AI, an expert assistant for quantitative \
+finance and option pricing. You answer questions about Black-Scholes, Monte Carlo \
+simulation, option Greeks, volatility modeling, and deep learning for finance.
+
+Rules:
+1. ONLY use the provided CONTEXT passages to form your answer.
+2. If the context is insufficient, say so honestly — never fabricate information.
+3. Cite the relevant source title when referencing specific facts.
+4. Keep answers concise, well-structured, and educational.
+5. Use bullet points or numbered lists for clarity when appropriate.
+6. Include relevant formulas in LaTeX notation when helpful."""
+
+
+def _build_user_prompt(question: str, evidence: list[str], sources: list[str]) -> str:
+    """Build the user message with retrieved context for the LLM."""
+    context_block = "\n\n".join(
+        f"[Source {i+1}]: {e}" for i, e in enumerate(evidence)
+    )
+    source_list = ", ".join(sources[:4]) if sources else "knowledge base"
+    return (
+        f"CONTEXT (retrieved from: {source_list}):\n"
+        f"{context_block}\n\n"
+        f"QUESTION: {question}\n\n"
+        f"Provide a clear, grounded answer using ONLY the context above."
+    )
+
+
+def _call_gemini(question: str, evidence: list[str], sources: list[str]) -> str:
+    """Call Google Gemini REST API to generate a grounded answer."""
+    api_key = settings.gemini_api_key
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY environment variable is not set. "
+            "Please set it in your .env file or environment."
+        )
+
+    url = _GEMINI_URL.format(model=settings.gemini_model, key=api_key)
+    user_msg = _build_user_prompt(question, evidence, sources)
+
+    payload = {
+        "system_instruction": {"parts": [{"text": _SYSTEM_PROMPT}]},
+        "contents": [{"parts": [{"text": user_msg}]}],
+        "generationConfig": {
+            "temperature": settings.gemini_temperature,
+            "maxOutputTokens": settings.gemini_max_tokens,
+        },
+    }
+
+    max_retries = 2
+    with httpx.Client(timeout=30.0) as client:
+        for attempt in range(max_retries):
+            resp = client.post(url, json=payload)
+            if resp.status_code == 429 and attempt < max_retries - 1:
+                delay = min(int(resp.headers.get("retry-after", "10")), 15)
+                logger.info("Gemini rate-limited (429), retrying in %ds…", delay)
+                time.sleep(delay)
+                continue
+            resp.raise_for_status()
+            data = resp.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+    raise RuntimeError("Gemini API exhausted all retries")
+
+
+def _fallback_synthesize(
     question: str,
     evidence: list[str],
     sources: list[str],
     confidence: float,
     confidence_label: str,
 ) -> str:
-    """Build a structured, grounded answer."""
+    """Rule-based fallback if OpenAI call fails."""
     header = f"### {question}\n"
-
     evidence_block = "\n".join(f"• {e}" for e in evidence)
-
     conf_pct = f"{confidence * 100:.0f}%"
     conf_emoji = {"high": "🟢", "medium": "🟡", "low": "🔴", "none": "⚫"}.get(confidence_label, "⚫")
-
     source_block = ", ".join(sources[:4]) if sources else "N/A"
-
-    answer = (
-        f"{header}\n"
-        f"{evidence_block}\n\n"
+    return (
+        f"{header}\n{evidence_block}\n\n"
         f"**Confidence:** {conf_emoji} {conf_pct} ({confidence_label})\n"
-        f"**Sources:** {source_block}"
+        f"**Sources:** {source_block}\n\n"
+        f"*Note: Generated using rule-based synthesis (LLM unavailable).*"
     )
-    return answer
 
 # ---------------------------------------------------------------------------
 # Main entry point
@@ -150,7 +226,7 @@ def build_explanation(request: ExplainRequest) -> tuple[str, list[str], float]:
             0.0,
         )
 
-    # Retrieve
+    # Retrieve from knowledge base (TF-IDF + BM25 hybrid search)
     retrieved = retriever.retrieve(question or "option pricing overview", store, top_k=top_k)
     sources = _format_sources(retrieved)
     confidence, confidence_label = _compute_confidence(retrieved)
@@ -166,7 +242,7 @@ def build_explanation(request: ExplainRequest) -> tuple[str, list[str], float]:
             0.0,
         )
 
-    # Extract evidence & synthesize
+    # Extract evidence
     passages = [r.doc.content for r in retrieved]
     evidence = _select_evidence(question or "option pricing", passages)
 
@@ -178,5 +254,12 @@ def build_explanation(request: ExplainRequest) -> tuple[str, list[str], float]:
             confidence * 0.5,
         )
 
-    answer = _synthesize_answer(question, evidence, sources, confidence, confidence_label)
+    # Synthesize answer via Google Gemini (with fallback)
+    try:
+        answer = _call_gemini(question, evidence, sources)
+        logger.info("RAG answer generated via Gemini (%s)", settings.gemini_model)
+    except Exception as exc:
+        logger.warning("Gemini call failed (%s), using fallback synthesis", exc)
+        answer = _fallback_synthesize(question, evidence, sources, confidence, confidence_label)
+
     return answer, sources, confidence

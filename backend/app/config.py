@@ -39,5 +39,11 @@ class Settings:
     frontend_dir: str = os.getenv("FRONTEND_DIR", "frontend")
     model_dir: str = os.getenv("MODEL_DIR", "models")
 
+    # --- Google Gemini LLM for RAG ---
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    gemini_max_tokens: int = int(os.getenv("GEMINI_MAX_TOKENS", "512"))
+    gemini_temperature: float = float(os.getenv("GEMINI_TEMPERATURE", "0.4"))
+
 
 settings = Settings()
