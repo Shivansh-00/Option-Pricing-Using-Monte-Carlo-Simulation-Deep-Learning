@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
 import math
 import os
 import re
+import time
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -10,6 +12,8 @@ from typing import Iterable
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -100,24 +104,51 @@ def tokenize(text: str) -> list[str]:
 class VectorStore:
     def __init__(self, documents: Iterable[Document]) -> None:
         self.documents = list(documents)
+        self._build_time = time.time()
         self.tfidf = TfidfVectorizer(
             stop_words="english",
             ngram_range=(1, 2),
-            max_features=8000,
+            max_features=10000,
             sublinear_tf=True,
+            min_df=1,
+            max_df=0.95,
         )
         self.bm25: BM25 | None = None
         self.tfidf_matrix = None
+        self._query_count = 0
+        self._total_latency = 0.0
 
         if self.documents:
             corpus_text = [doc.content for doc in self.documents]
             self.tfidf_matrix = self.tfidf.fit_transform(corpus_text)
             corpus_tokens = [tokenize(text) for text in corpus_text]
             self.bm25 = BM25(corpus_tokens)
+            logger.info(
+                "VectorStore built: %d docs, %d vocab terms",
+                len(self.documents),
+                len(self.tfidf.vocabulary_) if hasattr(self.tfidf, "vocabulary_") else 0,
+            )
 
     @property
     def doc_count(self) -> int:
         return len(self.documents)
+
+    @property
+    def stats(self) -> dict:
+        """Return index statistics for monitoring."""
+        sources = set()
+        for doc in self.documents:
+            sources.add(doc.source)
+        avg_latency = (self._total_latency / self._query_count) if self._query_count else 0.0
+        return {
+            "total_chunks": self.doc_count,
+            "unique_sources": len(sources),
+            "source_files": sorted(sources),
+            "vocab_size": len(self.tfidf.vocabulary_) if hasattr(self.tfidf, "vocabulary_") else 0,
+            "index_built_at": self._build_time,
+            "queries_served": self._query_count,
+            "avg_search_ms": round(avg_latency * 1000, 2),
+        }
 
     def search(
         self,
@@ -128,6 +159,7 @@ class VectorStore:
         if not query.strip() or self.tfidf_matrix is None or self.bm25 is None:
             return []
 
+        t0 = time.time()
         qvec = self.tfidf.transform([query])
         tfidf_scores = (qvec @ self.tfidf_matrix.T).toarray().ravel()
 
@@ -146,6 +178,8 @@ class VectorStore:
             if score < min_score:
                 continue
             results.append(SearchResult(doc=self.documents[idx], score=score))
+        self._query_count += 1
+        self._total_latency += time.time() - t0
         return results[:top_k]
 
 
@@ -238,24 +272,40 @@ def load_documents(directory: str | Path) -> list[Document]:
     return documents
 
 # ---------------------------------------------------------------------------
-# Cached singleton
+# Cached singleton with TTL
 # ---------------------------------------------------------------------------
 
 _STORE: VectorStore | None = None
 _STORE_SIGNATURE: tuple[str, int, int] | None = None
+_STORE_CREATED: float = 0.0
+_CACHE_TTL: int = int(os.getenv("RAG_CACHE_TTL", "300"))  # 5 min default
 
 
 def get_store(directory: str | Path) -> VectorStore:
-    global _STORE, _STORE_SIGNATURE
+    global _STORE, _STORE_SIGNATURE, _STORE_CREATED
     directory_path = Path(directory)
     file_count = sum(1 for f in directory_path.glob("*") if f.is_file())
     mtime = _latest_mtime(directory_path)
     sig = (str(directory_path.resolve()), mtime, file_count)
-    if _STORE is None or _STORE_SIGNATURE != sig:
+
+    ttl_expired = (time.time() - _STORE_CREATED) > _CACHE_TTL if _STORE else True
+
+    if _STORE is None or _STORE_SIGNATURE != sig or ttl_expired:
+        logger.info("Building VectorStore from %s (%d files)", directory_path, file_count)
         docs = load_documents(directory_path)
         _STORE = VectorStore(docs)
         _STORE_SIGNATURE = sig
+        _STORE_CREATED = time.time()
+        logger.info("VectorStore ready: %d chunks indexed", _STORE.doc_count)
     return _STORE
+
+
+def invalidate_store() -> None:
+    """Force rebuild on next get_store() call."""
+    global _STORE, _STORE_SIGNATURE, _STORE_CREATED
+    _STORE = None
+    _STORE_SIGNATURE = None
+    _STORE_CREATED = 0.0
 
 
 def _latest_mtime(directory: Path) -> int:

@@ -558,6 +558,28 @@ const chatArea  = $('chatArea');
 const ragInput  = $('ragInput');
 const ragBtn    = $('ragBtn');
 
+// Conversation history for multi-turn context
+let chatHistory = [];
+const MAX_HISTORY = 10;
+
+// Persist conversation across page reloads
+function saveChatHistory() {
+  try { sessionStorage.setItem('oq-chat-history', JSON.stringify(chatHistory)); } catch {}
+}
+function loadChatHistory() {
+  try {
+    const saved = sessionStorage.getItem('oq-chat-history');
+    if (saved) chatHistory = JSON.parse(saved);
+  } catch {}
+}
+loadChatHistory();
+
+// Restore chat bubbles from history on load
+chatHistory.forEach(msg => {
+  if (msg.role === 'user') addBubble('user', msg.content);
+  else addBubble('assistant', renderMarkdown(msg.content));
+});
+
 ragBtn.addEventListener('click', askRAG);
 ragInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askRAG(); }
@@ -571,6 +593,29 @@ document.querySelectorAll('#quickChips .chip').forEach(chip => {
   });
 });
 
+// Load RAG stats on section open
+function loadRAGStats() {
+  apiGet('/api/v1/ai/rag/stats').then(data => {
+    if (!data) return;
+    const dc = $('ragDocCount');
+    const sc = $('ragSourceCount');
+    const al = $('ragAvgLatency');
+    const cr = $('ragCacheRate');
+    if (dc) dc.textContent = data.total_chunks || '—';
+    if (sc) sc.textContent = data.unique_sources || '—';
+    if (al) al.textContent = data.avg_search_ms != null ? data.avg_search_ms.toFixed(1) : '—';
+    if (cr) cr.textContent = data.cache_hit_rate != null ? (data.cache_hit_rate * 100).toFixed(0) + '%' : '—';
+  }).catch(() => {});
+}
+
+// Load stats when explainability section becomes active
+const statsObserver = new MutationObserver(() => {
+  const sec = document.getElementById('sec-explainability');
+  if (sec && sec.classList.contains('active')) loadRAGStats();
+});
+const explainSec = document.getElementById('sec-explainability');
+if (explainSec) statsObserver.observe(explainSec, { attributes: true, attributeFilter: ['class'] });
+
 async function askRAG() {
   const q = ragInput.value.trim();
   if (!q) return;
@@ -578,6 +623,15 @@ async function askRAG() {
   // Add user bubble
   addBubble('user', q);
   ragInput.value = '';
+
+  // Track in chat history
+  chatHistory.push({ role: 'user', content: q });
+  if (chatHistory.length > MAX_HISTORY) chatHistory = chatHistory.slice(-MAX_HISTORY);
+  saveChatHistory();
+
+  // Hide follow-ups while loading
+  const fuContainer = $('followUps');
+  if (fuContainer) fuContainer.style.display = 'none';
 
   // Show typing indicator
   const typing = document.createElement('div');
@@ -587,14 +641,23 @@ async function askRAG() {
   chatArea.scrollTop = chatArea.scrollHeight;
 
   try {
-    const d = await api('/api/v1/ai/explain', { question: q, context: getParams() });
+    const d = await api('/api/v1/ai/explain', {
+      question: q,
+      context: getParams(),
+      chat_history: chatHistory.slice(0, -1),  // exclude the just-added user msg
+    });
     typing.remove();
     if (!d) return;
+
+    // Track assistant response in history
+    chatHistory.push({ role: 'assistant', content: d.answer || '' });
+    if (chatHistory.length > MAX_HISTORY) chatHistory = chatHistory.slice(-MAX_HISTORY);
+    saveChatHistory();
 
     // Assistant bubble with rendered markdown
     addBubble('assistant', renderMarkdown(d.answer || 'No answer received.'));
 
-    // Confidence & sources
+    // Confidence, badges & sources
     if (d.confidence != null || (d.sources && d.sources.length)) {
       $('ragMeta').style.display = '';
       if (d.confidence != null) {
@@ -602,6 +665,19 @@ async function askRAG() {
         $('confFill').style.width = pct + '%';
         $('confLabel').textContent = pct + '%';
       }
+      // Query type badge
+      const qtBadge = $('queryTypeBadge');
+      if (qtBadge && d.query_type) {
+        const typeLabels = { factual: '📖 Factual', analytical: '🔍 Analytical', comparative: '⚖️ Comparative', general: '💬 General', out_of_scope: '🚫 Off-topic' };
+        qtBadge.textContent = typeLabels[d.query_type] || d.query_type;
+      }
+      // Latency badge
+      const ltBadge = $('latencyBadge');
+      if (ltBadge && d.latency_ms != null) ltBadge.textContent = `⏱ ${Math.round(d.latency_ms)}ms`;
+      // Cache badge
+      const cBadge = $('cacheBadge');
+      if (cBadge) cBadge.style.display = d.cached ? '' : 'none';
+
       const srcList = $('sourceList');
       srcList.innerHTML = '';
       (d.sources || []).forEach(s => {
@@ -611,6 +687,29 @@ async function askRAG() {
         srcList.appendChild(tag);
       });
     }
+
+    // Follow-up suggestions
+    if (d.follow_ups && d.follow_ups.length) {
+      const fuChips = $('followUpChips');
+      if (fuChips && fuContainer) {
+        fuChips.innerHTML = '';
+        d.follow_ups.forEach(fu => {
+          const chip = document.createElement('span');
+          chip.className = 'follow-up-chip';
+          chip.textContent = fu;
+          chip.addEventListener('click', () => {
+            ragInput.value = fu;
+            askRAG();
+          });
+          fuChips.appendChild(chip);
+        });
+        fuContainer.style.display = '';
+      }
+    }
+
+    // Refresh RAG stats
+    loadRAGStats();
+
     toast('info', 'Answer Ready');
   } catch (err) {
     typing.remove();

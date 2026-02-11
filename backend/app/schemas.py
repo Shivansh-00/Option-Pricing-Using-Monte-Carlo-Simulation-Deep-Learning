@@ -46,9 +46,31 @@ class VolatilityResponse(BaseModel):
 class ExplainRequest(BaseModel):
     question: str
     context: dict = {}
+    chat_history: list[dict] = []
 
 
 class ExplainResponse(BaseModel):
     answer: str
-    sources: list[str]
+    sources: list[str] = []
     confidence: float = 0.0
+    query_type: str = "general"
+    follow_ups: list[str] = []
+    latency_ms: float = 0.0
+    cached: bool = False
+
+
+class RAGHealthResponse(BaseModel):
+    status: str
+    index: dict
+    cache: dict
+    config: dict
+
+
+class RAGStatsResponse(BaseModel):
+    total_chunks: int
+    unique_sources: int
+    source_files: list[str]
+    vocab_size: int
+    queries_served: int
+    avg_search_ms: float
+    cache_hit_rate: float

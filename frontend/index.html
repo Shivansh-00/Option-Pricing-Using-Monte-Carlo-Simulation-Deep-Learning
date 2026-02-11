@@ -406,12 +406,42 @@
             <div class="section-desc">RAG-powered Q&amp;A — ask anything about quantitative finance</div>
           </div>
 
+          <!-- RAG Stats Bar -->
+          <div class="rag-stats-bar" id="ragStatsBar">
+            <div class="rag-stat-item">
+              <span class="rag-stat-icon">📚</span>
+              <span class="rag-stat-value" id="ragDocCount">—</span>
+              <span class="rag-stat-label">Chunks</span>
+            </div>
+            <div class="rag-stat-item">
+              <span class="rag-stat-icon">📄</span>
+              <span class="rag-stat-value" id="ragSourceCount">—</span>
+              <span class="rag-stat-label">Sources</span>
+            </div>
+            <div class="rag-stat-item">
+              <span class="rag-stat-icon">⚡</span>
+              <span class="rag-stat-value" id="ragAvgLatency">—</span>
+              <span class="rag-stat-label">Avg ms</span>
+            </div>
+            <div class="rag-stat-item">
+              <span class="rag-stat-icon">🎯</span>
+              <span class="rag-stat-value" id="ragCacheRate">—</span>
+              <span class="rag-stat-label">Cache Hit</span>
+            </div>
+          </div>
+
           <div class="card">
             <div class="chat-area" id="chatArea"></div>
 
             <div class="chat-input-row">
-              <input type="text" id="ragInput" placeholder="Ask about Black-Scholes, Greeks, Monte Carlo…" />
+              <input type="text" id="ragInput" placeholder="Ask about Black-Scholes, Greeks, Monte Carlo, Heston, hedging…" />
               <button class="btn btn-primary" id="ragBtn">Ask →</button>
+            </div>
+
+            <!-- Follow-up suggestions (dynamic) -->
+            <div class="follow-ups" id="followUps" style="display:none">
+              <span class="follow-up-label">Suggested:</span>
+              <div class="follow-up-chips" id="followUpChips"></div>
             </div>
 
             <div class="quick-chips" id="quickChips">
@@ -420,16 +450,29 @@
               <span class="chip" data-q="How does Monte Carlo simulation price options?">Monte Carlo</span>
               <span class="chip" data-q="Compare LSTM vs Transformer for pricing">DL Comparison</span>
               <span class="chip" data-q="What is implied volatility surface?">IV Surface</span>
+              <span class="chip" data-q="How does the Heston stochastic volatility model work?">Heston Model</span>
+              <span class="chip" data-q="What variance reduction techniques improve Monte Carlo?">Variance Reduction</span>
+              <span class="chip" data-q="When should you exercise an American option early?">American Options</span>
+              <span class="chip" data-q="How does delta-gamma hedging work?">Delta-Gamma Hedge</span>
             </div>
           </div>
 
           <div class="rag-meta" id="ragMeta" style="display:none">
-            <div class="confidence-label">
-              <span>Confidence</span>
-              <span id="confLabel">0%</span>
-            </div>
-            <div class="confidence-bar">
-              <div class="confidence-fill" id="confFill"></div>
+            <div class="rag-meta-top">
+              <div class="confidence-section">
+                <div class="confidence-label">
+                  <span>Confidence</span>
+                  <span id="confLabel">0%</span>
+                </div>
+                <div class="confidence-bar">
+                  <div class="confidence-fill" id="confFill"></div>
+                </div>
+              </div>
+              <div class="rag-meta-badges">
+                <span class="rag-badge" id="queryTypeBadge">—</span>
+                <span class="rag-badge" id="latencyBadge">—</span>
+                <span class="rag-badge rag-badge-cache" id="cacheBadge" style="display:none">⚡ cached</span>
+              </div>
             </div>
             <div class="source-list" id="sourceList"></div>
           </div>

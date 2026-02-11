@@ -45,5 +45,13 @@ class Settings:
     gemini_max_tokens: int = int(os.getenv("GEMINI_MAX_TOKENS", "512"))
     gemini_temperature: float = float(os.getenv("GEMINI_TEMPERATURE", "0.4"))
 
+    # --- RAG Pipeline ---
+    rag_top_k: int = int(os.getenv("RAG_TOP_K", "6"))
+    rag_min_score: float = float(os.getenv("RAG_MIN_SCORE", "0.01"))
+    rag_chunk_size: int = int(os.getenv("RAG_CHUNK_SIZE", "600"))
+    rag_chunk_overlap: int = int(os.getenv("RAG_CHUNK_OVERLAP", "120"))
+    rag_cache_max: int = int(os.getenv("RAG_CACHE_MAX", "128"))
+    rag_response_ttl: int = int(os.getenv("RAG_RESPONSE_TTL", "600"))
+
 
 settings = Settings()
