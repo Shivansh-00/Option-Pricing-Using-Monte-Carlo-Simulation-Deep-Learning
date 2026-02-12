@@ -78,12 +78,16 @@
   --ease-bounce:  cubic-bezier(.175, .885, .32, 1.275);
   --ease-smooth:  cubic-bezier(.25, .1, .25, 1);
   --ease-expo:    cubic-bezier(.16, 1, .3, 1);
+  --ease-overshoot: cubic-bezier(.34, 1.72, .58, 1);
+  --ease-snappy:  cubic-bezier(.2, .9, .3, 1);
+  --ease-decel:   cubic-bezier(0, .8, .2, 1);
   --dur-instant: 80ms;
   --dur-fast:    150ms;
   --dur-normal:  250ms;
   --dur-slow:    400ms;
   --dur-enter:   500ms;
   --dur-dramatic: 700ms;
+  --dur-stagger: 60ms;
 
   /* Z-index scale */
   --z-base:    1;
@@ -140,6 +144,7 @@ html {
   text-rendering: optimizeLegibility;
   -webkit-text-size-adjust: 100%;
   hanging-punctuation: first last;
+  scroll-padding-top: 72px;
 }
 
 body {
@@ -148,6 +153,8 @@ body {
   color: var(--text-primary);
   line-height: var(--line-height);
   min-height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior-y: smooth;
   transition: background-color var(--dur-slow) var(--ease-smooth),
               color var(--dur-slow) var(--ease-smooth);
 }
@@ -155,9 +162,14 @@ body {
 a {
   color: var(--primary-light);
   text-decoration: none;
-  transition: color var(--dur-fast) ease;
+  transition: color var(--dur-fast) var(--ease-snappy),
+              text-shadow var(--dur-normal) ease;
 }
-a:hover { color: var(--primary); text-decoration: underline; }
+a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  text-shadow: 0 0 18px var(--primary-glow);
+}
 
 img, svg { display: block; max-width: 100%; }
 
@@ -175,6 +187,7 @@ input, select, textarea, button {
 ::selection {
   background: var(--primary);
   color: #fff;
+  text-shadow: none;
 }
 
 /* Ultra-smooth custom scrollbars */
@@ -184,16 +197,21 @@ input, select, textarea, button {
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--text-tertiary);
+  background: rgba(92, 100, 128, .3);
   border-radius: 10px;
   border: 2px solid transparent;
   background-clip: content-box;
-  transition: background .2s ease;
+  transition: background .3s var(--ease-smooth);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: rgba(109, 92, 255, .55);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:active {
+  background: rgba(109, 92, 255, .7);
   background-clip: content-box;
 }
 ::-webkit-scrollbar-corner { background: transparent; }
@@ -235,38 +253,41 @@ input, select, textarea, button {
   width: 520px; height: 520px;
   background: var(--primary);
   top: -12%; left: -6%;
-  animation: orbDrift1 20s ease-in-out infinite alternate;
+  animation: orbDrift1 22s ease-in-out infinite alternate;
 }
 .ambient-bg .orb:nth-child(2) {
   width: 420px; height: 420px;
   background: var(--accent);
   bottom: -10%; right: -5%;
-  animation: orbDrift2 24s ease-in-out infinite alternate;
+  animation: orbDrift2 26s ease-in-out infinite alternate;
 }
 .ambient-bg .orb:nth-child(3) {
   width: 320px; height: 320px;
   background: var(--info);
   top: 38%; left: 48%;
-  animation: orbDrift3 28s ease-in-out infinite alternate;
+  animation: orbDrift3 30s ease-in-out infinite alternate;
 }
 
 @keyframes orbDrift1 {
   0%   { transform: translate3d(0, 0, 0) scale(1); opacity: .16; }
-  25%  { transform: translate3d(30px, -40px, 0) scale(1.08); opacity: .20; }
-  50%  { transform: translate3d(-15px, 25px, 0) scale(.94); opacity: .13; }
-  75%  { transform: translate3d(-30px, -20px, 0) scale(1.05); opacity: .19; }
+  20%  { transform: translate3d(30px, -40px, 0) scale(1.08); opacity: .20; }
+  40%  { transform: translate3d(-15px, 25px, 0) scale(.94); opacity: .14; }
+  60%  { transform: translate3d(-30px, -20px, 0) scale(1.05); opacity: .19; }
+  80%  { transform: translate3d(20px, 10px, 0) scale(.97); opacity: .15; }
   100% { transform: translate3d(12px, -12px, 0) scale(1.01); opacity: .16; }
 }
 @keyframes orbDrift2 {
   0%   { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); opacity: .14; }
-  33%  { transform: translate3d(-20px, 30px, 0) scale(1.06) rotate(3deg); opacity: .18; }
-  66%  { transform: translate3d(25px, -15px, 0) scale(.92) rotate(-4deg); opacity: .12; }
+  25%  { transform: translate3d(-20px, 30px, 0) scale(1.06) rotate(3deg); opacity: .18; }
+  50%  { transform: translate3d(25px, -15px, 0) scale(.92) rotate(-4deg); opacity: .12; }
+  75%  { transform: translate3d(-10px, -20px, 0) scale(1.08) rotate(2deg); opacity: .17; }
   100% { transform: translate3d(-8px, 8px, 0) scale(1.03) rotate(1deg); opacity: .15; }
 }
 @keyframes orbDrift3 {
   0%   { transform: translate3d(0, 0, 0) scale(1); opacity: .12; }
-  30%  { transform: translate3d(20px, -25px, 0) scale(1.1); opacity: .17; }
-  60%  { transform: translate3d(-18px, 15px, 0) scale(.9); opacity: .10; }
+  25%  { transform: translate3d(20px, -25px, 0) scale(1.1); opacity: .17; }
+  50%  { transform: translate3d(-18px, 15px, 0) scale(.9); opacity: .10; }
+  75%  { transform: translate3d(12px, 20px, 0) scale(1.06); opacity: .15; }
   100% { transform: translate3d(6px, -8px, 0) scale(1.02); opacity: .13; }
 }
 
@@ -312,12 +333,12 @@ input, select, textarea, button {
 @keyframes sidebarEnter {
   from {
     opacity: 0;
-    transform: translateX(-24px);
-    filter: blur(4px);
+    transform: translateX(-24px) scale(.98);
+    filter: blur(6px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
     filter: blur(0);
   }
 }
@@ -409,8 +430,10 @@ input, select, textarea, button {
   color: var(--text-secondary);
   font-size: .88rem;
   font-weight: 500;
-  transition: background var(--dur-normal) var(--ease-out),
-              color var(--dur-normal) var(--ease-out);
+  transition: background var(--dur-normal) var(--ease-snappy),
+              color var(--dur-normal) var(--ease-snappy),
+              transform var(--dur-normal) var(--ease-spring),
+              box-shadow var(--dur-normal) var(--ease-out);
   position: relative;
   user-select: none;
   overflow: hidden;
@@ -448,6 +471,8 @@ input, select, textarea, button {
 .sidebar-nav .nav-item:hover {
   background: var(--bg-card);
   color: var(--text-primary);
+  transform: translateX(3px);
+  box-shadow: inset 0 0 20px rgba(109, 92, 255, .03);
 }
 .sidebar-nav .nav-item:hover::before {
   top: 30%; bottom: 30%;
@@ -495,17 +520,20 @@ input, select, textarea, button {
   background: var(--bg-card);
   border: 1px solid var(--border);
   transition: border-color var(--dur-normal) ease,
-              box-shadow var(--dur-normal) ease;
+              box-shadow var(--dur-normal) ease,
+              transform var(--dur-normal) var(--ease-out);
 }
 .user-card:hover {
   border-color: var(--border-hover);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .user-avatar {
   width: 38px; height: 38px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary), var(--accent));
+  background-size: 200% 200%;
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -514,10 +542,15 @@ input, select, textarea, button {
   flex-shrink: 0;
   transition: transform var(--dur-normal) var(--ease-spring),
               box-shadow var(--dur-normal) ease;
+  animation: avatarGradient 8s ease-in-out infinite;
+}
+@keyframes avatarGradient {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
 }
 .user-avatar:hover {
-  transform: scale(1.12) rotate(-3deg);
-  box-shadow: 0 0 20px var(--primary-glow);
+  transform: scale(1.14) rotate(-5deg);
+  box-shadow: 0 0 24px var(--primary-glow), 0 4px 16px rgba(0, 229, 160, .2);
 }
 
 .user-info { min-width: 0; }
@@ -560,7 +593,8 @@ input, select, textarea, button {
 .sidebar-actions .action-btn:hover {
   background: var(--bg-card);
   color: var(--text-primary);
-  transform: translateX(2px);
+  transform: translateX(4px);
+  box-shadow: var(--shadow-xs);
 }
 .sidebar-actions .action-btn.danger:hover {
   background: var(--danger-bg);
@@ -594,9 +628,9 @@ input, select, textarea, button {
               transform var(--dur-normal) var(--ease-out);
 }
 .status-pill:hover {
-  border-color: var(--border-hover);
-  box-shadow: var(--shadow-xs);
-  transform: translateY(-1px);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm), 0 0 12px var(--primary-glow);
+  transform: translateY(-2px) scale(1.02);
 }
 
 .status-dot {
@@ -645,8 +679,8 @@ input, select, textarea, button {
 }
 
 @keyframes topbarSlide {
-  from { opacity: 0; transform: translateY(-10px); filter: blur(4px); }
-  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+  from { opacity: 0; transform: translateY(-14px) scale(.99); filter: blur(6px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
 .topbar-left {
@@ -687,9 +721,10 @@ input, select, textarea, button {
               transform var(--dur-normal) var(--ease-out);
 }
 .mobile-toggle:hover {
-  border-color: var(--border-hover);
+  border-color: var(--primary);
   background: var(--bg-card-hover);
-  transform: scale(1.04);
+  transform: scale(1.06);
+  box-shadow: var(--shadow-sm);
 }
 .mobile-toggle:active {
   transform: scale(.95);
@@ -732,8 +767,8 @@ input, select, textarea, button {
 @keyframes sectionReveal {
   from {
     opacity: 0;
-    transform: translateY(20px) scale(.988);
-    filter: blur(3px);
+    transform: translateY(24px) scale(.985);
+    filter: blur(4px);
   }
   to {
     opacity: 1;
@@ -752,9 +787,11 @@ input, select, textarea, button {
   letter-spacing: -.025em;
   margin-bottom: var(--sp-1);
   background: linear-gradient(135deg, var(--text-primary) 60%, var(--primary-light));
+  background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  animation: gradientShift 8s ease-in-out infinite;
 }
 .section-desc {
   font-size: .85rem;
@@ -823,13 +860,13 @@ input, select, textarea, button {
 .card:hover {
   border-color: var(--border-hover);
   background: var(--bg-card-hover);
-  box-shadow: var(--shadow-md), 0 0 0 1px var(--border-hover);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), 0 0 0 1px var(--border-hover), 0 0 30px rgba(109, 92, 255, .04);
+  transform: translateY(-3px);
 }
 .card:hover::before {
   opacity: 1;
-  transform: translateX(250%) skewX(-20deg);
-  transition: transform .8s var(--ease-out), opacity var(--dur-fast) ease;
+  transform: translateX(300%) skewX(-20deg);
+  transition: transform 1s var(--ease-decel), opacity var(--dur-fast) ease;
 }
 .card:hover::after {
   opacity: 1;
@@ -854,10 +891,12 @@ input, select, textarea, button {
 }
 .card-title .icon {
   font-size: 1.1rem;
-  transition: transform var(--dur-normal) var(--ease-spring);
+  transition: transform var(--dur-normal) var(--ease-spring),
+              filter var(--dur-normal) ease;
 }
 .card:hover .card-title .icon {
-  transform: scale(1.15) rotate(-4deg);
+  transform: scale(1.18) rotate(-6deg);
+  filter: drop-shadow(0 0 6px var(--primary-glow));
 }
 .card-badge {
   font-size: .68rem;
@@ -904,7 +943,8 @@ input, select, textarea, button {
   height: 44px;
   transition: border-color var(--dur-normal) var(--ease-out),
               box-shadow var(--dur-normal) var(--ease-out),
-              background var(--dur-fast) ease;
+              background var(--dur-fast) ease,
+              transform var(--dur-normal) var(--ease-out);
 }
 .field input:hover,
 .field select:hover {
@@ -914,8 +954,9 @@ input, select, textarea, button {
 .field input:focus,
 .field select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(109, 92, 255, .12), 0 0 24px rgba(109, 92, 255, .06);
+  box-shadow: 0 0 0 3px rgba(109, 92, 255, .14), 0 0 28px rgba(109, 92, 255, .08);
   background: var(--bg-card);
+  transform: translateY(-1px);
 }
 .field input::placeholder {
   color: var(--text-tertiary);
@@ -977,9 +1018,9 @@ input, select, textarea, button {
   will-change: transform;
 }
 .btn-primary:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 32px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,.15);
-  filter: brightness(1.06);
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 10px 36px var(--primary-glow), 0 0 0 1px rgba(109,92,255,.2), inset 0 1px 0 rgba(255,255,255,.15);
+  filter: brightness(1.08);
 }
 .btn-primary:active {
   transform: translateY(1px) scale(.97);
@@ -1023,9 +1064,9 @@ input, select, textarea, button {
   will-change: transform;
 }
 .btn-accent:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 32px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,.2);
-  filter: brightness(1.06);
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 10px 36px var(--accent-glow), 0 0 0 1px rgba(0,229,160,.2), inset 0 1px 0 rgba(255,255,255,.2);
+  filter: brightness(1.08);
 }
 .btn-accent:active {
   transform: translateY(1px) scale(.97);
@@ -1057,13 +1098,22 @@ input, select, textarea, button {
   text-align: center;
   transition: border-color var(--dur-normal) var(--ease-spring),
               transform var(--dur-normal) var(--ease-spring),
-              box-shadow var(--dur-normal) var(--ease-spring);
+              box-shadow var(--dur-normal) var(--ease-spring),
+              background var(--dur-normal) var(--ease-out);
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   position: relative;
   overflow: hidden;
 }
+
+/* Staggered entrance for metric cards */
+.metric-card:nth-child(1) { animation: sectionReveal var(--dur-enter) var(--ease-out) calc(var(--dur-stagger) * 1) backwards; }
+.metric-card:nth-child(2) { animation: sectionReveal var(--dur-enter) var(--ease-out) calc(var(--dur-stagger) * 2) backwards; }
+.metric-card:nth-child(3) { animation: sectionReveal var(--dur-enter) var(--ease-out) calc(var(--dur-stagger) * 3) backwards; }
+.metric-card:nth-child(4) { animation: sectionReveal var(--dur-enter) var(--ease-out) calc(var(--dur-stagger) * 4) backwards; }
+.metric-card:nth-child(5) { animation: sectionReveal var(--dur-enter) var(--ease-out) calc(var(--dur-stagger) * 5) backwards; }
+.metric-card:nth-child(6) { animation: sectionReveal var(--dur-enter) var(--ease-out) calc(var(--dur-stagger) * 6) backwards; }
 
 /* Top accent line */
 .metric-card::before {
@@ -1079,9 +1129,10 @@ input, select, textarea, button {
 }
 
 .metric-card:hover {
-  border-color: rgba(109, 92, 255, .2);
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: var(--shadow-md), 0 0 24px rgba(109, 92, 255, .06);
+  border-color: rgba(109, 92, 255, .25);
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: var(--shadow-lg), 0 0 32px rgba(109, 92, 255, .08);
+  background: var(--bg-card-hover);
 }
 .metric-card:hover::before {
   opacity: 1;
@@ -1133,9 +1184,9 @@ input, select, textarea, button {
   background: var(--primary-subtle);
   color: var(--primary-light);
   border: 1px solid rgba(109, 92, 255, .18);
-  transition: transform var(--dur-normal) var(--ease-out),
+  transition: transform var(--dur-normal) var(--ease-spring),
               box-shadow var(--dur-normal) var(--ease-out);
-  animation: badgePulse 3s ease-in-out infinite;
+  animation: badgePulse 3s ease-in-out infinite, scaleIn var(--dur-enter) var(--ease-spring) backwards;
 }
 
 @keyframes badgePulse {
@@ -1153,17 +1204,19 @@ input, select, textarea, button {
   position: relative;
   animation: chartEnter var(--dur-enter) var(--ease-out) backwards;
   transition: border-color var(--dur-normal) ease,
-              box-shadow var(--dur-normal) ease;
+              box-shadow var(--dur-normal) ease,
+              transform var(--dur-normal) var(--ease-out);
 }
 
 @keyframes chartEnter {
-  from { opacity: 0; transform: translateY(12px) scale(.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(16px) scale(.97); filter: blur(2px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
 .chart-container:hover {
   border-color: var(--border-hover);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .chart-container canvas {
@@ -1193,12 +1246,26 @@ input, select, textarea, button {
   text-align: center;
   transition: border-color var(--dur-normal) var(--ease-spring),
               transform var(--dur-normal) var(--ease-spring),
-              box-shadow var(--dur-normal) var(--ease-spring);
+              box-shadow var(--dur-normal) var(--ease-spring),
+              background var(--dur-normal) var(--ease-out);
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   position: relative;
   overflow: hidden;
+}
+
+/* Staggered entrance for Greek cards */
+.greek-card:nth-child(1) { animation: greekEnter var(--dur-enter) var(--ease-spring) calc(var(--dur-stagger) * 1) backwards; }
+.greek-card:nth-child(2) { animation: greekEnter var(--dur-enter) var(--ease-spring) calc(var(--dur-stagger) * 2) backwards; }
+.greek-card:nth-child(3) { animation: greekEnter var(--dur-enter) var(--ease-spring) calc(var(--dur-stagger) * 3) backwards; }
+.greek-card:nth-child(4) { animation: greekEnter var(--dur-enter) var(--ease-spring) calc(var(--dur-stagger) * 4) backwards; }
+.greek-card:nth-child(5) { animation: greekEnter var(--dur-enter) var(--ease-spring) calc(var(--dur-stagger) * 5) backwards; }
+
+@keyframes greekEnter {
+  0%   { opacity: 0; transform: translateY(20px) scale(.9) rotateX(8deg); }
+  60%  { opacity: 1; transform: translateY(-4px) scale(1.02) rotateX(0deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotateX(0deg); }
 }
 
 /* Bottom color accent bar */
@@ -1219,9 +1286,10 @@ input, select, textarea, button {
 
 .greek-card:hover {
   border-color: var(--gc, var(--primary));
-  box-shadow: 0 0 24px color-mix(in srgb, var(--gc, var(--primary)) 25%, transparent),
-              0 8px 24px rgba(0, 0, 0, .12);
-  transform: translateY(-6px) scale(1.04);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--gc, var(--primary)) 30%, transparent),
+              0 12px 32px rgba(0, 0, 0, .15);
+  transform: translateY(-8px) scale(1.05);
+  background: var(--bg-card-hover);
 }
 .greek-card:hover::after {
   opacity: 1;
@@ -1233,10 +1301,12 @@ input, select, textarea, button {
   font-size: 1.6rem;
   font-weight: 800;
   margin-bottom: var(--sp-1);
-  transition: transform var(--dur-normal) var(--ease-spring);
+  transition: transform var(--dur-normal) var(--ease-spring),
+              text-shadow var(--dur-normal) ease;
 }
 .greek-card:hover .greek-symbol {
-  transform: scale(1.15);
+  transform: scale(1.2) translateY(-2px);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--gc, var(--primary)) 40%, transparent);
 }
 
 .greek-name {
@@ -1303,11 +1373,13 @@ input, select, textarea, button {
   font-weight: 700;
 }
 .comparison-table tbody tr {
-  transition: background var(--dur-fast) ease;
+  transition: background var(--dur-fast) ease,
+              transform var(--dur-fast) var(--ease-out);
   will-change: auto;
 }
 .comparison-table tbody tr:hover {
   background: var(--bg-card-hover);
+  transform: translateX(2px);
 }
 
 /* ── 16. AI/RAG Chat — Conversational UI ────────────────────── */
@@ -1360,8 +1432,9 @@ input, select, textarea, button {
 }
 
 @keyframes bubbleEnter {
-  0%   { opacity: 0; transform: translateY(14px) scale(.88); filter: blur(2px); }
-  50%  { opacity: 1; transform: translateY(-3px) scale(1.01); filter: blur(0); }
+  0%   { opacity: 0; transform: translateY(16px) scale(.85); filter: blur(3px); }
+  40%  { opacity: 1; transform: translateY(-5px) scale(1.02); filter: blur(0); }
+  70%  { transform: translateY(2px) scale(.99); }
   100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
@@ -1427,11 +1500,13 @@ input, select, textarea, button {
   color: var(--text-primary);
   height: 44px;
   transition: border-color var(--dur-normal) var(--ease-out),
-              box-shadow var(--dur-normal) var(--ease-out);
+              box-shadow var(--dur-normal) var(--ease-out),
+              transform var(--dur-normal) var(--ease-out);
 }
 .chat-input-row input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(109, 92, 255, .12), 0 0 24px rgba(109, 92, 255, .06);
+  box-shadow: 0 0 0 3px rgba(109, 92, 255, .14), 0 0 28px rgba(109, 92, 255, .08);
+  transform: translateY(-1px);
 }
 
 /* Confidence & Sources */
@@ -1453,12 +1528,12 @@ input, select, textarea, button {
 .confidence-fill {
   height: 100%;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
-  background-size: 300% 100%;
-  animation: confidenceFlow 4s ease infinite;
+  background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary-light), var(--accent));
+  background-size: 400% 100%;
+  animation: confidenceFlow 5s ease infinite;
   transition: width var(--dur-dramatic) var(--ease-out);
   width: 0%;
-  box-shadow: 0 0 8px rgba(109, 92, 255, .3);
+  box-shadow: 0 0 10px rgba(109, 92, 255, .35);
 }
 
 @keyframes confidenceFlow {
@@ -1489,14 +1564,16 @@ input, select, textarea, button {
   color: var(--info);
   border: 1px solid rgba(62, 168, 255, .18);
   transition: background var(--dur-normal) var(--ease-out),
-              transform var(--dur-normal) var(--ease-out),
-              box-shadow var(--dur-normal) var(--ease-out);
+              transform var(--dur-normal) var(--ease-spring),
+              box-shadow var(--dur-normal) var(--ease-out),
+              border-color var(--dur-normal) ease;
   cursor: default;
 }
 .source-tag:hover {
   background: rgba(62, 168, 255, .18);
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(62, 168, 255, .15);
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 4px 12px rgba(62, 168, 255, .2);
+  border-color: rgba(62, 168, 255, .35);
 }
 
 /* RAG Stats Bar */
@@ -1509,6 +1586,13 @@ input, select, textarea, button {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--border-radius-sm);
+  animation: sectionReveal var(--dur-enter) var(--ease-out) backwards;
+  transition: border-color var(--dur-normal) ease,
+              box-shadow var(--dur-normal) ease;
+}
+.rag-stats-bar:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
 }
 .rag-stat-item {
   display: flex;
@@ -1594,13 +1678,15 @@ input, select, textarea, button {
   border: 1px solid rgba(109, 92, 255, .22);
   cursor: pointer;
   transition: background var(--dur-normal) var(--ease-out),
-              transform var(--dur-normal) var(--ease-out),
-              box-shadow var(--dur-normal) var(--ease-out);
+              transform var(--dur-normal) var(--ease-spring),
+              box-shadow var(--dur-normal) var(--ease-out),
+              border-color var(--dur-normal) ease;
 }
 .follow-up-chip:hover {
-  background: rgba(109, 92, 255, .16);
-  transform: translateY(-2px);
-  box-shadow: 0 3px 10px rgba(109, 92, 255, .18);
+  background: rgba(109, 92, 255, .18);
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 4px 14px rgba(109, 92, 255, .22);
+  border-color: var(--primary);
 }
 
 /* Quick chips */
@@ -1640,8 +1726,8 @@ input, select, textarea, button {
 .chip:hover {
   border-color: var(--primary);
   color: var(--primary-light);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(109, 92, 255, .1);
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 6px 16px rgba(109, 92, 255, .14);
 }
 .chip:hover::before {
   opacity: 1;
@@ -1675,7 +1761,7 @@ input, select, textarea, button {
   min-width: 280px;
   max-width: 420px;
   pointer-events: all;
-  transform: translateX(calc(100% + 32px)) scale(.92);
+  transform: translateX(calc(100% + 32px)) scale(.88) rotate(1deg);
   opacity: 0;
   transition: transform var(--dur-slow) var(--ease-spring),
               opacity var(--dur-slow) var(--ease-spring);
@@ -1703,7 +1789,7 @@ input, select, textarea, button {
 }
 
 .toast.show {
-  transform: translateX(0) scale(1);
+  transform: translateX(0) scale(1) rotate(0deg);
   opacity: 1;
 }
 
@@ -1789,7 +1875,7 @@ input, select, textarea, button {
   border-radius: 50%;
   animation: spinOrbit .85s cubic-bezier(.4, .15, .6, .85) infinite;
   will-change: transform;
-  filter: drop-shadow(0 0 8px var(--primary-glow));
+  filter: drop-shadow(0 0 12px var(--primary-glow));
 }
 
 @keyframes spinOrbit {
@@ -2003,6 +2089,16 @@ input, select, textarea, button {
   to   { opacity: 1; }
 }
 
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -2013,9 +2109,25 @@ input, select, textarea, button {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 @keyframes scaleUp {
   from { opacity: 0; transform: scale(.9); }
   to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scaleIn {
+  0%   { opacity: 0; transform: scale(.85); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { transform: scale(1); }
 }
 
 @keyframes float {
@@ -2027,6 +2139,70 @@ input, select, textarea, button {
   0%, 100% { box-shadow: 0 0 12px var(--primary-glow); }
   50%      { box-shadow: 0 0 28px var(--primary-glow); }
 }
+
+@keyframes borderGlow {
+  0%, 100% { border-color: var(--border); box-shadow: none; }
+  50%      { border-color: rgba(109, 92, 255, .3); box-shadow: 0 0 16px var(--primary-glow); }
+}
+
+@keyframes subtleRotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: .8; }
+  50%      { transform: scale(1.02); opacity: 1; }
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes rippleOut {
+  0%   { transform: scale(0); opacity: .6; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes textReveal {
+  0%   { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20%      { transform: rotate(-3deg); }
+  40%      { transform: rotate(3deg); }
+  60%      { transform: rotate(-2deg); }
+  80%      { transform: rotate(1deg); }
+}
+
+@keyframes elasticPop {
+  0%   { transform: scale(0); opacity: 0; }
+  50%  { transform: scale(1.12); opacity: 1; }
+  70%  { transform: scale(.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes morphBorder {
+  0%, 100% { border-radius: 16px; }
+  25%      { border-radius: 24px 12px 24px 12px; }
+  50%      { border-radius: 12px 24px 12px 24px; }
+  75%      { border-radius: 20px 16px 20px 16px; }
+}
+
+/* Utility animation classes */
+.animate-fadeIn     { animation: fadeIn var(--dur-slow) var(--ease-smooth) backwards; }
+.animate-fadeInUp   { animation: fadeInUp var(--dur-slow) var(--ease-out) backwards; }
+.animate-slideUp    { animation: slideUp var(--dur-enter) var(--ease-out) backwards; }
+.animate-scaleIn    { animation: scaleIn var(--dur-enter) var(--ease-spring) backwards; }
+.animate-float      { animation: float 3s ease-in-out infinite; }
+.animate-glowPulse  { animation: glowPulse 2.5s ease-in-out infinite; }
+.animate-breathe    { animation: breathe 4s ease-in-out infinite; }
+.animate-wiggle     { animation: wiggle 0.5s ease-in-out; }
+.animate-elasticPop { animation: elasticPop 0.6s var(--ease-spring) backwards; }
 
 /* ── 23. Performance & Accessibility ────────────────────────── */
 
@@ -2058,13 +2234,16 @@ a, button, .btn, .nav-item, .chip, .action-btn,
 .chip,
 .source-tag,
 .status-pill,
+.follow-up-chip,
+.result-badge,
 .sidebar-actions .action-btn,
 .sidebar-nav .nav-item .icon,
 .sidebar-brand .logo,
 .user-avatar,
 .card-title .icon,
 .greek-symbol,
-.mobile-toggle {
+.mobile-toggle,
+.user-card {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);
