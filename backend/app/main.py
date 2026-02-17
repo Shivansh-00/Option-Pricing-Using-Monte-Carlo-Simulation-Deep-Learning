@@ -37,8 +37,6 @@ ROOT_DIR = Path(
     os.getenv("APP_ROOT_DIR", str(Path(__file__).resolve().parents[2]))
 )
 FRONTEND_DIR = (ROOT_DIR / settings.frontend_dir).resolve()
-if FRONTEND_DIR.exists():
-    app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend")
 
 app.include_router(auth_routes.router)
 app.include_router(pricing_routes.router)
@@ -104,9 +102,6 @@ def readiness() -> dict:
     return {"status": "ready"}
 
 
-@app.get("/")
-def root() -> FileResponse:
-    index_path = FRONTEND_DIR / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    return JSONResponse({"message": "Frontend assets not found.", "status": "ok"})
+# ── Static files (must be LAST so API routes match first) ─────────
+if FRONTEND_DIR.exists():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

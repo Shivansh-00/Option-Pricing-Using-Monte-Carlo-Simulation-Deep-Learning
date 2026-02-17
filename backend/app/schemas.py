@@ -57,13 +57,32 @@ class ExplainResponse(BaseModel):
     follow_ups: list[str] = []
     latency_ms: float = 0.0
     cached: bool = False
+    evaluation: dict = {}
+    retrieval_quality: dict = {}
 
 
 class RAGHealthResponse(BaseModel):
     status: str
     index: dict
     cache: dict
+    llm: dict = {}
+    evaluation: dict = {}
     config: dict
+
+
+class RAGMetricsResponse(BaseModel):
+    total_queries: int = 0
+    avg_groundedness: float = 0.0
+    avg_faithfulness: float = 0.0
+    avg_relevance: float = 0.0
+    avg_hallucination_risk: float = 0.0
+    avg_citation_coverage: float = 0.0
+    avg_latency_ms: float = 0.0
+    p95_latency_ms: float = 0.0
+    quality_distribution: dict = {}
+    query_type_distribution: dict = {}
+    cache_hit_rate: float = 0.0
+    message: str = ""
 
 
 class RAGStatsResponse(BaseModel):

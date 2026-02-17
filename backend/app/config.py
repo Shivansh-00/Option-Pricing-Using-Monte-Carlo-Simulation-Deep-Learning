@@ -52,6 +52,18 @@ class Settings:
     rag_chunk_overlap: int = int(os.getenv("RAG_CHUNK_OVERLAP", "120"))
     rag_cache_max: int = int(os.getenv("RAG_CACHE_MAX", "128"))
     rag_response_ttl: int = int(os.getenv("RAG_RESPONSE_TTL", "600"))
+    rag_max_context_chars: int = int(os.getenv("RAG_MAX_CONTEXT_CHARS", "6000"))
+
+    # --- RAG Embedding ---
+    rag_embedding_backend: str = os.getenv("RAG_EMBEDDING_BACKEND", "auto")
+    rag_embedding_model: str = os.getenv("RAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    rag_tfidf_max_features: int = int(os.getenv("RAG_TFIDF_MAX_FEATURES", "8000"))
+
+    # --- LLM Rate Limiting & Circuit Breaker ---
+    llm_max_rpm: int = int(os.getenv("LLM_MAX_RPM", "30"))
+    llm_max_tpm: int = int(os.getenv("LLM_MAX_TPM", "100000"))
+    llm_cb_threshold: int = int(os.getenv("LLM_CB_THRESHOLD", "5"))
+    llm_cb_recovery: int = int(os.getenv("LLM_CB_RECOVERY", "60"))
 
 
 settings = Settings()

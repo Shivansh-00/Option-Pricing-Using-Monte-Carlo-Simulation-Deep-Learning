@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends
 
 from .. import explain
 from ..auth import UserRecord, get_current_user
-from ..schemas import ExplainRequest, ExplainResponse, RAGHealthResponse, RAGStatsResponse
+from ..schemas import (
+    ExplainRequest,
+    ExplainResponse,
+    RAGHealthResponse,
+    RAGMetricsResponse,
+    RAGStatsResponse,
+)
 
 router = APIRouter(prefix="/api/v1/ai", tags=["explain"])
 
@@ -24,6 +30,17 @@ def rag_health(
 ) -> RAGHealthResponse:
     """RAG subsystem health and configuration."""
     return RAGHealthResponse(**explain.get_rag_health())
+
+
+@router.get("/rag/metrics", response_model=RAGMetricsResponse)
+def rag_metrics(
+    _user: UserRecord = Depends(get_current_user),
+) -> RAGMetricsResponse:
+    """RAG evaluation metrics and quality dashboard."""
+    from ..rag.evaluation import get_metrics_tracker
+
+    summary = get_metrics_tracker().summary
+    return RAGMetricsResponse(**summary)
 
 
 @router.get("/rag/stats", response_model=RAGStatsResponse)

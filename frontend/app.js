@@ -3,14 +3,16 @@
    ═══════════════════════════════════════════════════════════════ */
 
 // ── 1. Auth Guard ──────────────────────────────────────────────
+// Stores the ongoing refresh promise so API helpers can await it.
+let _authReady = Promise.resolve();
+
 (function authGuard() {
   const token   = localStorage.getItem('oq-token');
   const expires = localStorage.getItem('oq-expires');
   if (!token || !expires || Date.now() >= Number(expires)) {
-    // Try silent refresh
     const refresh = localStorage.getItem('oq-refresh');
     if (refresh) {
-      fetch('/api/v1/auth/refresh', {
+      _authReady = fetch('/api/v1/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refresh })
@@ -49,6 +51,7 @@ function handleAuthError(status) {
 }
 
 async function api(url, body) {
+  await _authReady;   // ensure token refresh is complete
   const res = await fetch(url, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -61,6 +64,7 @@ async function api(url, body) {
 }
 
 async function apiGet(url) {
+  await _authReady;   // ensure token refresh is complete
   const res = await fetch(url, { headers: getAuthHeaders() });
   if (handleAuthError(res.status)) return null;
   const data = await res.json();
@@ -616,9 +620,13 @@ const statsObserver = new MutationObserver(() => {
 const explainSec = document.getElementById('sec-explainability');
 if (explainSec) statsObserver.observe(explainSec, { attributes: true, attributeFilter: ['class'] });
 
+let _ragAsking = false;   // debounce guard for RAG requests
+
 async function askRAG() {
+  if (_ragAsking) return;  // prevent duplicate concurrent calls
   const q = ragInput.value.trim();
   if (!q) return;
+  _ragAsking = true;
 
   // Add user bubble
   addBubble('user', q);
@@ -715,6 +723,8 @@ async function askRAG() {
     typing.remove();
     addBubble('assistant', `⚠️ Error: ${err.message}`);
     toast('error', 'AI Error', err.message);
+  } finally {
+    _ragAsking = false;   // release debounce guard
   }
 }
 

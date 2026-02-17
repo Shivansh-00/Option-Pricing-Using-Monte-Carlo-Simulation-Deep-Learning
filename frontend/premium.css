@@ -1,0 +1,1061 @@
+/* ═══════════════════════════════════════════════════════════════
+   OptionQuant — Premium Enhancement Layer v4.0
+   Elite Motion · Magnetic Interactions · Cursor Spotlight
+   GPU-Accelerated · 60fps · World-Class Micro-Interactions
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Enhanced Design Tokens ──────────────────────────────── */
+:root {
+  /* Extended gradient accent system */
+  --gradient-hero:     linear-gradient(135deg, #6d5cff 0%, #8b7dff 25%, #00e5a0 75%, #3ea8ff 100%);
+  --gradient-premium:  linear-gradient(135deg, #6d5cff 0%, #a78bfa 50%, #00e5a0 100%);
+  --gradient-radial:   radial-gradient(ellipse at 30% 20%, rgba(109,92,255,.15) 0%, transparent 50%);
+  --gradient-mesh:     conic-gradient(from 180deg at 50% 50%, #6d5cff22 0deg, #00e5a011 90deg, #3ea8ff22 180deg, #ff5c7c11 270deg, #6d5cff22 360deg);
+  --gradient-border:   linear-gradient(135deg, rgba(109,92,255,.4), rgba(0,229,160,.3), rgba(62,168,255,.4));
+  --gradient-glow:     linear-gradient(135deg, var(--primary-glow), var(--accent-glow));
+
+  /* Enhanced depth system */
+  --shadow-elevation-1: 0 1px 2px rgba(0,0,0,.12), 0 1px 3px rgba(0,0,0,.08);
+  --shadow-elevation-2: 0 3px 6px rgba(0,0,0,.15), 0 2px 4px rgba(0,0,0,.12);
+  --shadow-elevation-3: 0 10px 20px rgba(0,0,0,.15), 0 3px 6px rgba(0,0,0,.10);
+  --shadow-elevation-4: 0 15px 25px rgba(0,0,0,.15), 0 5px 10px rgba(0,0,0,.05);
+  --shadow-elevation-5: 0 20px 40px rgba(0,0,0,.2);
+
+  /* Perspective for 3D transforms */
+  --perspective: 800px;
+  --tilt-max: 8deg;
+
+  /* Timing for staggered reveals */
+  --stagger-base: 50ms;
+  --stagger-increment: 35ms;
+
+  /* Cursor spotlight size */
+  --spotlight-size: 350px;
+  --spotlight-opacity: 0.06;
+}
+
+[data-theme="light"] {
+  --spotlight-opacity: 0.04;
+}
+
+/* ── 2. Grid Dot Background ─────────────────────────────────── */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,.025) 1px, transparent 0);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 40%, transparent 100%);
+  animation: gridFadeIn 1.5s var(--ease-out) forwards;
+  opacity: 0;
+}
+
+[data-theme="light"] .grid-bg {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(0,0,0,.04) 1px, transparent 0);
+}
+
+@keyframes gridFadeIn {
+  to { opacity: 1; }
+}
+
+/* Animated mesh gradient overlay */
+.mesh-gradient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--gradient-mesh);
+  filter: blur(80px);
+  opacity: 0.3;
+  animation: meshRotate 60s linear infinite;
+  will-change: transform;
+}
+
+@keyframes meshRotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ── 3. Cursor Spotlight Effect ─────────────────────────────── */
+.card,
+.metric-card,
+.greek-card,
+.rag-stats-bar,
+.rag-meta,
+.chart-container {
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  --spotlight-active: 0;
+}
+
+/* Spotlight radial glow following cursor */
+.card > .card-spotlight,
+.metric-card > .card-spotlight,
+.greek-card > .card-spotlight {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    var(--spotlight-size) circle at var(--mouse-x) var(--mouse-y),
+    rgba(109, 92, 255, var(--spotlight-opacity)),
+    transparent 100%
+  );
+  opacity: var(--spotlight-active);
+  transition: opacity var(--dur-normal) var(--ease-smooth);
+  z-index: 0;
+  will-change: opacity;
+}
+
+/* ── 4. Animated Gradient Borders ───────────────────────────── */
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--gradient-border);
+  background-size: 300% 300%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--dur-normal) var(--ease-smooth);
+  animation: borderRotate 4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gradient-border:hover::before {
+  opacity: 1;
+}
+
+@keyframes borderRotate {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ── 5. 3D Tilt Perspective Cards ───────────────────────────── */
+.tilt-card {
+  transform-style: preserve-3d;
+  perspective: var(--perspective);
+  transition: transform var(--dur-normal) var(--ease-out);
+  will-change: transform;
+}
+
+.tilt-card .tilt-inner {
+  transition: transform var(--dur-normal) var(--ease-out);
+  transform-style: preserve-3d;
+}
+
+.tilt-card:hover {
+  z-index: 20;
+}
+
+/* 3D lifted content on tilt */
+.tilt-card:hover .metric-value,
+.tilt-card:hover .greek-symbol,
+.tilt-card:hover .greek-value {
+  transform: translateZ(20px);
+  transition: transform var(--dur-normal) var(--ease-spring);
+}
+
+/* ── 6. Magnetic Button Effect ──────────────────────────────── */
+.btn-magnetic {
+  --btn-mx: 0px;
+  --btn-my: 0px;
+  transform: translate(var(--btn-mx), var(--btn-my));
+  transition: transform var(--dur-normal) var(--ease-spring),
+              box-shadow var(--dur-normal) var(--ease-spring),
+              filter var(--dur-normal) var(--ease-spring);
+}
+
+.btn-magnetic:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);
+}
+
+/* Enhanced primary button glow pulse on hover */
+.btn-primary {
+  position: relative;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  opacity: 0;
+  z-index: -1;
+  filter: blur(16px);
+  transition: opacity var(--dur-normal) var(--ease-smooth);
+  will-change: opacity;
+}
+
+.btn-primary:hover::before {
+  opacity: 0.5;
+  animation: btnGlowPulse 2s ease-in-out infinite;
+}
+
+@keyframes btnGlowPulse {
+  0%, 100% { opacity: 0.4; filter: blur(16px); }
+  50%      { opacity: 0.6; filter: blur(20px); }
+}
+
+/* ── 7. Ripple Click Effect ─────────────────────────────────── */
+.btn .ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(0);
+  animation: rippleExpand 0.6s var(--ease-out) forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.btn-secondary .ripple-effect {
+  background: rgba(109, 92, 255, 0.15);
+}
+
+@keyframes rippleExpand {
+  0%   { transform: scale(0); opacity: 1; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+/* ── 8. Scroll-Triggered Reveal System ──────────────────────── */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(30px) scale(0.97);
+  filter: blur(6px);
+  transition: opacity var(--dur-enter) var(--ease-out),
+              transform var(--dur-enter) var(--ease-out),
+              filter var(--dur-enter) var(--ease-out);
+  will-change: opacity, transform, filter;
+}
+
+.scroll-reveal.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+/* Staggered children reveal */
+.scroll-reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity var(--dur-slow) var(--ease-out),
+              transform var(--dur-slow) var(--ease-out);
+}
+
+.scroll-reveal-stagger.visible > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-reveal-stagger.visible > *:nth-child(1) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 0); }
+.scroll-reveal-stagger.visible > *:nth-child(2) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 1); }
+.scroll-reveal-stagger.visible > *:nth-child(3) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 2); }
+.scroll-reveal-stagger.visible > *:nth-child(4) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 3); }
+.scroll-reveal-stagger.visible > *:nth-child(5) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 4); }
+.scroll-reveal-stagger.visible > *:nth-child(6) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 5); }
+.scroll-reveal-stagger.visible > *:nth-child(7) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 6); }
+.scroll-reveal-stagger.visible > *:nth-child(8) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 7); }
+.scroll-reveal-stagger.visible > *:nth-child(9) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 8); }
+.scroll-reveal-stagger.visible > *:nth-child(10) { transition-delay: calc(var(--stagger-base) + var(--stagger-increment) * 9); }
+
+/* Scale-up reveal variant */
+.scroll-reveal-scale {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity var(--dur-enter) var(--ease-spring),
+              transform var(--dur-enter) var(--ease-spring);
+}
+
+.scroll-reveal-scale.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Slide-in from left/right variants */
+.scroll-reveal-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity var(--dur-enter) var(--ease-out),
+              transform var(--dur-enter) var(--ease-out);
+}
+.scroll-reveal-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.scroll-reveal-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity var(--dur-enter) var(--ease-out),
+              transform var(--dur-enter) var(--ease-out);
+}
+.scroll-reveal-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── 9. Counter Animation ───────────────────────────────────── */
+.counter-animate {
+  display: inline-block;
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+
+.counter-animate.counting {
+  animation: counterBounce 0.3s var(--ease-spring);
+}
+
+@keyframes counterBounce {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ── 10. Floating Label Inputs ──────────────────────────────── */
+.field-floating {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-floating input,
+.field-floating select {
+  padding-top: 24px;
+  padding-bottom: 8px;
+}
+
+.field-floating label {
+  position: absolute;
+  top: 50%;
+  left: var(--sp-4);
+  transform: translateY(-50%);
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  transition: all var(--dur-normal) var(--ease-out);
+  transform-origin: left center;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.field-floating input:focus ~ label,
+.field-floating input:not(:placeholder-shown) ~ label,
+.field-floating select:focus ~ label,
+.field-floating select:valid ~ label {
+  top: 12px;
+  transform: translateY(0) scale(0.72);
+  color: var(--primary-light);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* ── 11. Enhanced Navigation Hover ──────────────────────────── */
+/* Animated gradient underline on nav items */
+.sidebar-nav .nav-item {
+  position: relative;
+}
+
+.sidebar-nav .nav-item .nav-underline {
+  position: absolute;
+  bottom: 4px;
+  left: var(--sp-4);
+  right: var(--sp-4);
+  height: 2px;
+  background: var(--gradient-hero);
+  background-size: 200% 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-normal) var(--ease-spring);
+  border-radius: 1px;
+  opacity: 0.7;
+}
+
+.sidebar-nav .nav-item:hover .nav-underline,
+.sidebar-nav .nav-item.active .nav-underline {
+  transform: scaleX(1);
+  animation: underlineFlow 3s ease-in-out infinite;
+}
+
+@keyframes underlineFlow {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ── 12. Enhanced Section Transitions ───────────────────────── */
+/* Blur-to-focus section reveal */
+.section.active {
+  animation: premiumSectionReveal var(--dur-dramatic) var(--ease-out) backwards;
+}
+
+@keyframes premiumSectionReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(32px) scale(0.97);
+    filter: blur(8px);
+  }
+  40% {
+    opacity: 0.7;
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Section header premium entrance */
+.section.active .section-header {
+  animation: headerReveal var(--dur-enter) var(--ease-out) 0.1s backwards;
+}
+
+@keyframes headerReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) translateX(-10px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+    filter: blur(0);
+  }
+}
+
+/* Card staggered entrance within sections */
+.section.active .card {
+  animation: cardStaggerReveal var(--dur-enter) var(--ease-spring) 0.15s backwards;
+}
+
+@keyframes cardStaggerReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+    filter: blur(4px);
+  }
+  60% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* ── 13. Enhanced Card Hover — Premium Glass Lift ───────────── */
+.card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-hover);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px var(--border-hover),
+    0 0 40px rgba(109, 92, 255, 0.05),
+    inset 0 1px 0 rgba(255,255,255,.04);
+  transform: translateY(-4px);
+}
+
+/* Enhanced metric card hover with individual glow colors */
+.metric-card:hover {
+  box-shadow:
+    var(--shadow-elevation-4),
+    0 0 40px rgba(109, 92, 255, 0.08),
+    inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+/* ── 14. Animated Section Title Gradient ────────────────────── */
+.section-title {
+  background: linear-gradient(
+    135deg,
+    var(--text-primary) 0%,
+    var(--text-primary) 40%,
+    var(--primary-light) 60%,
+    var(--accent) 80%,
+    var(--primary-light) 100%
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleGradientShift 8s ease-in-out infinite;
+}
+
+@keyframes titleGradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── 15. Enhanced Toast — Slide + Elastic Spring ────────────── */
+.toast {
+  transform: translateX(calc(100% + 32px)) scale(0.85);
+  opacity: 0;
+  transition: transform var(--dur-slow) var(--ease-spring),
+              opacity var(--dur-slow) var(--ease-spring);
+  will-change: transform, opacity;
+}
+
+.toast.show {
+  transform: translateX(0) scale(1);
+  opacity: 1;
+}
+
+/* Toast entrance with bounce */
+@keyframes toastBounceIn {
+  0%   { transform: translateX(120%) scale(0.8); opacity: 0; }
+  60%  { transform: translateX(-8px) scale(1.02); opacity: 1; }
+  80%  { transform: translateX(3px) scale(0.99); }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+.toast.show {
+  animation: toastBounceIn var(--dur-slow) var(--ease-spring) forwards;
+}
+
+/* Toast icon micro-animation */
+.toast-icon {
+  animation: toastIconPop var(--dur-normal) var(--ease-spring) 0.15s backwards;
+}
+
+@keyframes toastIconPop {
+  0%   { transform: scale(0) rotate(-20deg); }
+  60%  { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* ── 16. Enhanced Loading Overlay ───────────────────────────── */
+.loading-overlay.active {
+  animation: overlayFadeIn var(--dur-normal) var(--ease-smooth);
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to   { opacity: 1; backdrop-filter: blur(8px); }
+}
+
+.loading-overlay .spinner {
+  animation: spinOrbit 0.85s cubic-bezier(.4,.15,.6,.85) infinite,
+             spinnerGlow 2s ease-in-out infinite;
+}
+
+@keyframes spinnerGlow {
+  0%, 100% { filter: drop-shadow(0 0 8px var(--primary-glow)); }
+  50%      { filter: drop-shadow(0 0 20px var(--primary-glow)) drop-shadow(0 0 40px rgba(109,92,255,.15)); }
+}
+
+/* ── 17. Premium Sidebar Enhancements ───────────────────────── */
+/* Glassmorphism depth line at top */
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(109, 92, 255, 0.3),
+    rgba(0, 229, 160, 0.2),
+    transparent
+  );
+  z-index: 10;
+}
+
+/* Active nav glow */
+.sidebar-nav .nav-item.active {
+  box-shadow: inset 0 0 20px rgba(109, 92, 255, 0.06);
+}
+
+/* ── 18. Enhanced Form Interactions ─────────────────────────── */
+/* Focus ring animation */
+.field input:focus,
+.field select:focus {
+  animation: inputFocusRing var(--dur-normal) var(--ease-spring);
+}
+
+@keyframes inputFocusRing {
+  0%   { box-shadow: 0 0 0 0 rgba(109, 92, 255, 0); }
+  50%  { box-shadow: 0 0 0 5px rgba(109, 92, 255, 0.15); }
+  100% { box-shadow: 0 0 0 3px rgba(109, 92, 255, 0.14), 0 0 28px rgba(109, 92, 255, 0.08); }
+}
+
+/* Input label color transition */
+.field label {
+  transition: color var(--dur-normal) var(--ease-smooth),
+              transform var(--dur-normal) var(--ease-spring);
+}
+
+.field:focus-within label {
+  color: var(--primary-light);
+  transform: translateX(2px);
+}
+
+/* ── 19. Premium Quick Chips Animation ──────────────────────── */
+.quick-chips .chip {
+  animation: chipStagger var(--dur-enter) var(--ease-spring) backwards;
+}
+
+.quick-chips .chip:nth-child(1) { animation-delay: 0.05s; }
+.quick-chips .chip:nth-child(2) { animation-delay: 0.10s; }
+.quick-chips .chip:nth-child(3) { animation-delay: 0.15s; }
+.quick-chips .chip:nth-child(4) { animation-delay: 0.20s; }
+.quick-chips .chip:nth-child(5) { animation-delay: 0.25s; }
+.quick-chips .chip:nth-child(6) { animation-delay: 0.30s; }
+.quick-chips .chip:nth-child(7) { animation-delay: 0.35s; }
+.quick-chips .chip:nth-child(8) { animation-delay: 0.40s; }
+.quick-chips .chip:nth-child(9) { animation-delay: 0.45s; }
+
+@keyframes chipStagger {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Chip hover glow */
+.chip:hover {
+  text-shadow: 0 0 12px var(--primary-glow);
+}
+
+/* ── 20. Chat Bubble Premium Enhancements ───────────────────── */
+.chat-bubble.user {
+  box-shadow:
+    0 4px 16px rgba(109, 92, 255, 0.25),
+    inset 0 1px 0 rgba(255,255,255,.1);
+}
+
+.chat-bubble.assistant {
+  box-shadow:
+    var(--shadow-elevation-2),
+    inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+/* Enhanced typing indicator */
+.typing-indicator span {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+}
+
+/* ── 21. Status Pill Enhancement ────────────────────────────── */
+.status-dot.online {
+  position: relative;
+}
+
+.status-dot.online::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  animation: statusRing 2.4s ease-in-out infinite;
+  opacity: 0;
+}
+
+@keyframes statusRing {
+  0%, 100% { transform: scale(1); opacity: 0; }
+  50%      { transform: scale(1.8); opacity: 0.3; }
+}
+
+/* ── 22. Enhanced Confidence Bar ────────────────────────────── */
+.confidence-fill {
+  position: relative;
+  overflow: hidden;
+}
+
+.confidence-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,.3),
+    transparent
+  );
+  animation: confidenceShine 2s ease-in-out infinite;
+}
+
+@keyframes confidenceShine {
+  0%   { left: -100%; }
+  100% { left: 200%; }
+}
+
+/* ── 23. Source Tag Stagger Animation ───────────────────────── */
+.source-list .source-tag {
+  animation: sourceTagEnter var(--dur-enter) var(--ease-spring) backwards;
+}
+
+.source-list .source-tag:nth-child(1) { animation-delay: 0.1s; }
+.source-list .source-tag:nth-child(2) { animation-delay: 0.15s; }
+.source-list .source-tag:nth-child(3) { animation-delay: 0.2s; }
+.source-list .source-tag:nth-child(4) { animation-delay: 0.25s; }
+.source-list .source-tag:nth-child(5) { animation-delay: 0.3s; }
+
+@keyframes sourceTagEnter {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.85); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── 24. Skeleton Loading Enhancement ───────────────────────── */
+.skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 0%,
+    rgba(109, 92, 255, 0.05) 20%,
+    var(--bg-card-hover) 40%,
+    rgba(109, 92, 255, 0.05) 60%,
+    var(--bg-card) 100%
+  );
+  background-size: 400% 100%;
+  animation: skeletonShimmer 2s ease-in-out infinite;
+  border-radius: var(--border-radius-xs);
+}
+
+@keyframes skeletonShimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: -100% 50%; }
+}
+
+/* ── 25. Ultra-Wide Layout Optimization ─────────────────────── */
+@media (min-width: 1800px) {
+  .content-area {
+    max-width: 1440px;
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .metrics-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .greeks-grid {
+    gap: var(--sp-4);
+  }
+
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 2200px) {
+  .content-area {
+    max-width: 1600px;
+  }
+
+  .metrics-row {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* ── 26. Enhanced Mobile Interactions ───────────────────────── */
+@media (max-width: 1024px) {
+  /* Faster animations on mobile */
+  :root {
+    --dur-enter: 400ms;
+    --dur-dramatic: 500ms;
+    --spotlight-size: 200px;
+  }
+
+  /* Disable 3D tilt on touch devices */
+  .tilt-card {
+    transform: none !important;
+  }
+
+  /* Simpler hover states on touch */
+  .card:hover {
+    transform: translateY(-2px);
+  }
+
+  .metric-card:hover {
+    transform: translateY(-3px) scale(1.01);
+  }
+
+  .greek-card:hover {
+    transform: translateY(-4px) scale(1.02);
+  }
+}
+
+@media (max-width: 640px) {
+  .grid-bg {
+    background-size: 32px 32px;
+  }
+
+  .mesh-gradient {
+    display: none;
+  }
+
+  /* Disable magnetic buttons on mobile */
+  .btn-magnetic {
+    --btn-mx: 0px !important;
+    --btn-my: 0px !important;
+  }
+}
+
+/* ── 27. Reduced Motion — Full System Override ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal,
+  .scroll-reveal-scale,
+  .scroll-reveal-left,
+  .scroll-reveal-right {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+
+  .scroll-reveal-stagger > * {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .tilt-card {
+    transform: none !important;
+  }
+
+  .btn-magnetic {
+    --btn-mx: 0px !important;
+    --btn-my: 0px !important;
+  }
+
+  .gradient-border::before {
+    animation: none !important;
+  }
+
+  .mesh-gradient {
+    animation: none !important;
+  }
+
+  .grid-bg {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .toast.show {
+    animation: none !important;
+  }
+
+  .card-spotlight {
+    display: none !important;
+  }
+
+  .ripple-effect {
+    display: none !important;
+  }
+
+  .counter-animate {
+    animation: none !important;
+  }
+}
+
+/* ── 28. Focus Within Card Glow ─────────────────────────────── */
+.card:focus-within {
+  border-color: rgba(109, 92, 255, 0.2);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(109, 92, 255, 0.06);
+}
+
+/* ── 29. Print Enhancement ──────────────────────────────────── */
+@media print {
+  .grid-bg,
+  .mesh-gradient,
+  .card-spotlight,
+  .ripple-effect,
+  .gradient-border::before {
+    display: none !important;
+  }
+
+  .scroll-reveal,
+  .scroll-reveal-scale {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+/* ── 30. High Contrast Support ──────────────────────────────── */
+@media (forced-colors: active) {
+  .card-spotlight,
+  .gradient-border::before,
+  .mesh-gradient,
+  .grid-bg {
+    display: none !important;
+  }
+
+  .scroll-reveal,
+  .scroll-reveal-stagger > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ── 31. Brand Logo Hover Enhancement ───────────────────────── */
+.sidebar-brand .logo {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-brand .logo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(255,255,255,.2) 50%,
+    transparent 70%
+  );
+  transform: translateX(-150%) rotate(45deg);
+  transition: transform 0.6s var(--ease-out);
+}
+
+.sidebar-brand .logo:hover::after {
+  transform: translateX(150%) rotate(45deg);
+}
+
+/* ── 32. User Avatar Ring ───────────────────────────────────── */
+.user-avatar {
+  position: relative;
+}
+
+.user-avatar::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: var(--gradient-border);
+  background-size: 200% 200%;
+  animation: avatarRingRotate 4s ease-in-out infinite;
+  opacity: 0;
+  transition: opacity var(--dur-normal) var(--ease-smooth);
+  z-index: -1;
+}
+
+.user-card:hover .user-avatar::before {
+  opacity: 1;
+}
+
+@keyframes avatarRingRotate {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ── 33. Enhanced Result Badge ──────────────────────────────── */
+.result-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.result-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,.15),
+    transparent
+  );
+  animation: badgeShine 3s ease-in-out infinite;
+}
+
+@keyframes badgeShine {
+  0%, 80%  { left: -100%; }
+  100%     { left: 200%; }
+}
+
+/* ── 34. Page Load Orchestration ────────────────────────────── */
+.app-shell {
+  animation: shellFadeIn 0.8s var(--ease-out) forwards;
+  opacity: 0;
+}
+
+@keyframes shellFadeIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.sidebar {
+  animation: sidebarSlideIn var(--dur-dramatic) var(--ease-out) 0.1s backwards;
+}
+
+@keyframes sidebarSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.98);
+    filter: blur(8px);
+  }
+  60% {
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.topbar {
+  animation: topbarSlideDown var(--dur-enter) var(--ease-out) 0.2s backwards;
+}
+
+@keyframes topbarSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* ── 35. Ambient Orb Enhancements ───────────────────────────── */
+.ambient-bg .orb {
+  mix-blend-mode: screen;
+}
+
+[data-theme="light"] .ambient-bg .orb {
+  mix-blend-mode: multiply;
+}
+
+/* Fourth ambient orb for richer atmosphere */
+.ambient-bg .orb:nth-child(4) {
+  width: 250px;
+  height: 250px;
+  background: var(--danger);
+  top: 65%;
+  left: 20%;
+  filter: blur(120px);
+  opacity: 0.08;
+  animation: orbDrift1 35s ease-in-out infinite alternate-reverse;
+}

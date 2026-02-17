@@ -14,9 +14,10 @@ REGIMES = (
 
 
 def predict_iv(request: VolatilityRequest) -> tuple[float, str, dict]:
-    base = 0.4 * request.realized_vol + 0.4 * request.vix + 0.2 * abs(request.skew)
+    vix_decimal = request.vix / 100          # VIX points → decimal (e.g. 20 → 0.20)
+    base = 0.4 * request.realized_vol + 0.4 * vix_decimal + 0.2 * abs(request.skew)
     implied = max(0.05, min(2.5, base))
-    score = math.tanh(request.vix)
+    score = math.tanh(request.vix / 25)      # scale so VIX≈25 → tanh≈0.76
     if score < 0.3:
         regime = REGIMES[0]
     elif score < 0.6:
