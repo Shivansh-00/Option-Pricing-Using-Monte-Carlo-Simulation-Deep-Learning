@@ -25,36 +25,43 @@
   <div class="app-shell">
     <!-- ═══ Sidebar ═══ -->
     <aside class="sidebar" id="sidebar">
+      <!-- Cursor spotlight glow layer -->
+      <div class="sidebar-glow" aria-hidden="true"></div>
+
       <div class="sidebar-brand">
         <div class="logo">OQ</div>
         <h1>OptionQuant<span>Monte Carlo &amp; Deep Learning</span></h1>
       </div>
 
-      <nav class="sidebar-nav" id="nav">
+      <div class="sidebar-divider" aria-hidden="true"></div>
+
+      <nav class="sidebar-nav" id="nav" role="navigation" aria-label="Main navigation">
         <div class="nav-label">Analytics</div>
-        <div class="nav-item active" data-section="pricing">
+        <div class="nav-item active" data-section="pricing" tabindex="0" role="button">
           <span class="icon">📊</span> Option Pricing
         </div>
-        <div class="nav-item" data-section="greeks">
+        <div class="nav-item" data-section="greeks" tabindex="0" role="button">
           <span class="icon">Δ</span> Greeks Analysis
         </div>
-        <div class="nav-item" data-section="monte-carlo">
+        <div class="nav-item" data-section="monte-carlo" tabindex="0" role="button">
           <span class="icon">🎲</span> Monte Carlo
         </div>
 
         <div class="nav-label">Intelligence</div>
-        <div class="nav-item" data-section="deep-learning">
+        <div class="nav-item" data-section="deep-learning" tabindex="0" role="button">
           <span class="icon">🧠</span> Deep Learning
         </div>
-        <div class="nav-item" data-section="ml-volatility">
+        <div class="nav-item" data-section="ml-volatility" tabindex="0" role="button">
           <span class="icon">📈</span> ML Volatility
         </div>
 
         <div class="nav-label">Research</div>
-        <div class="nav-item" data-section="explainability">
+        <div class="nav-item" data-section="explainability" tabindex="0" role="button">
           <span class="icon">💡</span> AI Explainability
         </div>
       </nav>
+
+      <div class="sidebar-divider" aria-hidden="true"></div>
 
       <!-- User Card -->
       <div class="sidebar-user">
@@ -85,7 +92,7 @@
     <main class="main-content">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle sidebar">☰</button>
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle sidebar" aria-expanded="false" aria-controls="sidebar">☰</button>
           <div>
             <div class="page-title" id="pageTitle">Option Pricing</div>
             <div class="page-subtitle" id="pageSubtitle">Black-Scholes & Monte Carlo engines</div>
@@ -353,13 +360,128 @@
         <!-- ═══════════ 5. ML VOLATILITY ═══════════ -->
         <div class="section" id="sec-ml-volatility">
           <div class="section-header">
-            <div class="section-title">📈 ML Implied Volatility</div>
-            <div class="section-desc">Machine learning implied volatility prediction with regime detection</div>
+            <div class="section-title">📈 ML Volatility Engine</div>
+            <div class="section-desc">Production-grade ML volatility forecasting with walk-forward validation and model comparison</div>
           </div>
 
-          <div class="card">
+          <!-- ── Engine Status Banner ── -->
+          <div class="card" id="volEngineStatus" style="margin-bottom:1.2rem">
             <div class="card-header">
-              <div class="card-title"><span class="icon">🔮</span> Market Features</div>
+              <div class="card-title"><span class="icon">⚡</span> Engine Status</div>
+            </div>
+            <div class="metrics-row" style="margin:0">
+              <div class="metric-card">
+                <div class="metric-label">Status</div>
+                <div class="metric-value" id="engineStatusBadge">Not Trained</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Best Model</div>
+                <div class="metric-value" id="engineBestModel">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Test RMSE</div>
+                <div class="metric-value" id="engineBestRMSE">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Test R²</div>
+                <div class="metric-value" id="engineBestR2">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Training Configuration ── -->
+          <div class="card" id="volTrainCard">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">🧠</span> Model Training</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="volTarget">Volatility Target</label>
+                <select id="volTarget">
+                  <option value="realized_vol" selected>Realized Vol (Close-to-Close)</option>
+                  <option value="parkinson_vol">Parkinson Vol (High-Low)</option>
+                  <option value="garman_klass_vol">Garman-Klass Vol</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="volForwardWin">Forward Window (days)</label>
+                <input type="number" id="volForwardWin" value="20" min="5" max="60" />
+              </div>
+              <div class="field">
+                <label for="volNDays">Data Length (days)</label>
+                <input type="number" id="volNDays" value="2520" min="500" max="10000" />
+              </div>
+              <div class="field">
+                <label for="volCVFolds">CV Folds</label>
+                <input type="number" id="volCVFolds" value="3" min="1" max="10" />
+              </div>
+            </div>
+            <div class="field" style="margin-top:0.6rem">
+              <label>Models to Train</label>
+              <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-top:0.3rem" id="volModelChecks">
+                <label class="chk-label"><input type="checkbox" value="ridge" checked /> Ridge</label>
+                <label class="chk-label"><input type="checkbox" value="lasso" checked /> Lasso</label>
+                <label class="chk-label"><input type="checkbox" value="random_forest" checked /> Random Forest</label>
+                <label class="chk-label"><input type="checkbox" value="gradient_boosting" checked /> GBM</label>
+                <label class="chk-label"><input type="checkbox" value="ensemble_stack" checked /> Ensemble</label>
+                <label class="chk-label"><input type="checkbox" value="lstm" /> LSTM</label>
+                <label class="chk-label"><input type="checkbox" value="temporal_cnn" /> CNN</label>
+              </div>
+            </div>
+            <div class="btn-group" style="margin-top:1rem">
+              <button class="btn btn-primary" id="volTrainBtn">🚂 Train Models</button>
+              <button class="btn btn-secondary" id="volStatusBtn">📊 Refresh Status</button>
+            </div>
+            <div id="volTrainProgress" style="display:none;margin-top:0.8rem;">
+              <div style="display:flex;align-items:center;gap:0.6rem">
+                <div class="spinner" style="width:18px;height:18px;border:2px solid rgba(99,102,241,.3);border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite"></div>
+                <span style="color:var(--text-secondary);font-size:0.85rem" id="volTrainMsg">Training in progress...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Model Comparison Table ── -->
+          <div class="card" id="volComparisonCard" style="display:none;margin-top:1.2rem">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">📊</span> Model Comparison</div>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="vol-table" id="volCompTable">
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th>RMSE ↓</th>
+                    <th>MAE</th>
+                    <th>MAPE %</th>
+                    <th>R²</th>
+                    <th>Dir.Acc %</th>
+                    <th>vs Hist %</th>
+                    <th>vs GARCH %</th>
+                    <th>vs EWMA %</th>
+                    <th>Time (ms)</th>
+                  </tr>
+                </thead>
+                <tbody id="volCompBody"></tbody>
+              </table>
+            </div>
+            <!-- Baseline row -->
+            <div class="metrics-row" style="margin-top:0.8rem" id="volBaselineRow"></div>
+          </div>
+
+          <!-- ── Feature Importance Chart ── -->
+          <div class="card" id="volFeatureCard" style="display:none;margin-top:1.2rem">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">🏆</span> Top Feature Importance (Best Model)</div>
+            </div>
+            <div class="chart-container" style="max-height:350px">
+              <canvas id="volFeatureChart"></canvas>
+            </div>
+          </div>
+
+          <!-- ── IV Prediction (enhanced) ── -->
+          <div class="card" style="margin-top:1.2rem">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">🔮</span> Single-Point IV Prediction</div>
             </div>
             <div class="form-grid">
               <div class="field">
@@ -392,7 +514,7 @@
             </div>
           </div>
 
-          <div class="metrics-row" id="mlResults" style="display:none">
+          <div class="metrics-row" id="mlResults" style="display:none;margin-top:1rem">
             <div class="metric-card">
               <div class="metric-label">Implied Volatility</div>
               <div class="metric-value highlight" id="mlIV">—</div>
@@ -400,6 +522,14 @@
             <div class="metric-card">
               <div class="metric-label">Market Regime</div>
               <div class="metric-value" id="mlRegime">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Model Used</div>
+              <div class="metric-value" id="mlModelUsed">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Confidence (R²)</div>
+              <div class="metric-value" id="mlConfidence">—</div>
             </div>
           </div>
         </div>

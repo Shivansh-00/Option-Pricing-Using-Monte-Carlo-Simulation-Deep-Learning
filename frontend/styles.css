@@ -129,6 +129,23 @@
   --shadow-xl:   0 16px 56px rgba(0,0,0,.11), 0 8px 16px rgba(0,0,0,.06);
 }
 
+/* Light-theme sidebar polish */
+[data-theme="light"] .sidebar {
+  box-shadow: 1px 0 12px rgba(0,0,0,.04);
+}
+[data-theme="light"] .sidebar-nav .nav-item.active {
+  background: linear-gradient(135deg, rgba(109,92,255,.10), rgba(109,92,255,.04));
+}
+[data-theme="light"] .sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(109,92,255,.15);
+}
+[data-theme="light"] .sidebar-overlay {
+  background: rgba(0,0,0,.35);
+}
+[data-theme="light"] .user-card {
+  background: rgba(243,245,251,.9);
+}
+
 /* ── 2. Reset & Base ────────────────────────────────────────── */
 *, *::before, *::after {
   margin: 0;
@@ -331,21 +348,40 @@ input, select, textarea, button {
   flex-direction: column;
   z-index: var(--z-sidebar);
   transition: transform var(--dur-slow) var(--ease-out),
-              box-shadow var(--dur-slow) var(--ease-out);
-  backdrop-filter: blur(28px) saturate(1.2);
-  -webkit-backdrop-filter: blur(28px) saturate(1.2);
+              box-shadow var(--dur-slow) var(--ease-out),
+              border-color var(--dur-normal) ease,
+              backdrop-filter var(--dur-normal) ease;
+  backdrop-filter: blur(40px) saturate(1.5);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
   will-change: transform;
   animation: sidebarEnter var(--dur-dramatic) var(--ease-out) backwards;
   overscroll-behavior: contain;
+  contain: layout style;
+}
+
+/* Body scroll lock when sidebar open on mobile */
+body.sidebar-open {
+  overflow: hidden;
+  touch-action: none;
 }
 
 @keyframes sidebarEnter {
-  from {
+  0% {
     opacity: 0;
-    transform: translateX(-24px) scale(.98);
-    filter: blur(6px);
+    transform: translateX(-32px) scale(.96);
+    filter: blur(10px);
   }
-  to {
+  40% {
+    filter: blur(3px);
+  }
+  70% {
+    transform: translateX(4px) scale(1.005);
+    filter: blur(0);
+  }
+  85% {
+    transform: translateX(-1px) scale(1);
+  }
+  100% {
     opacity: 1;
     transform: translateX(0) scale(1);
     filter: blur(0);
@@ -422,6 +458,21 @@ input, select, textarea, button {
   scroll-behavior: smooth;
   mask-image: linear-gradient(to bottom, transparent, black 8px, black calc(100% - 8px), transparent);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 8px, black calc(100% - 8px), transparent);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(109,92,255,.25) transparent;
+}
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(109,92,255,.2);
+  border-radius: 4px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(109,92,255,.4);
 }
 
 .sidebar-nav .nav-label {
@@ -482,18 +533,27 @@ input, select, textarea, button {
   will-change: opacity;
 }
 
-.sidebar-nav .nav-item:hover {
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-nav .nav-item:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    transform: translateX(3px);
+    box-shadow: inset 0 0 20px rgba(109, 92, 255, .03);
+  }
+  .sidebar-nav .nav-item:hover::before {
+    top: 30%; bottom: 30%;
+    opacity: .4;
+  }
+  .sidebar-nav .nav-item:hover::after {
+    opacity: 1;
+  }
+}
+/* Touch active state */
+.sidebar-nav .nav-item:active {
   background: var(--bg-card);
   color: var(--text-primary);
-  transform: translateX(3px);
-  box-shadow: inset 0 0 20px rgba(109, 92, 255, .03);
-}
-.sidebar-nav .nav-item:hover::before {
-  top: 30%; bottom: 30%;
-  opacity: .4;
-}
-.sidebar-nav .nav-item:hover::after {
-  opacity: 1;
+  transform: scale(.97);
+  transition-duration: var(--dur-instant);
 }
 
 .sidebar-nav .nav-item.active {
@@ -513,11 +573,25 @@ input, select, textarea, button {
   flex-shrink: 0;
   transition: transform var(--dur-normal) var(--ease-spring);
 }
-.sidebar-nav .nav-item:hover .icon {
-  transform: scale(1.12);
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-nav .nav-item:hover .icon {
+    transform: scale(1.12);
+  }
 }
 .sidebar-nav .nav-item:active .icon {
   transform: scale(.92);
+}
+
+/* Focus-visible for keyboard navigation */
+.sidebar-nav .nav-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+.sidebar-nav .nav-item:focus-visible::before {
+  top: 25%; bottom: 25%;
+  opacity: .6;
 }
 
 /* User card */
@@ -604,24 +678,30 @@ input, select, textarea, button {
   position: relative;
   -webkit-tap-highlight-color: transparent;
 }
-.sidebar-actions .action-btn:hover {
-  background: var(--bg-card);
-  color: var(--text-primary);
-  transform: translateX(4px);
-  box-shadow: var(--shadow-xs);
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-actions .action-btn:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    transform: translateX(4px);
+    box-shadow: var(--shadow-xs);
+  }
+  .sidebar-actions .action-btn.danger:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+  }
+  .sidebar-actions .action-btn:hover .icon {
+    transform: scale(1.15);
+  }
 }
-.sidebar-actions .action-btn.danger:hover {
-  background: var(--danger-bg);
-  color: var(--danger);
+.sidebar-actions .action-btn:active {
+  transform: scale(.97);
+  transition-duration: var(--dur-instant);
 }
 .sidebar-actions .action-btn .icon {
   font-size: 1rem;
   width: 22px;
   text-align: center;
   transition: transform var(--dur-normal) var(--ease-spring);
-}
-.sidebar-actions .action-btn:hover .icon {
-  transform: scale(1.15);
 }
 
 /* Status pill */
@@ -754,14 +834,16 @@ input, select, textarea, button {
 .sidebar-overlay {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, .55);
-  z-index: calc(var(--z-sidebar) - 1);
+  z-index: calc(var(--z-topbar) + 5);  /* above topbar so tap-anywhere-to-close works */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity var(--dur-normal) var(--ease-smooth),
-              visibility var(--dur-normal) var(--ease-smooth);
+  transition: opacity var(--dur-slow) var(--ease-smooth),
+              visibility var(--dur-slow) var(--ease-smooth);
   backdrop-filter: blur(6px) saturate(.8);
   -webkit-backdrop-filter: blur(6px) saturate(.8);
+  will-change: opacity;
+  -webkit-tap-highlight-color: transparent;
 }
 .sidebar-overlay.active {
   opacity: 1;
@@ -1969,10 +2051,12 @@ input, select, textarea, button {
   .sidebar {
     transform: translateX(-100%);
     box-shadow: none;
+    z-index: calc(var(--z-topbar) + 10);  /* above overlay + topbar when visible */
+    border-right-color: var(--primary-glow);
   }
   .sidebar.open {
     transform: translateX(0);
-    box-shadow: var(--shadow-xl);
+    box-shadow: var(--shadow-xl), 4px 0 32px rgba(0,0,0,.3);
   }
   .sidebar-overlay.active {
     visibility: visible;
@@ -2368,4 +2452,93 @@ a, button, .btn, .nav-item, .chip, .action-btn,
   .btn-primary, .btn-accent {
     border: 2px solid ButtonText;
   }
+}
+
+
+/* ── ML Vol Engine — Comparison Table ────────────────────────── */
+.vol-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.vol-table th,
+.vol-table td {
+  padding: 0.55rem 0.7rem;
+  text-align: right;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  white-space: nowrap;
+}
+.vol-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 1;
+}
+.vol-table td:first-child,
+.vol-table th:first-child {
+  text-align: left;
+}
+.vol-table tr.best-row {
+  background: rgba(109,92,255,.08);
+}
+.vol-table tr.best-row td:first-child {
+  font-weight: 700;
+  color: var(--primary-light);
+}
+.vol-table .improve-pos { color: var(--accent); font-weight: 600; }
+.vol-table .improve-neg { color: var(--danger); font-weight: 600; }
+
+/* ── Checkbox Labels ─────────────────────────────────────────── */
+.chk-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.chk-label input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* ── Spinner animation ───────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Select element styling ──────────────────────────────────── */
+select {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  padding-right: 2rem;
+}
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
 }

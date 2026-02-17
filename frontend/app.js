@@ -124,6 +124,13 @@ const sections = {
 const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
 navItems.forEach(item => {
   item.addEventListener('click', () => navigate(item.dataset.section));
+  // Keyboard: Enter or Space triggers navigation
+  item.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      navigate(item.dataset.section);
+    }
+  });
 });
 
 function navigate(key) {
@@ -134,20 +141,100 @@ function navigate(key) {
   const info = sections[key] || {};
   $('pageTitle').textContent   = info.title || '';
   $('pageSubtitle').textContent = info.sub || '';
-  // Close mobile sidebar
-  $('sidebar').classList.remove('open');
-  $('sidebarOverlay').classList.remove('active');
+  closeSidebar();
 }
 
-// Mobile sidebar toggle
-$('mobileToggle').addEventListener('click', () => {
-  $('sidebar').classList.toggle('open');
-  $('sidebarOverlay').classList.toggle('active');
+// ── 4a. Sidebar Open/Close ─────────────────────────────────────
+const sidebarEl  = $('sidebar');
+const overlayEl  = $('sidebarOverlay');
+const toggleBtn  = $('mobileToggle');
+let _sidebarOpen = false;
+
+function openSidebar() {
+  if (_sidebarOpen) return;
+  _sidebarOpen = true;
+  sidebarEl.classList.add('open');
+  overlayEl.classList.add('active');
+  toggleBtn.setAttribute('aria-expanded', 'true');
+  document.body.classList.add('sidebar-open');
+  // Focus first nav item for accessibility
+  const firstItem = sidebarEl.querySelector('.nav-item');
+  if (firstItem) firstItem.focus();
+}
+
+function closeSidebar() {
+  if (!_sidebarOpen) return;
+  _sidebarOpen = false;
+  sidebarEl.classList.remove('open');
+  overlayEl.classList.remove('active');
+  toggleBtn.setAttribute('aria-expanded', 'false');
+  document.body.classList.remove('sidebar-open');
+}
+
+// Toggle button
+toggleBtn.addEventListener('click', () => {
+  _sidebarOpen ? closeSidebar() : openSidebar();
 });
-$('sidebarOverlay').addEventListener('click', () => {
-  $('sidebar').classList.remove('open');
-  $('sidebarOverlay').classList.remove('active');
+
+// Overlay click closes
+overlayEl.addEventListener('click', closeSidebar);
+
+// Escape key closes sidebar
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && _sidebarOpen) {
+    closeSidebar();
+    toggleBtn.focus();
+  }
 });
+
+// ── 4b. Swipe-to-close gesture (mobile) ────────────────────────
+(function initSwipeToClose() {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let isSwiping = false;
+
+  sidebarEl.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    isSwiping = true;
+  }, { passive: true });
+
+  sidebarEl.addEventListener('touchmove', (e) => {
+    if (!isSwiping || !_sidebarOpen) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartX;
+    const dy = Math.abs(touch.clientY - touchStartY);
+    // Only horizontal swipe (left), ignore vertical scrolling
+    if (dy > Math.abs(dx)) { isSwiping = false; return; }
+    if (dx < -40) {
+      closeSidebar();
+      isSwiping = false;
+    }
+  }, { passive: true });
+
+  sidebarEl.addEventListener('touchend', () => { isSwiping = false; }, { passive: true });
+
+  // Also allow swipe from left edge to open (on main content)
+  let edgeTouchX = 0;
+  document.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    if (touch.clientX < 24 && !_sidebarOpen) {
+      edgeTouchX = touch.clientX;
+    } else {
+      edgeTouchX = -1;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (edgeTouchX < 0) return;
+    const touch = e.touches[0];
+    if (touch.clientX - edgeTouchX > 60) {
+      openSidebar();
+      edgeTouchX = -1;
+    }
+  }, { passive: true });
+})();
 
 // ── 5. Theme Toggle ────────────────────────────────────────────
 $('themeToggle').addEventListener('click', () => {
@@ -531,7 +618,141 @@ async function dlForecast() {
   }
 }
 
-// ── 15. ML Implied Volatility ──────────────────────────────────
+// ── 15. ML Volatility Engine ───────────────────────────────────
+let _volFeatureChart = null;
+
+// ── 15a. Refresh Engine Status ─────────────────────────────────
+async function volRefreshStatus() {
+  try {
+    const d = await apiGet('/api/v1/ml/vol/status');
+    if (!d) return;
+    $('engineStatusBadge').textContent = d.is_trained ? '✅ Trained' : '⏳ Not Trained';
+    $('engineStatusBadge').style.color = d.is_trained ? 'var(--accent)' : 'var(--warning)';
+    $('engineBestModel').textContent   = d.best_model  || '—';
+    $('engineBestRMSE').textContent    = d.best_rmse != null ? fmt(d.best_rmse, 6) : '—';
+    $('engineBestR2').textContent      = d.best_r2 != null ? fmt(d.best_r2, 4) : '—';
+  } catch (e) {
+    console.warn('vol status fetch failed', e);
+  }
+}
+
+// ── 15b. Train Models ──────────────────────────────────────────
+$('volTrainBtn').addEventListener('click', volTrain);
+$('volStatusBtn').addEventListener('click', volRefreshStatus);
+async function volTrain() {
+  const checks = [...document.querySelectorAll('#volModelChecks input:checked')].map(c => c.value);
+  if (checks.length === 0) { toast('warning', 'No Models', 'Select at least one model'); return; }
+
+  const body = {
+    models:         checks,
+    target:         $('volTarget').value,
+    forward_window: parseInt($('volForwardWin').value) || 20,
+    n_days:         parseInt($('volNDays').value) || 2520,
+    cv_folds:       parseInt($('volCVFolds').value) || 3,
+    seed:           42,
+  };
+
+  // Show progress
+  $('volTrainProgress').style.display = '';
+  $('volTrainBtn').disabled = true;
+  $('volTrainMsg').textContent = `Training ${checks.length} model(s)... this may take a minute.`;
+
+  try {
+    const d = await api('/api/v1/ml/vol/train', body);
+    if (!d) return;
+
+    // ── Render Comparison Table ──
+    $('volComparisonCard').style.display = '';
+    const tbody = $('volCompBody');
+    tbody.innerHTML = '';
+    (d.comparisons || []).forEach(c => {
+      const isBest = c.model_name === d.best_model;
+      const t = c.test_metrics || {};
+      const impCls = v => v > 0 ? 'improve-pos' : v < 0 ? 'improve-neg' : '';
+      const impTxt = v => (v > 0 ? '+' : '') + fmt(v, 1);
+      tbody.innerHTML += `
+        <tr class="${isBest ? 'best-row' : ''}">
+          <td>${isBest ? '🏆 ' : ''}${c.model_name}</td>
+          <td>${fmt(t.rmse, 6)}</td>
+          <td>${fmt(t.mae, 6)}</td>
+          <td>${fmt(t.mape, 1)}</td>
+          <td>${fmt(t.r_squared, 4)}</td>
+          <td>${fmt(t.directional_accuracy, 1)}</td>
+          <td class="${impCls(c.improvement_vs_historical)}">${impTxt(c.improvement_vs_historical)}</td>
+          <td class="${impCls(c.improvement_vs_garch)}">${impTxt(c.improvement_vs_garch)}</td>
+          <td class="${impCls(c.improvement_vs_ewma)}">${impTxt(c.improvement_vs_ewma)}</td>
+          <td>${fmt(c.train_time_ms, 0)}</td>
+        </tr>`;
+    });
+
+    // Baseline row
+    const blRow = $('volBaselineRow');
+    blRow.innerHTML = '';
+    if (d.baseline_rmse) {
+      Object.entries(d.baseline_rmse).forEach(([k, v]) => {
+        blRow.innerHTML += `
+          <div class="metric-card">
+            <div class="metric-label">Baseline: ${k}</div>
+            <div class="metric-value">${fmt(v, 6)}</div>
+          </div>`;
+      });
+    }
+    blRow.innerHTML += `
+      <div class="metric-card">
+        <div class="metric-label">Train / Val / Test</div>
+        <div class="metric-value">${d.n_train} / ${d.n_val} / ${d.n_test}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Total Time</div>
+        <div class="metric-value">${fmt(d.total_time_ms, 0)} ms</div>
+      </div>`;
+
+    // ── Feature Importance Chart ──
+    if (d.top_features && d.top_features.length > 0) {
+      $('volFeatureCard').style.display = '';
+      const labels = d.top_features.map(f => f.name);
+      const values = d.top_features.map(f => f.importance);
+      if (_volFeatureChart) _volFeatureChart.destroy();
+      _volFeatureChart = new Chart($('volFeatureChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Importance',
+            data: values,
+            backgroundColor: 'rgba(109,92,255,0.55)',
+            borderColor: '#6d5cff',
+            borderWidth: 1,
+            borderRadius: 4,
+          }],
+        },
+        options: {
+          ...chartDefaults(),
+          indexAxis: 'y',
+          plugins: { ...chartDefaults().plugins, legend: { display: false } },
+          scales: {
+            ...chartDefaults().scales,
+            x: { ...chartDefaults().scales.x, title: { display: true, text: 'Importance', color: '#9ba1b7' } },
+            y: { ...chartDefaults().scales.y, ticks: { font: { size: 11 }, color: '#c8cce0' } },
+          },
+        },
+      });
+    }
+
+    // ── Update status banner ──
+    volRefreshStatus();
+
+    toast('success', 'Training Complete',
+      `Best: ${d.best_model} · RMSE ${fmt(d.best_test_rmse, 6)} · R² ${fmt(d.best_test_r2, 4)} · ${fmt(d.total_time_ms, 0)} ms`);
+  } catch (err) {
+    toast('error', 'Training Failed', err.message);
+  } finally {
+    $('volTrainProgress').style.display = 'none';
+    $('volTrainBtn').disabled = false;
+  }
+}
+
+// ── 15c. IV Prediction ─────────────────────────────────────────
 $('mlBtn').addEventListener('click', mlPredict);
 async function mlPredict() {
   const body = {
@@ -547,15 +768,20 @@ async function mlPredict() {
     const d = await api('/api/v1/ml/iv-predict', body);
     if (!d) return;
     $('mlResults').style.display = '';
-    $('mlIV').textContent     = d.implied_vol != null ? fmtPct(d.implied_vol) : '—';
-    $('mlRegime').textContent = d.regime || '—';
-    toast('success', 'IV Predicted', `IV = ${fmtPct(d.implied_vol)} · Regime: ${d.regime || '—'}`);
+    $('mlIV').textContent        = d.implied_vol != null ? fmtPct(d.implied_vol) : '—';
+    $('mlRegime').textContent    = d.regime || '—';
+    $('mlModelUsed').textContent  = d.model_used || 'analytical_fallback';
+    $('mlConfidence').textContent = d.confidence != null ? fmt(d.confidence, 3) : '—';
+    toast('success', 'IV Predicted', `IV = ${fmtPct(d.implied_vol)} · ${d.model_used || 'fallback'}`);
   } catch (err) {
     toast('error', 'ML Prediction Failed', err.message);
   } finally {
     hideLoading();
   }
 }
+
+// Load engine status on page load
+volRefreshStatus();
 
 // ── 16. AI / RAG Explainability ────────────────────────────────
 const chatArea  = $('chatArea');

@@ -298,6 +298,62 @@
     });
   }
 
+  // ── 7b. Sidebar Cursor Spotlight ──────────────────────────
+  // Tracks mouse across entire sidebar to drive the .sidebar-glow layer
+  function initSidebarSpotlight() {
+    if (isTouchDevice) return;
+
+    const sidebar = document.querySelector('.sidebar');
+    const glow = document.querySelector('.sidebar-glow');
+    if (!sidebar || !glow) return;
+
+    sidebar.addEventListener('mousemove', rafThrottle((e) => {
+      const rect = sidebar.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      glow.style.setProperty('--glow-x', `${x}px`);
+      glow.style.setProperty('--glow-y', `${y}px`);
+      glow.style.setProperty('--glow-opacity', '1');
+    }));
+
+    sidebar.addEventListener('mouseleave', () => {
+      glow.style.setProperty('--glow-opacity', '0');
+    });
+  }
+
+  // ── 7c. Nav Item Proximity Glow ───────────────────────────
+  // Items near cursor get a subtle glow boost based on distance
+  function initNavProximityGlow() {
+    if (isTouchDevice) return;
+
+    const navContainer = document.querySelector('.sidebar-nav');
+    if (!navContainer) return;
+
+    const navItems = navContainer.querySelectorAll('.nav-item');
+
+    navContainer.addEventListener('mousemove', rafThrottle((e) => {
+      navItems.forEach(item => {
+        const rect = item.getBoundingClientRect();
+        const centerY = rect.top + rect.height / 2;
+        const dist = Math.abs(e.clientY - centerY);
+        const maxDist = 100;
+
+        if (dist < maxDist) {
+          const proximity = (1 - dist / maxDist);
+          item.style.setProperty('--proximity', proximity.toFixed(3));
+        } else {
+          item.style.removeProperty('--proximity');
+        }
+      });
+    }));
+
+    navContainer.addEventListener('mouseleave', () => {
+      navItems.forEach(item => {
+        item.style.removeProperty('--proximity');
+      });
+    });
+  }
+
   // ── 8. Smooth Section Transitions ─────────────────────────
   // Enhanced section switching with exit/enter choreography
   function initSectionTransitions() {
@@ -618,6 +674,7 @@
     // Phase 1: Immediate (critical visual enhancements)
     initCursorSpotlight();
     initNavMouseTracking();
+    initSidebarSpotlight();
     initRippleEffect();
     initGradientBorders();
     initKeyboardNav();
@@ -636,6 +693,7 @@
       initThemeTransition();
       initEnhancedToasts();
       initScrollProgress();
+      initNavProximityGlow();
 
       // Phase 3: Low-priority (background effects)
       requestIdleCallback ? requestIdleCallback(() => {
