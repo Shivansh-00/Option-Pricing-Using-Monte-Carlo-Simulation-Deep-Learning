@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import asdict
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 
 from .. import ml
 from ..auth import UserRecord, get_current_user
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/ml", tags=["ml"])
 
 # ─── Training state for async tracking ─────────────────────────
+_training_lock = threading.Lock()
 _training_in_progress = False
 _training_error: str | None = None
 
@@ -64,11 +66,11 @@ def train_vol_engine(
     Runs the full pipeline: data → features → targets → models → evaluation.
     """
     global _training_in_progress, _training_error
-    if _training_in_progress:
-        raise HTTPException(status_code=409, detail="Training already in progress")
-
-    _training_in_progress = True
-    _training_error = None
+    with _training_lock:
+        if _training_in_progress:
+            raise HTTPException(status_code=409, detail="Training already in progress")
+        _training_in_progress = True
+        _training_error = None
     try:
         engine = get_engine()
         result = engine.train_and_evaluate(

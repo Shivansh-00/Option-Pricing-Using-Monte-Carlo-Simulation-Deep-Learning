@@ -270,6 +270,12 @@ class VolatilityEngine:
         y_valid = y_aligned[valid]
         n_valid = len(y_valid)
 
+        if n_valid < 50:
+            raise ValueError(
+                f"Only {n_valid} usable samples after NaN removal. "
+                f"Increase n_days (currently {n_days}) or decrease forward_window (currently {forward_window})."
+            )
+
         # Temporal split
         train_end = int(n_valid * 0.70)
         val_end = int(n_valid * 0.85)
@@ -322,9 +328,9 @@ class VolatilityEngine:
                 imp_garch = ((garch_rmse - test_metrics.rmse) / garch_rmse * 100) if garch_rmse > 0 else 0
                 imp_ewma = ((ewma_rmse - test_metrics.rmse) / ewma_rmse * 100) if ewma_rmse > 0 else 0
 
-                # Walk-forward CV (skip for slow models)
+                # Walk-forward CV (skip for slow models or tiny datasets)
                 cv_metrics = None
-                if mname in ("ridge", "lasso", "random_forest", "gradient_boosting"):
+                if mname in ("ridge", "lasso", "random_forest", "gradient_boosting") and len(X_valid) >= 200:
                     cv_rmses = []
                     folds = walk_forward_splits(len(X_valid), n_folds=n_cv_folds)
                     for fold in folds:

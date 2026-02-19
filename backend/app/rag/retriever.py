@@ -20,8 +20,6 @@ import os
 import re
 from dataclasses import dataclass
 from difflib import SequenceMatcher
-from functools import lru_cache
-from typing import Any
 
 from .vector_store import Document, SearchResult, VectorStore, tokenize
 

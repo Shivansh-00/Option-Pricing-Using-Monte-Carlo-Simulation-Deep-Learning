@@ -1,24 +1,88 @@
+# ══════════════════════════════════════════════════════════════
+#  OptionQuant — Enterprise Docker Compose
+#  Usage: docker-compose up --build
+#  Frontend: http://localhost:3000
+#  Backend:  http://localhost:8000  (direct, optional)
+# ══════════════════════════════════════════════════════════════
+
 services:
+  # ── Backend (FastAPI + Uvicorn) ────────────────────────────
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        - PYTHON_VERSION=3.11
+    container_name: optiquant-backend
     env_file:
       - .env
+    environment:
+      - APP_ROOT_DIR=/app
+      - FRONTEND_DIR=frontend
+      - MODEL_DIR=models
     ports:
       - "8000:8000"
+    volumes:
+      - model_data:/app/models
+      - ./backend/app/rag/knowledge_base:/app/app/rag/knowledge_base:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 10s
-      timeout: 3s
+      interval: 15s
+      timeout: 5s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+    networks:
+      - optiquant-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+  # ── Frontend (Nginx SPA) ──────────────────────────────────
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    container_name: optiquant-frontend
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - "8080:80"
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+    networks:
+      - optiquant-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  model_data:
+    driver: local
+
+networks:
+  optiquant-net:
+    driver: bridge
+    name: optiquant-network

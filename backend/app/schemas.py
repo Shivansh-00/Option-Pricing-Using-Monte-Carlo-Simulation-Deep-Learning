@@ -20,6 +20,26 @@ class PricingResponse(BaseModel):
     metadata: dict
 
 
+class MCDetailedResponse(BaseModel):
+    price: float
+    std_error: float
+    ci_lower: float
+    ci_upper: float
+    paths_used: int
+    steps_used: int
+    variance_reduction: str
+    elapsed_ms: float
+    convergence: list[float] = []
+    sample_paths: list[list[float]] = []
+
+
+class MCComparisonResponse(BaseModel):
+    black_scholes: float
+    greeks: dict
+    monte_carlo: dict
+    total_elapsed_ms: float
+
+
 class GreeksResponse(BaseModel):
     delta: float
     gamma: float
@@ -45,15 +65,88 @@ class VolatilityResponse(BaseModel):
     confidence: float = 0.5
 
 
-# ── ML Volatility Engine Schemas ────────────────────────────────
+# ── DL Forecast Schemas ─────────────────────────────────────
+class DLForecastRequest(BaseModel):
+    spot: float = Field(100, gt=0)
+    strike: float = Field(100, gt=0)
+    maturity: float = Field(1.0, gt=0)
+    rate: float = Field(0.05)
+    volatility: float = Field(0.2, gt=0)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    news_text: str = Field("", description="Optional market news for sentiment analysis")
+
+
+class DLForecastResponse(BaseModel):
+    model: str
+    forecast_price: float
+    forecast_vol: float
+    residual: float
+    confidence: float = 0.0
+    lstm_prediction: float = 0.0
+    transformer_sentiment: str = ""
+    benchmarks: dict = {}
+    details: dict = {}
+
+
+class DLTrainRequest(BaseModel):
+    n_days: int = Field(500, ge=100, le=5000)
+    spot: float = Field(100.0, gt=0)
+    volatility: float = Field(0.2, gt=0)
+    rate: float = Field(0.05)
+    seed: int = Field(42)
+
+
+class DLTrainResponse(BaseModel):
+    lstm_epochs: int
+    lstm_rmse: float
+    lstm_r_squared: float
+    lstm_elapsed_ms: float
+    transformer_accuracy: float
+    total_time_ms: float
+    train_loss: list[float] = []
+    val_loss: list[float] = []
+    details: dict = {}
+
+
+# ── Sentiment Schemas ───────────────────────────────────────
+class SentimentRequest(BaseModel):
+    text: str = Field(..., min_length=3, max_length=5000, description="Market news or financial text")
+
+
+class SentimentResponse(BaseModel):
+    sentiment: str
+    score: float
+    confidence: float
+    attention_weights: list[dict] = []
+    risk_level: str
+    price_impact: float
+    details: dict = {}
+
+
+# ── MC Simulation with Variance Reduction ───────────────────
+class MCSimulationRequest(BaseModel):
+    spot: float = Field(100, gt=0)
+    strike: float = Field(100, gt=0)
+    maturity: float = Field(1.0, gt=0)
+    rate: float = Field(0.05)
+    volatility: float = Field(0.2, gt=0)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    steps: int = Field(252, ge=10, le=2000)
+    paths: int = Field(50000, ge=100, le=500000)
+    method: str = Field("standard", pattern="^(standard|antithetic|control_variate|stratified)$")
+    return_paths: bool = Field(False, description="Return sample paths for visualization")
+    seed: int = Field(42)
+
+
+# ── ML Volatility Engine Schemas ────────────────────────────
 class VolTrainRequest(BaseModel):
     models: list[str] = Field(
         default=["ridge", "lasso", "random_forest", "gradient_boosting", "ensemble_stack"],
         description="Models to train",
     )
     target: str = Field(default="realized_vol", pattern="^(realized_vol|parkinson_vol|garman_klass_vol)$")
-    forward_window: int = Field(default=20, ge=5, le=60)
-    n_days: int = Field(default=2520, ge=500, le=10000)
+    forward_window: int = Field(default=20, ge=5, le=120)
+    n_days: int = Field(default=2520, ge=200, le=10000)
     cv_folds: int = Field(default=3, ge=1, le=10)
     seed: int = Field(default=42)
 

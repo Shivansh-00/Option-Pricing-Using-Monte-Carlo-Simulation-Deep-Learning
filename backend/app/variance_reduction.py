@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import math
-import random
+import numpy as np
 from dataclasses import dataclass
 
 
@@ -11,10 +10,11 @@ class VarianceResult:
     variance: float
 
 
-def antithetic_payoff(payoff_fn, paths: int = 10000) -> VarianceResult:
+def antithetic_payoff(payoff_fn, paths: int = 10000, seed: int | None = None) -> VarianceResult:
+    rng = np.random.default_rng(seed)
     payoffs = []
     for _ in range(paths):
-        z = random.gauss(0, 1)
+        z = float(rng.standard_normal())
         payoffs.append(payoff_fn(z))
         payoffs.append(payoff_fn(-z))
     mean_payoff = sum(payoffs) / len(payoffs)

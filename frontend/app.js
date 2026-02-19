@@ -5,6 +5,7 @@
 // ── 1. Auth Guard ──────────────────────────────────────────────
 // Stores the ongoing refresh promise so API helpers can await it.
 let _authReady = Promise.resolve();
+let _tokenRefreshTimer = null;
 
 (function authGuard() {
   const token   = localStorage.getItem('oq-token');
@@ -22,13 +23,43 @@ let _authReady = Promise.resolve();
           localStorage.setItem('oq-token', d.access_token);
           if (d.refresh_token) localStorage.setItem('oq-refresh', d.refresh_token);
           localStorage.setItem('oq-expires', (Date.now() + (d.expires_in || 1800) * 1000).toString());
+          scheduleTokenRefresh(d.expires_in || 1800);
         })
         .catch(() => { redirectToLogin(); });
       return;
     }
     redirectToLogin();
+  } else {
+    // Schedule proactive refresh before expiry
+    const remaining = Math.max(0, (Number(expires) - Date.now()) / 1000);
+    scheduleTokenRefresh(remaining);
   }
 })();
+
+function scheduleTokenRefresh(expiresInSec) {
+  if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer);
+  // Refresh 60s before expiry (or at 75% of lifetime, whichever is sooner)
+  const refreshIn = Math.max(10, Math.min(expiresInSec - 60, expiresInSec * 0.75)) * 1000;
+  _tokenRefreshTimer = setTimeout(async () => {
+    const refresh = localStorage.getItem('oq-refresh');
+    if (!refresh) return;
+    try {
+      const res = await fetch('/api/v1/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refresh })
+      });
+      if (!res.ok) throw new Error();
+      const d = await res.json();
+      localStorage.setItem('oq-token', d.access_token);
+      if (d.refresh_token) localStorage.setItem('oq-refresh', d.refresh_token);
+      localStorage.setItem('oq-expires', (Date.now() + (d.expires_in || 1800) * 1000).toString());
+      scheduleTokenRefresh(d.expires_in || 1800);
+    } catch {
+      // Silent fail — next API call will trigger redirect if needed
+    }
+  }, refreshIn);
+}
 
 function redirectToLogin() {
   localStorage.removeItem('oq-token');
@@ -50,26 +81,57 @@ function handleAuthError(status) {
   return false;
 }
 
-async function api(url, body) {
-  await _authReady;   // ensure token refresh is complete
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(body)
-  });
-  if (handleAuthError(res.status)) return null;
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || `API error ${res.status}`);
-  return data;
+async function api(url, body, { retries = 1, timeout = 30000 } = {}) {
+  await _authReady;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (handleAuthError(res.status)) return null;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || `API error ${res.status}`);
+      return data;
+    } catch (err) {
+      clearTimeout(timer);
+      if (err.name === 'AbortError') throw new Error('Request timed out');
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
-async function apiGet(url) {
-  await _authReady;   // ensure token refresh is complete
-  const res = await fetch(url, { headers: getAuthHeaders() });
-  if (handleAuthError(res.status)) return null;
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || `API error ${res.status}`);
-  return data;
+async function apiGet(url, { retries = 1, timeout = 15000 } = {}) {
+  await _authReady;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const res = await fetch(url, { headers: getAuthHeaders(), signal: controller.signal });
+      clearTimeout(timer);
+      if (handleAuthError(res.status)) return null;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || `API error ${res.status}`);
+      return data;
+    } catch (err) {
+      clearTimeout(timer);
+      if (err.name === 'AbortError') throw new Error('Request timed out');
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 // ── 3. UI Utilities ────────────────────────────────────────────
@@ -81,6 +143,16 @@ function hideLoading() { loadingOverlay.classList.remove('active'); }
 
 // Toast system — classes match CSS: .toast-success, .toast-error, etc.
 const toastIcons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+/** Safe parseFloat — only uses fallback for NaN (empty/invalid), not for 0 */
+function pf(id, fallback) {
+  const v = parseFloat($(id).value);
+  return Number.isNaN(v) ? fallback : v;
+}
 function toast(type, title, msg = '') {
   const container = $('toasts');
   const el = document.createElement('div');
@@ -88,8 +160,8 @@ function toast(type, title, msg = '') {
   el.innerHTML = `
     <span class="toast-icon">${toastIcons[type] || 'ℹ️'}</span>
     <div class="toast-body">
-      <div class="toast-title">${title}</div>
-      ${msg ? `<div class="toast-msg">${msg}</div>` : ''}
+      <div class="toast-title">${escapeHtml(title)}</div>
+      ${msg ? `<div class="toast-msg">${escapeHtml(msg)}</div>` : ''}
     </div>
     <span class="toast-close">✕</span>
   `;
@@ -113,11 +185,14 @@ function fmtPct(v) { return v == null ? '—' : (Number(v) * 100).toFixed(1) + '
 
 // ── 4. Navigation ──────────────────────────────────────────────
 const sections = {
+  dashboard:      { title: 'Dashboard',           sub: 'System overview & quick actions' },
   pricing:        { title: 'Option Pricing',       sub: 'Black-Scholes & Monte Carlo engines' },
   greeks:         { title: 'Greeks Analysis',       sub: 'Sensitivity surface visualisation' },
   'monte-carlo':  { title: 'Monte Carlo',           sub: 'GBM path simulation & convergence' },
   'deep-learning':{ title: 'Deep Learning',         sub: 'LSTM & Transformer neural pricing' },
   'ml-volatility':{ title: 'ML Volatility',         sub: 'Implied volatility prediction' },
+  sentiment:      { title: 'Market Sentiment',      sub: 'Financial news NLP analysis' },
+  'risk-analytics':{ title: 'Risk Analytics',       sub: 'VaR & risk decomposition' },
   explainability: { title: 'AI Explainability',     sub: 'RAG-powered Q&A engine' }
 };
 
@@ -256,7 +331,9 @@ $('themeToggle').addEventListener('click', () => {
 // ── 6. Health Check ────────────────────────────────────────────
 async function checkHealth() {
   try {
-    const res = await fetch('/health');
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch('/health', { signal: ctrl.signal });
     const ok = res.ok;
     $('statusDot').classList.toggle('online', ok);
     $('statusText').textContent = ok ? 'API Online' : 'API Error';
@@ -309,6 +386,7 @@ $('logoutBtn').addEventListener('click', async () => {
   localStorage.removeItem('oq-token');
   localStorage.removeItem('oq-refresh');
   localStorage.removeItem('oq-expires');
+  sessionStorage.removeItem('oq-chat-history');
   window.location.href = '/login.html';
 });
 
@@ -348,12 +426,12 @@ function getOrCreateChart(id, config) {
 // ── 10. Get Pricing Parameters ─────────────────────────────────
 function getParams() {
   return {
-    spot:        parseFloat($('spot').value)     || 100,
-    strike:      parseFloat($('strike').value)   || 100,
-    rate:        parseFloat($('rate').value)      || 0.05,
-    volatility:  parseFloat($('sigma').value)     || 0.2,
-    maturity:    parseFloat($('maturity').value)  || 1,
-    option_type: $('optType').value               || 'call'
+    spot:        pf('spot', 100),
+    strike:      pf('strike', 100),
+    rate:        pf('rate', 0.05),
+    volatility:  pf('sigma', 0.2),
+    maturity:    pf('maturity', 1),
+    option_type: $('optType').value || 'call'
   };
 }
 
@@ -375,12 +453,14 @@ async function priceOption() {
     $('bsPrice').textContent = fmt(bs.price);
     $('mcPrice').textContent = fmt(mc.price);
 
-    // Backend returns {model, price, metadata} — compute error from price difference
-    const diff = Math.abs(bs.price - mc.price);
-    const se = diff > 0 ? diff / 1.96 : 0;
-    $('mcStd').textContent = se > 0 ? fmt(se) : '< 0.0001';
-    $('mcCI').textContent = se > 0
-      ? `[${fmt(mc.price - 1.96 * se, 2)}, ${fmt(mc.price + 1.96 * se, 2)}]`
+    // Backend returns {model, price, metadata} — use actual std_error & CI from metadata
+    const meta = mc.metadata || {};
+    const se = meta.std_error != null ? meta.std_error : Math.abs(bs.price - mc.price) / 1.96;
+    $('mcStd').textContent = se > 0.00005 ? fmt(se) : '< 0.0001';
+    const ciLo = meta.ci_lower != null ? meta.ci_lower : mc.price - 1.96 * se;
+    const ciHi = meta.ci_upper != null ? meta.ci_upper : mc.price + 1.96 * se;
+    $('mcCI').textContent = se > 0.00005
+      ? `[${fmt(ciLo, 2)}, ${fmt(ciHi, 2)}]`
       : `≈ ${fmt(mc.price, 2)}`;
 
     $('resultBadge').style.display = '';
@@ -416,7 +496,7 @@ $('plotGreekBtn').addEventListener('click', plotGreekSurface);
 async function plotGreekSurface() {
   const params  = getParams();
   const greek   = $('greekSelect').value;
-  const range   = (parseFloat($('greekRange').value) || 30) / 100;
+  const range   = (pf('greekRange', 30)) / 100;
   const lo      = params.spot * (1 - range);
   const hi      = params.spot * (1 + range);
   const steps   = 30;
@@ -565,13 +645,17 @@ function boxMullerRandom() {
 $('dlBtn').addEventListener('click', dlForecast);
 async function dlForecast() {
   const body = {
-    spot:        parseFloat($('dlSpot').value)     || 100,
-    strike:      parseFloat($('dlStrike').value)   || 100,
-    maturity:    parseFloat($('dlMaturity').value)  || 1,
-    rate:        parseFloat($('dlRate').value)      || 0.05,
-    volatility:  parseFloat($('dlSigma').value)     || 0.2,
+    spot:        pf('dlSpot', 100),
+    strike:      pf('dlStrike', 100),
+    maturity:    pf('dlMaturity', 1),
+    rate:        pf('dlRate', 0.05),
+    volatility:  pf('dlSigma', 0.2),
     option_type: $('dlType').value                  || 'call'
   };
+  // Add news_text if provided
+  const newsText = $('dlNewsText') ? $('dlNewsText').value.trim() : '';
+  if (newsText) body.news_text = newsText;
+
   showLoading();
   try {
     const d = await api('/api/v1/dl/forecast', body);
@@ -579,22 +663,49 @@ async function dlForecast() {
 
     $('dlResults').style.display = '';
     $('dlForecast').textContent = fmt(d.forecast_price);
-    $('dlVol').textContent      = d.forecast_vol != null ? fmtPct(d.forecast_vol) : '—';
-    $('dlResidual').textContent = d.residual != null ? fmt(d.residual) : '—';
 
-    const bench = d.benchmarks || {};
-    $('dlBS').textContent = bench.bs != null ? fmt(bench.bs) : '—';
-    $('dlMC').textContent = bench.mc != null ? fmt(bench.mc) : '—';
+    // Show LSTM prediction
+    const lstm = d.lstm_prediction != null ? d.lstm_prediction : d.forecast_price;
+    $('dlLSTM').textContent = fmt(lstm);
+
+    // Show transformer sentiment (backend returns a string like "bullish"/"bearish"/"neutral")
+    const sent = d.transformer_sentiment;
+    if (sent != null && sent !== '') {
+      const sentStr = String(sent).toLowerCase();
+      const sentLabel = sentStr === 'bullish' ? 'Bullish' : sentStr === 'bearish' ? 'Bearish' : 'Neutral';
+      const sentColor = sentStr === 'bullish' ? '#00e5a0' : sentStr === 'bearish' ? '#ff5c7c' : 'var(--text-secondary)';
+      $('dlSentiment').textContent = sentLabel;
+      $('dlSentiment').style.color = sentColor;
+      $('dlSentLabel').textContent = 'Transformer NLP';
+    } else {
+      $('dlSentiment').textContent = '—';
+      $('dlSentLabel').textContent = 'Transformer NLP';
+    }
+
+    // Show confidence
+    $('dlConfidence').textContent = d.confidence != null ? (d.confidence * 100).toFixed(0) + '%' : '—';
+
+    // Benchmarks (backend returns bs_price, mc_price in details dict)
+    const bench = d.benchmarks || d.details || {};
+    $('dlBS').textContent = bench.bs_price != null ? fmt(bench.bs_price) : (bench.bs != null ? fmt(bench.bs) : '—');
+    $('dlMC').textContent = bench.mc_price != null ? fmt(bench.mc_price) : (bench.mc != null ? fmt(bench.mc) : '—');
 
     // Comparison chart
     $('compChartWrap').style.display = '';
+    const bsVal = bench.bs_price != null ? bench.bs_price : bench.bs;
+    const mcVal = bench.mc_price != null ? bench.mc_price : bench.mc;
+    const chartData = [d.forecast_price, bsVal, mcVal].filter(v => v != null);
+    const chartLabels = ['Deep Learning'];
+    if (bsVal != null) chartLabels.push('Black-Scholes');
+    if (mcVal != null) chartLabels.push('Monte Carlo');
+
     getOrCreateChart('compChart', {
       type: 'bar',
       data: {
-        labels: ['Deep Learning', 'Black-Scholes', 'Monte Carlo'],
+        labels: chartLabels,
         datasets: [{
           label: 'Option Price ($)',
-          data: [d.forecast_price, bench.bs, bench.mc],
+          data: chartData,
           backgroundColor: ['#6d5cff', '#00e5a0', '#3ea8ff'],
           borderRadius: 8, barThickness: 50
         }]
@@ -615,6 +726,54 @@ async function dlForecast() {
     toast('error', 'DL Forecast Failed', err.message);
   } finally {
     hideLoading();
+  }
+}
+
+// ── 14a. DL Training ──────────────────────────────────────────
+$('dlTrainBtn').addEventListener('click', dlTrain);
+async function dlTrain() {
+  $('dlTrainBtn').disabled = true;
+  const statusCard = $('dlTrainStatus');
+  statusCard.style.display = '';
+  $('dlTrainInfo').innerHTML = '<div style="display:flex;align-items:center;gap:0.6rem"><div class="spinner" style="width:18px;height:18px;border:2px solid rgba(99,102,241,.3);border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite"></div><span style="color:var(--text-secondary);font-size:0.85rem">Training LSTM & Transformer models…</span></div>';
+
+  try {
+    const d = await api('/api/v1/dl/train', { n_days: 500, spot: 100.0, volatility: 0.2, rate: 0.05, seed: 42 }, { timeout: 120000 });
+    if (!d) return;
+    $('dlTrainInfo').innerHTML = `
+      <div class="metrics-row" style="margin:0">
+        <div class="metric-card"><div class="metric-label">Status</div><div class="metric-value highlight">✅ Trained</div></div>
+        <div class="metric-card"><div class="metric-label">LSTM RMSE</div><div class="metric-value">${d.lstm_rmse != null ? fmt(d.lstm_rmse, 6) : '—'}</div></div>
+        <div class="metric-card"><div class="metric-label">Transformer</div><div class="metric-value">${d.transformer_accuracy != null ? (d.transformer_accuracy * 100).toFixed(0) + '%' : '—'}</div></div>
+        <div class="metric-card"><div class="metric-label">Duration</div><div class="metric-value">${d.total_time_ms != null ? fmt(d.total_time_ms, 0) + 'ms' : d.lstm_elapsed_ms != null ? fmt(d.lstm_elapsed_ms, 0) + 'ms' : '—'}</div></div>
+      </div>`;
+    toast('success', 'DL Training Complete', 'Models trained successfully');
+  } catch (err) {
+    $('dlTrainInfo').innerHTML = `<div style="color:#ff5c7c;padding:0.5rem">❌ Training failed: ${escapeHtml(err.message)}</div>`;
+    toast('error', 'DL Training Failed', err.message);
+  } finally {
+    $('dlTrainBtn').disabled = false;
+  }
+}
+
+// ── 14b. DL Status ─────────────────────────────────────────────
+$('dlStatusBtn').addEventListener('click', dlStatus);
+async function dlStatus() {
+  try {
+    const d = await apiGet('/api/v1/dl/status');
+    if (!d) return;
+    const statusCard = $('dlTrainStatus');
+    statusCard.style.display = '';
+    $('dlTrainInfo').innerHTML = `
+      <div class="metrics-row" style="margin:0">
+        <div class="metric-card"><div class="metric-label">LSTM</div><div class="metric-value">${d.lstm_trained ? '✅ Trained' : '⏳ Not Trained'}</div></div>
+        <div class="metric-card"><div class="metric-label">Transformer</div><div class="metric-value">✅ Ready</div></div>
+        <div class="metric-card"><div class="metric-label">Hidden Dim</div><div class="metric-value">${d.lstm_hidden_dim || '—'}</div></div>
+        <div class="metric-card"><div class="metric-label">Attn Heads</div><div class="metric-value">${d.transformer_heads || '—'}</div></div>
+      </div>`;
+    toast('info', 'DL Status', `LSTM: ${d.lstm_trained ? 'Trained' : 'Not trained'} · Transformer: Ready`);
+  } catch (err) {
+    toast('error', 'Status Check Failed', err.message);
   }
 }
 
@@ -643,12 +802,30 @@ async function volTrain() {
   const checks = [...document.querySelectorAll('#volModelChecks input:checked')].map(c => c.value);
   if (checks.length === 0) { toast('warning', 'No Models', 'Select at least one model'); return; }
 
+  const forwardWin = parseInt($('volForwardWin').value) || 20;
+  const nDays      = parseInt($('volNDays').value) || 2520;
+  const cvFolds    = parseInt($('volCVFolds').value) || 3;
+
+  // ── Client-side validation ──
+  if (nDays < 200)   { toast('warning', 'Invalid Input', 'Data Length must be at least 200 days'); return; }
+  if (nDays > 10000) { toast('warning', 'Invalid Input', 'Data Length must be at most 10,000 days'); return; }
+  if (forwardWin < 5)   { toast('warning', 'Invalid Input', 'Forward Window must be at least 5 days'); return; }
+  if (forwardWin > 120) { toast('warning', 'Invalid Input', 'Forward Window must be at most 120 days'); return; }
+  if (cvFolds < 1 || cvFolds > 10) { toast('warning', 'Invalid Input', 'CV Folds must be between 1 and 10'); return; }
+
+  // Ensure enough data for features + targets + splits
+  const minRequired = forwardWin + 120; // ~60 for feature warm-up + forward window + split headroom
+  if (nDays < minRequired) {
+    toast('warning', 'Insufficient Data', `With a ${forwardWin}-day forward window, you need at least ${minRequired} days of data`);
+    return;
+  }
+
   const body = {
     models:         checks,
     target:         $('volTarget').value,
-    forward_window: parseInt($('volForwardWin').value) || 20,
-    n_days:         parseInt($('volNDays').value) || 2520,
-    cv_folds:       parseInt($('volCVFolds').value) || 3,
+    forward_window: forwardWin,
+    n_days:         nDays,
+    cv_folds:       cvFolds,
     seed:           42,
   };
 
@@ -658,7 +835,7 @@ async function volTrain() {
   $('volTrainMsg').textContent = `Training ${checks.length} model(s)... this may take a minute.`;
 
   try {
-    const d = await api('/api/v1/ml/vol/train', body);
+    const d = await api('/api/v1/ml/vol/train', body, { timeout: 180000 });
     if (!d) return;
 
     // ── Render Comparison Table ──
@@ -672,7 +849,7 @@ async function volTrain() {
       const impTxt = v => (v > 0 ? '+' : '') + fmt(v, 1);
       tbody.innerHTML += `
         <tr class="${isBest ? 'best-row' : ''}">
-          <td>${isBest ? '🏆 ' : ''}${c.model_name}</td>
+          <td>${isBest ? '🏆 ' : ''}${escapeHtml(c.model_name)}</td>
           <td>${fmt(t.rmse, 6)}</td>
           <td>${fmt(t.mae, 6)}</td>
           <td>${fmt(t.mape, 1)}</td>
@@ -756,12 +933,12 @@ async function volTrain() {
 $('mlBtn').addEventListener('click', mlPredict);
 async function mlPredict() {
   const body = {
-    spot:          parseFloat($('mlSpot').value)  || 100,
-    rate:          parseFloat($('mlRate').value)   || 0.05,
-    maturity:      parseFloat($('mlMat').value)    || 0.5,
-    realized_vol:  parseFloat($('mlRvol').value)   || 0.18,
-    vix:           parseFloat($('mlVix').value)    || 20,
-    skew:          parseFloat($('mlSkew').value)   || -0.15
+    spot:          pf('mlSpot', 100),
+    rate:          pf('mlRate', 0.05),
+    maturity:      pf('mlMat', 0.5),
+    realized_vol:  pf('mlRvol', 0.18),
+    vix:           pf('mlVix', 20),
+    skew:          pf('mlSkew', -0.15)
   };
   showLoading();
   try {
@@ -982,6 +1159,9 @@ function renderMarkdown(text) {
 
 // ── 17. Keyboard Shortcuts ─────────────────────────────────────
 document.addEventListener('keydown', (e) => {
+  // Skip shortcuts when user is typing in an input/textarea
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     e.preventDefault();
     // Find the active section and trigger its primary action
@@ -994,8 +1174,185 @@ document.addEventListener('keydown', (e) => {
     else if (id === 'sec-deep-learning') $('dlBtn').click();
     else if (id === 'sec-ml-volatility') $('mlBtn').click();
     else if (id === 'sec-explainability') ragBtn.click();
+    else if (id === 'sec-sentiment') $('sentimentBtn').click();
+    else if (id === 'sec-risk-analytics') $('varCalcBtn').click();
   }
 });
 
-// ── 18. Initialization ────────────────────────────────────────
-console.log('%c🚀 OptionQuant loaded', 'color:#6d5cff;font-size:14px;font-weight:700');
+// ── 18. Sidebar Collapse ──────────────────────────────────────
+(function initSidebarCollapse() {
+  const collapseBtn = $('sidebarCollapseBtn');
+  if (!collapseBtn) return;
+
+  // Restore saved state
+  const saved = localStorage.getItem('oq-sidebar-collapsed');
+  if (saved === 'true') {
+    sidebarEl.classList.add('collapsed');
+    collapseBtn.textContent = '›';
+  }
+
+  collapseBtn.addEventListener('click', () => {
+    const isCollapsed = sidebarEl.classList.toggle('collapsed');
+    collapseBtn.textContent = isCollapsed ? '›' : '‹';
+    localStorage.setItem('oq-sidebar-collapsed', isCollapsed);
+  });
+})();
+
+// ── 19. Dashboard Quick Actions ────────────────────────────────
+document.querySelectorAll('.dash-action-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.goto;
+    if (target) navigate(target);
+  });
+});
+
+// Update dashboard health on load
+async function updateDashboardHealth() {
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch('/health', { signal: ctrl.signal });
+    const ok = res.ok;
+    const dashStatus = $('dashStatus');
+    if (dashStatus) {
+      dashStatus.textContent = ok ? '● Online' : '● Offline';
+      dashStatus.style.color = ok ? '#00e5a0' : '#ff5c7c';
+    }
+    // Also update DL status
+    try {
+      const dlStatus = await apiGet('/api/v1/dl/status');
+      const dashDL = $('dashDLStatus');
+      if (dashDL && dlStatus) {
+        const ready = dlStatus.lstm_trained;
+        dashDL.textContent = ready ? '✅ Trained' : '⏳ Ready';
+      }
+    } catch {}
+  } catch {
+    const dashStatus = $('dashStatus');
+    if (dashStatus) {
+      dashStatus.textContent = '● Offline';
+      dashStatus.style.color = '#ff5c7c';
+    }
+  }
+}
+updateDashboardHealth();
+
+// ── 20. Market Sentiment ───────────────────────────────────────
+$('sentimentBtn').addEventListener('click', analyzeSentiment);
+$('sentimentClearBtn').addEventListener('click', () => {
+  $('sentimentText').value = '';
+  $('sentimentResults').style.display = 'none';
+});
+
+// Sentiment quick example chips
+document.querySelectorAll('#sentimentChips .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    $('sentimentText').value = chip.dataset.text;
+    analyzeSentiment();
+  });
+});
+
+async function analyzeSentiment() {
+  const text = $('sentimentText').value.trim();
+  if (!text) { toast('warning', 'No Text', 'Enter financial text to analyze'); return; }
+
+  showLoading();
+  try {
+    const d = await api('/api/v1/dl/market-sentiment', { text: text });
+    if (!d) return;
+
+    $('sentimentResults').style.display = '';
+
+    // Overall score (0-1 scale, 0.5 = neutral)
+    const score = d.score != null ? d.score : 0.5;
+    const sentimentLabel = d.sentiment || (score > 0.65 ? 'bullish' : score < 0.35 ? 'bearish' : 'neutral');
+    const label = sentimentLabel.charAt(0).toUpperCase() + sentimentLabel.slice(1);
+    const scoreColor = score > 0.65 ? '#00e5a0' : score < 0.35 ? '#ff5c7c' : '#ffc044';
+
+    $('sentScore').textContent = (score * 100).toFixed(0) + '%';
+    $('sentScore').style.color = scoreColor;
+    $('sentLabel').textContent = label;
+
+    $('sentConfidence').textContent = d.confidence != null ? (d.confidence * 100).toFixed(0) + '%' : '—';
+
+    // Bullish / Bearish breakdown (derived from score)
+    $('sentBullish').textContent = (score * 100).toFixed(0) + '%';
+    $('sentBearish').textContent = ((1 - score) * 100).toFixed(0) + '%';
+
+    // Sentiment gauge
+    const gaugeFill = $('sentGaugeFill');
+    const gaugeMarker = $('sentGaugeMarker');
+    if (gaugeFill) gaugeFill.style.width = (score * 100) + '%';
+    if (gaugeMarker) gaugeMarker.style.left = (score * 100) + '%';
+
+    toast('success', 'Sentiment Analyzed', `${label} (${(score * 100).toFixed(0)}%)`);
+  } catch (err) {
+    toast('error', 'Sentiment Failed', err.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// ── 21. Risk Analytics (VaR) ───────────────────────────────────
+$('varCalcBtn').addEventListener('click', calculateVaR);
+async function calculateVaR() {
+  const params = {
+    spot:        pf('varSpot', 100),
+    strike:      pf('varStrike', 100),
+    volatility:  pf('varSigma', 0.2),
+    rate:        pf('varRate', 0.05),
+    maturity:    pf('varMaturity', 1),
+    option_type: $('varType').value                   || 'call'
+  };
+  const contracts = parseInt($('varContracts').value) || 10;
+  const confLevel = parseFloat($('varConfidence').value) || 0.99;
+
+  showLoading();
+  try {
+    // Get greeks for risk decomposition
+    const greeks = await api('/api/v1/pricing/greeks', params);
+    if (!greeks) return;
+
+    // Get BS price for position value
+    const bs = await api('/api/v1/pricing/bs', params);
+
+    // Calculate Delta-Normal VaR
+    const z = confLevel === 0.999 ? 3.09 : confLevel === 0.99 ? 2.326 : 1.645;
+    const dailyVol = params.volatility / Math.sqrt(252);
+    const deltaVaR = Math.abs(greeks.delta) * params.spot * dailyVol * z * contracts * 100;
+    const positionValue = (bs ? bs.price : 0) * contracts * 100;
+    const pctLoss = positionValue > 0 ? (deltaVaR / positionValue) * 100 : 0;
+
+    $('varResults').style.display = '';
+    $('varDeltaNormal').textContent = '$' + deltaVaR.toFixed(2);
+    $('varPosition').textContent = '$' + positionValue.toFixed(2);
+    $('varPctLoss').textContent = pctLoss.toFixed(1) + '%';
+    $('varGreeksExp').textContent = fmt(greeks.delta * contracts * 100, 2);
+
+    // Risk decomposition bars
+    const deltaRisk = Math.abs(greeks.delta) * params.spot * dailyVol * z;
+    const gammaRisk = 0.5 * Math.abs(greeks.gamma) * (params.spot * dailyVol * z) ** 2;
+    const vegaRisk  = Math.abs(greeks.vega) * dailyVol * 100;
+    const thetaRisk = Math.abs(greeks.theta) / 252;
+    const maxRisk = Math.max(deltaRisk, gammaRisk, vegaRisk, thetaRisk, 0.001);
+
+    $('riskBarDelta').style.width  = (deltaRisk / maxRisk * 100) + '%';
+    $('riskBarGamma').style.width  = (gammaRisk / maxRisk * 100) + '%';
+    $('riskBarVega').style.width   = (vegaRisk / maxRisk * 100) + '%';
+    $('riskBarTheta').style.width  = (thetaRisk / maxRisk * 100) + '%';
+
+    $('riskValDelta').textContent = '$' + (deltaRisk * contracts * 100).toFixed(2);
+    $('riskValGamma').textContent = '$' + (gammaRisk * contracts * 100).toFixed(2);
+    $('riskValVega').textContent  = '$' + (vegaRisk * contracts * 100).toFixed(2);
+    $('riskValTheta').textContent = '$' + (thetaRisk * contracts * 100).toFixed(2);
+
+    toast('success', 'VaR Calculated', `Delta-Normal VaR: $${deltaVaR.toFixed(2)} (${confLevel * 100}% confidence)`);
+  } catch (err) {
+    toast('error', 'VaR Failed', err.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// ── 22. Initialization ────────────────────────────────────────
+console.log('%c◈ OptionQuant v2.0 loaded', 'color:#6d5cff;font-size:14px;font-weight:700');

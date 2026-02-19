@@ -12,9 +12,11 @@ Features:
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import os
+import platform
 import re
 import secrets
 import sqlite3
@@ -42,7 +44,9 @@ RATE_LIMIT_WINDOW = 300  # 5 minutes
 RATE_LIMIT_MAX = 20      # max attempts per window
 MIN_PASSWORD_LENGTH = 8
 
-DB_PATH = Path(os.getenv("AUTH_DB_PATH", "/tmp/optiquant_users.db"))
+# Cross-platform default DB path
+_default_db = os.path.join(os.environ.get("TEMP", os.environ.get("TMP", "/tmp")), "optiquant_users.db") if platform.system() == "Windows" else "/tmp/optiquant_users.db"
+DB_PATH = Path(os.getenv("AUTH_DB_PATH", _default_db))
 
 # ---------------------------------------------------------------------------
 # Password hashing — PBKDF2-HMAC-SHA256 (no C deps needed)
@@ -407,13 +411,18 @@ async def get_current_user(
         raise HTTPException(401, "Token has been revoked.")
 
     username = payload.get("sub", "")
-    with _get_conn() as conn:
-        row = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
+    row = await asyncio.to_thread(_fetch_user_row, username)
     if not row or not row["is_active"]:
         raise HTTPException(401, "User not found or disabled.")
     return _row_to_user(row)
+
+
+def _fetch_user_row(username: str):
+    """Synchronous helper for SQLite lookup (called via to_thread)."""
+    with _get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM users WHERE username = ?", (username,)
+        ).fetchone()
 
 
 # ---------------------------------------------------------------------------

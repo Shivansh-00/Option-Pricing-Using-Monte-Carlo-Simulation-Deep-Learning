@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .logging import log_event
+from .event_log import log_event
 
 
 @dataclass

@@ -30,34 +30,46 @@
 
       <div class="sidebar-brand">
         <div class="logo">OQ</div>
-        <h1>OptionQuant<span>Monte Carlo &amp; Deep Learning</span></h1>
+        <h1>OptionQuant<span>Enterprise Platform</span></h1>
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle compact mode" aria-label="Toggle compact mode">‹</button>
       </div>
 
       <div class="sidebar-divider" aria-hidden="true"></div>
 
       <nav class="sidebar-nav" id="nav" role="navigation" aria-label="Main navigation">
-        <div class="nav-label">Analytics</div>
-        <div class="nav-item active" data-section="pricing" tabindex="0" role="button">
-          <span class="icon">📊</span> Option Pricing
-        </div>
-        <div class="nav-item" data-section="greeks" tabindex="0" role="button">
-          <span class="icon">Δ</span> Greeks Analysis
-        </div>
-        <div class="nav-item" data-section="monte-carlo" tabindex="0" role="button">
-          <span class="icon">🎲</span> Monte Carlo
+        <div class="nav-label"><span class="nav-label-text">Overview</span></div>
+        <div class="nav-item active" data-section="dashboard" tabindex="0" role="button" title="Dashboard">
+          <span class="icon">◈</span> <span class="nav-text">Dashboard</span>
         </div>
 
-        <div class="nav-label">Intelligence</div>
-        <div class="nav-item" data-section="deep-learning" tabindex="0" role="button">
-          <span class="icon">🧠</span> Deep Learning
+        <div class="nav-label"><span class="nav-label-text">Analytics</span></div>
+        <div class="nav-item" data-section="pricing" tabindex="0" role="button" title="Option Pricing">
+          <span class="icon">◆</span> <span class="nav-text">Option Pricing</span>
         </div>
-        <div class="nav-item" data-section="ml-volatility" tabindex="0" role="button">
-          <span class="icon">📈</span> ML Volatility
+        <div class="nav-item" data-section="greeks" tabindex="0" role="button" title="Greeks Analysis">
+          <span class="icon">Δ</span> <span class="nav-text">Greeks Analysis</span>
+        </div>
+        <div class="nav-item" data-section="monte-carlo" tabindex="0" role="button" title="Monte Carlo">
+          <span class="icon">⬡</span> <span class="nav-text">Monte Carlo</span>
         </div>
 
-        <div class="nav-label">Research</div>
-        <div class="nav-item" data-section="explainability" tabindex="0" role="button">
-          <span class="icon">💡</span> AI Explainability
+        <div class="nav-label"><span class="nav-label-text">Intelligence</span></div>
+        <div class="nav-item" data-section="deep-learning" tabindex="0" role="button" title="Deep Learning">
+          <span class="icon">◎</span> <span class="nav-text">Deep Learning</span>
+        </div>
+        <div class="nav-item" data-section="ml-volatility" tabindex="0" role="button" title="ML Volatility">
+          <span class="icon">⊞</span> <span class="nav-text">ML Volatility</span>
+        </div>
+        <div class="nav-item" data-section="sentiment" tabindex="0" role="button" title="Market Sentiment">
+          <span class="icon">◉</span> <span class="nav-text">Market Sentiment</span>
+        </div>
+
+        <div class="nav-label"><span class="nav-label-text">Research</span></div>
+        <div class="nav-item" data-section="risk-analytics" tabindex="0" role="button" title="Risk Analytics">
+          <span class="icon">⊘</span> <span class="nav-text">Risk Analytics</span>
+        </div>
+        <div class="nav-item" data-section="explainability" tabindex="0" role="button" title="AI Explainability">
+          <span class="icon">◇</span> <span class="nav-text">AI Explainability</span>
         </div>
       </nav>
 
@@ -107,8 +119,121 @@
       </header>
 
       <div class="content-area">
+        <!-- ═══════════ 0. DASHBOARD ═══════════ -->
+        <div class="section active" id="sec-dashboard">
+          <div class="section-header">
+            <div class="section-title">◈ Dashboard Overview</div>
+            <div class="section-desc">Enterprise option pricing platform — system health &amp; quick actions</div>
+          </div>
+
+          <!-- Key Metrics -->
+          <div class="metrics-row" id="dashMetrics">
+            <div class="metric-card dash-card">
+              <div class="metric-label">System Status</div>
+              <div class="metric-value highlight" id="dashStatus">● Checking…</div>
+              <div class="metric-sub">API Health</div>
+            </div>
+            <div class="metric-card dash-card">
+              <div class="metric-label">Pricing Models</div>
+              <div class="metric-value" id="dashModels">3</div>
+              <div class="metric-sub">BS · MC · DL</div>
+            </div>
+            <div class="metric-card dash-card">
+              <div class="metric-label">ML Models</div>
+              <div class="metric-value" id="dashMLModels">7</div>
+              <div class="metric-sub">Ridge · RF · GBM · …</div>
+            </div>
+            <div class="metric-card dash-card">
+              <div class="metric-label">DL Status</div>
+              <div class="metric-value" id="dashDLStatus">Ready</div>
+              <div class="metric-sub">LSTM + Transformer</div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">⚡</span> Quick Actions</div>
+            </div>
+            <div class="dash-actions">
+              <button class="btn btn-primary dash-action-btn" data-goto="pricing">◆ Price Option</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="monte-carlo">⬡ Run Simulation</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="deep-learning">◎ DL Forecast</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="sentiment">◉ Analyze Sentiment</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="risk-analytics">⊘ Risk Analysis</button>
+              <button class="btn btn-accent dash-action-btn" data-goto="explainability">◇ Ask AI</button>
+            </div>
+          </div>
+
+          <!-- Platform Capabilities -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">🏛</span> Platform Capabilities</div>
+            </div>
+            <div class="dash-capabilities">
+              <div class="capability-item">
+                <div class="capability-icon">📐</div>
+                <div>
+                  <div class="capability-title">Black-Scholes Analytics</div>
+                  <div class="capability-desc">Closed-form option pricing with full Greeks (Δ, Γ, Θ, ν, ρ)</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">⬡</div>
+                <div>
+                  <div class="capability-title">Monte Carlo Engine</div>
+                  <div class="capability-desc">GBM paths with antithetic, stratified &amp; control variate methods</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">◎</div>
+                <div>
+                  <div class="capability-title">Deep Learning Models</div>
+                  <div class="capability-desc">LSTM price prediction + Transformer sentiment analysis</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">⊞</div>
+                <div>
+                  <div class="capability-title">ML Volatility Engine</div>
+                  <div class="capability-desc">7-model ensemble with walk-forward validation</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">◉</div>
+                <div>
+                  <div class="capability-title">Market Sentiment NLP</div>
+                  <div class="capability-desc">Financial news analysis with transformer-based attention</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">◇</div>
+                <div>
+                  <div class="capability-title">RAG-Powered AI</div>
+                  <div class="capability-desc">Knowledge-augmented Q&amp;A with BM25+ hybrid retrieval</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version Info -->
+          <div class="card" style="margin-top:0.5rem">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">ℹ️</span> System Info</div>
+            </div>
+            <div class="dash-info-grid">
+              <div class="dash-info-item"><span class="dash-info-label">Version</span><span class="dash-info-value">v2.0.0</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">Backend</span><span class="dash-info-value">FastAPI + Uvicorn</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">Frontend</span><span class="dash-info-value">Vanilla JS + Chart.js</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">ML Framework</span><span class="dash-info-value">NumPy + Scikit-learn</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">DL Engine</span><span class="dash-info-value">Custom LSTM + Transformer</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">RAG</span><span class="dash-info-value">BM25+ / TF-IDF Hybrid</span></div>
+            </div>
+          </div>
+        </div>
+
         <!-- ═══════════ 1. PRICING ═══════════ -->
-        <div class="section active" id="sec-pricing">
+        <div class="section" id="sec-pricing">
           <div class="section-header">
             <div class="section-title">⚡ Option Pricing Engine</div>
             <div class="section-desc">Compute fair values using Black-Scholes analytics and Monte Carlo simulation simultaneously</div>
@@ -323,8 +448,15 @@
                 </select>
               </div>
             </div>
+            <div class="field" style="margin-top:0.6rem">
+              <label for="dlNewsText">Market News <span style="color:var(--text-tertiary);font-weight:400">(optional — enhances prediction with sentiment)</span></label>
+              <textarea id="dlNewsText" rows="2" placeholder="Enter financial news for sentiment-adjusted pricing…"
+                style="width:100%;resize:vertical;font-family:inherit;font-size:0.9rem;padding:0.65rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)"></textarea>
+            </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="dlBtn">🧠 Forecast</button>
+              <button class="btn btn-primary" id="dlBtn">◎ Forecast</button>
+              <button class="btn btn-secondary" id="dlTrainBtn">⚙ Train Models</button>
+              <button class="btn btn-secondary" id="dlStatusBtn">◈ DL Status</button>
             </div>
           </div>
 
@@ -332,23 +464,41 @@
             <div class="metric-card">
               <div class="metric-label">DL Forecast</div>
               <div class="metric-value highlight" id="dlForecast">—</div>
+              <div class="metric-sub">Hybrid prediction</div>
             </div>
             <div class="metric-card">
-              <div class="metric-label">Forecast Vol</div>
-              <div class="metric-value" id="dlVol">—</div>
+              <div class="metric-label">LSTM Prediction</div>
+              <div class="metric-value" id="dlLSTM">—</div>
+              <div class="metric-sub">Neural price estimate</div>
             </div>
             <div class="metric-card">
-              <div class="metric-label">Residual</div>
-              <div class="metric-value" id="dlResidual">—</div>
+              <div class="metric-label">Sentiment</div>
+              <div class="metric-value" id="dlSentiment">—</div>
+              <div class="metric-sub" id="dlSentLabel">Transformer NLP</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Confidence</div>
+              <div class="metric-value" id="dlConfidence">—</div>
+              <div class="metric-sub">Model certainty</div>
             </div>
             <div class="metric-card">
               <div class="metric-label">BS Benchmark</div>
               <div class="metric-value" id="dlBS">—</div>
+              <div class="metric-sub">Analytical</div>
             </div>
             <div class="metric-card">
               <div class="metric-label">MC Benchmark</div>
               <div class="metric-value" id="dlMC">—</div>
+              <div class="metric-sub">Simulation</div>
             </div>
+          </div>
+
+          <!-- DL Training Status -->
+          <div class="card" id="dlTrainStatus" style="display:none;margin-top:1rem">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">⚙</span> Training Progress</div>
+            </div>
+            <div id="dlTrainInfo"></div>
           </div>
 
           <div class="chart-container" id="compChartWrap" style="display:none">
@@ -405,11 +555,11 @@
               </div>
               <div class="field">
                 <label for="volForwardWin">Forward Window (days)</label>
-                <input type="number" id="volForwardWin" value="20" min="5" max="60" />
+                <input type="number" id="volForwardWin" value="20" min="5" max="120" />
               </div>
               <div class="field">
                 <label for="volNDays">Data Length (days)</label>
-                <input type="number" id="volNDays" value="2520" min="500" max="10000" />
+                <input type="number" id="volNDays" value="2520" min="200" max="10000" />
               </div>
               <div class="field">
                 <label for="volCVFolds">CV Folds</label>
@@ -534,7 +684,200 @@
           </div>
         </div>
 
-        <!-- ═══════════ 6. AI EXPLAINABILITY ═══════════ -->
+        <!-- ═══════════ 6. MARKET SENTIMENT ═══════════ -->
+        <div class="section" id="sec-sentiment">
+          <div class="section-header">
+            <div class="section-title">◉ Market Sentiment Analysis</div>
+            <div class="section-desc">Financial news NLP powered by Transformer attention &amp; lexicon scoring</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">📝</span> Analyze Financial Text</div>
+            </div>
+            <div class="field" style="margin-bottom:1rem">
+              <label for="sentimentText">Financial News / Market Commentary</label>
+              <textarea id="sentimentText" rows="4" placeholder="Paste financial news, earnings reports, or market commentary here…&#10;&#10;Example: Federal Reserve signals potential rate cuts amid cooling inflation, boosting market sentiment across tech sector."
+                style="width:100%;resize:vertical;font-family:inherit;font-size:0.9rem;padding:0.75rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)"></textarea>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="sentimentBtn">◉ Analyze Sentiment</button>
+              <button class="btn btn-secondary" id="sentimentClearBtn">↻ Clear</button>
+            </div>
+          </div>
+
+          <!-- Quick Examples -->
+          <div class="card" style="margin-top:1rem">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">⚡</span> Quick Examples</div>
+            </div>
+            <div class="quick-chips" id="sentimentChips">
+              <span class="chip" data-text="Strong earnings beat expectations with record revenue growth. Company raises full-year guidance significantly.">Bullish Earnings</span>
+              <span class="chip" data-text="Markets tumble as recession fears mount. Unemployment claims surge to highest level in two years.">Bearish Macro</span>
+              <span class="chip" data-text="Federal Reserve maintains current interest rate policy, signaling a wait-and-see approach to inflation data.">Neutral Fed</span>
+              <span class="chip" data-text="Massive short squeeze drives volatility to extreme levels. Options market sees unprecedented put-call ratio reversal.">High Volatility</span>
+            </div>
+          </div>
+
+          <!-- Sentiment Results -->
+          <div id="sentimentResults" style="display:none;margin-top:1rem">
+            <div class="metrics-row">
+              <div class="metric-card">
+                <div class="metric-label">Overall Sentiment</div>
+                <div class="metric-value highlight" id="sentScore">—</div>
+                <div class="metric-sub" id="sentLabel">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Confidence</div>
+                <div class="metric-value" id="sentConfidence">—</div>
+                <div class="metric-sub">Model certainty</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Bullish Score</div>
+                <div class="metric-value" id="sentBullish" style="color:#00e5a0">—</div>
+                <div class="metric-sub">Positive signals</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Bearish Score</div>
+                <div class="metric-value" id="sentBearish" style="color:#ff5c7c">—</div>
+                <div class="metric-sub">Negative signals</div>
+              </div>
+            </div>
+
+            <!-- Sentiment Gauge -->
+            <div class="card" style="margin-top:1rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">📊</span> Sentiment Gauge</div>
+              </div>
+              <div class="sentiment-gauge-wrap">
+                <div class="sentiment-gauge">
+                  <div class="gauge-fill" id="sentGaugeFill"></div>
+                  <div class="gauge-marker" id="sentGaugeMarker"></div>
+                </div>
+                <div class="gauge-labels">
+                  <span style="color:#ff5c7c">Very Bearish</span>
+                  <span style="color:var(--text-secondary)">Neutral</span>
+                  <span style="color:#00e5a0">Very Bullish</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 7. RISK ANALYTICS ═══════════ -->
+        <div class="section" id="sec-risk-analytics">
+          <div class="section-header">
+            <div class="section-title">⊘ Risk Analytics</div>
+            <div class="section-desc">Value-at-Risk, position analysis, and risk decomposition</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">⚠️</span> Value-at-Risk Calculator</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="varSpot">Spot Price ($)</label>
+                <input type="number" id="varSpot" value="100" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="varStrike">Strike ($)</label>
+                <input type="number" id="varStrike" value="100" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="varSigma">Volatility (σ)</label>
+                <input type="number" id="varSigma" value="0.2" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="varRate">Risk-Free Rate</label>
+                <input type="number" id="varRate" value="0.05" step="0.001" />
+              </div>
+              <div class="field">
+                <label for="varMaturity">Maturity (years)</label>
+                <input type="number" id="varMaturity" value="1" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="varType">Option Type</label>
+                <select id="varType">
+                  <option value="call">Call Option</option>
+                  <option value="put">Put Option</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="varContracts">Contracts</label>
+                <input type="number" id="varContracts" value="10" step="1" min="1" />
+              </div>
+              <div class="field">
+                <label for="varConfidence">Confidence Level</label>
+                <select id="varConfidence">
+                  <option value="0.95">95%</option>
+                  <option value="0.99" selected>99%</option>
+                  <option value="0.999">99.9%</option>
+                </select>
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="varCalcBtn">⊘ Calculate VaR</button>
+            </div>
+          </div>
+
+          <!-- VaR Results -->
+          <div id="varResults" style="display:none;margin-top:1rem">
+            <div class="metrics-row">
+              <div class="metric-card">
+                <div class="metric-label">Delta-Normal VaR</div>
+                <div class="metric-value highlight" id="varDeltaNormal">—</div>
+                <div class="metric-sub">1-day loss estimate</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Position Value</div>
+                <div class="metric-value" id="varPosition">—</div>
+                <div class="metric-sub">Total market value</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Max Loss %</div>
+                <div class="metric-value" id="varPctLoss" style="color:#ff5c7c">—</div>
+                <div class="metric-sub">Relative VaR</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Greeks Exposure</div>
+                <div class="metric-value" id="varGreeksExp">—</div>
+                <div class="metric-sub">Delta × Contracts</div>
+              </div>
+            </div>
+
+            <!-- Risk Decomposition -->
+            <div class="card" style="margin-top:1rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">📊</span> Risk Decomposition</div>
+              </div>
+              <div class="risk-breakdown" id="riskBreakdown">
+                <div class="risk-item">
+                  <span class="risk-label">Delta Risk</span>
+                  <div class="risk-bar-container"><div class="risk-bar" id="riskBarDelta" style="width:0%"></div></div>
+                  <span class="risk-value" id="riskValDelta">—</span>
+                </div>
+                <div class="risk-item">
+                  <span class="risk-label">Gamma Risk</span>
+                  <div class="risk-bar-container"><div class="risk-bar risk-bar-gamma" id="riskBarGamma" style="width:0%"></div></div>
+                  <span class="risk-value" id="riskValGamma">—</span>
+                </div>
+                <div class="risk-item">
+                  <span class="risk-label">Vega Risk</span>
+                  <div class="risk-bar-container"><div class="risk-bar risk-bar-vega" id="riskBarVega" style="width:0%"></div></div>
+                  <span class="risk-value" id="riskValVega">—</span>
+                </div>
+                <div class="risk-item">
+                  <span class="risk-label">Theta Risk</span>
+                  <div class="risk-bar-container"><div class="risk-bar risk-bar-theta" id="riskBarTheta" style="width:0%"></div></div>
+                  <span class="risk-value" id="riskValTheta">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 8. AI EXPLAINABILITY ═══════════ -->
         <div class="section" id="sec-explainability">
           <div class="section-header">
             <div class="section-title">💡 AI Explainability Engine</div>

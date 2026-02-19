@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from statistics import mean, pstdev
 
@@ -22,12 +23,12 @@ def compute_features(rows: list[MarketRow], window: int = 20) -> list[FeatureRow
     for idx in range(1, len(rows)):
         log_return = 0.0
         if closes[idx - 1] > 0:
-            log_return = (closes[idx] / closes[idx - 1]) - 1
+            log_return = math.log(closes[idx] / closes[idx - 1])
         start = max(0, idx - window)
         window_returns = []
         for j in range(start + 1, idx + 1):
             if closes[j - 1] > 0:
-                window_returns.append((closes[j] / closes[j - 1]) - 1)
+                window_returns.append(math.log(closes[j] / closes[j - 1]))
         realized_vol = pstdev(window_returns) if len(window_returns) > 1 else 0.0
         features.append(
             FeatureRow(

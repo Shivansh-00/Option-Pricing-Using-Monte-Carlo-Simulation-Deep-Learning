@@ -13,7 +13,9 @@ class LogEvent:
     timestamp: str
 
 
-def log_event(event: str, payload: dict, log_path: str | Path = "backend/data/processed/events.log") -> None:
+def log_event(event: str, payload: dict, log_path: str | Path | None = None) -> None:
+    if log_path is None:
+        log_path = Path(__file__).resolve().parents[1] / "data" / "processed" / "events.log"
     record = LogEvent(event=event, payload=payload, timestamp=datetime.now(timezone.utc).isoformat())
     path = Path(log_path)
     path.parent.mkdir(parents=True, exist_ok=True)
