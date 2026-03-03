@@ -1,0 +1,110 @@
+# ══════════════════════════════════════════════════════════════
+#  OptiQuant — Horizontal Pod Autoscaler
+# ══════════════════════════════════════════════════════════════
+
+# Backend HPA — scales on CPU, memory, and custom metrics
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: optiquant-backend-hpa
+  namespace: optiquant
+  labels:
+    app: optiquant-backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: optiquant-backend
+  minReplicas: 3
+  maxReplicas: 15
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+      selectPolicy: Min
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+---
+# Frontend HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: optiquant-frontend-hpa
+  namespace: optiquant
+  labels:
+    app: optiquant-frontend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: optiquant-frontend
+  minReplicas: 2
+  maxReplicas: 8
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+# Pod Disruption Budget — Backend
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: optiquant-backend-pdb
+  namespace: optiquant
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: optiquant-backend
+---
+# Pod Disruption Budget — Frontend
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: optiquant-frontend-pdb
+  namespace: optiquant
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: optiquant-frontend

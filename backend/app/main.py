@@ -24,8 +24,13 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
-from .api import auth_routes, dl_routes, explain_routes, ml_routes, pricing_routes
+from .api import auth_routes, dl_routes, explain_routes, ml_routes, pricing_routes, market_routes, ws_routes, quant_routes
 from .config import settings
+from .prometheus_metrics import (
+    PROMETHEUS_AVAILABLE,
+    get_metrics_output,
+    set_app_info,
+)
 
 APP_VERSION = "2.0.0"
 
@@ -51,6 +56,7 @@ async def lifespan(_app: FastAPI):
     kb_dir = Path(__file__).resolve().parent / "rag" / "knowledge_base"
     kb_dir.mkdir(parents=True, exist_ok=True)
     logger.info("OptionQuant v%s started — %s mode", APP_VERSION, settings.environment)
+    set_app_info(APP_VERSION, settings.environment)
     yield
     logger.info("OptionQuant v%s shutting down", APP_VERSION)
 
@@ -80,13 +86,21 @@ app.add_middleware(
 
 @app.middleware("http")
 async def request_logger(request: Request, call_next):
-    """Request logging with UUID tracking and latency measurement."""
+    """Request logging with UUID tracking, latency measurement, and Prometheus metrics."""
     request_id = str(uuid.uuid4())[:8]
     start = time.perf_counter()
+
+    # Track in-flight requests
+    if PROMETHEUS_AVAILABLE:
+        from .prometheus_metrics import HTTP_IN_FLIGHT, HTTP_REQUESTS_TOTAL, HTTP_REQUEST_DURATION
+        HTTP_IN_FLIGHT.inc()
+
     try:
         response = await call_next(request)
     except Exception as exc:
         logger.exception("[%s] Unhandled error: %s", request_id, exc)
+        if PROMETHEUS_AVAILABLE:
+            HTTP_IN_FLIGHT.dec()
         return JSONResponse(
             status_code=500,
             content={
@@ -95,9 +109,29 @@ async def request_logger(request: Request, call_next):
                 "message": "An unexpected error occurred. Please try again.",
             },
         )
+
     duration = (time.perf_counter() - start) * 1000
     response.headers["X-Request-Id"] = request_id
     response.headers["X-Response-Time"] = f"{duration:.2f}ms"
+
+    # Prometheus metrics
+    if PROMETHEUS_AVAILABLE:
+        HTTP_IN_FLIGHT.dec()
+        path = request.url.path
+        # Normalize path for metric labels
+        endpoint = path.split("?")[0]
+        if endpoint.startswith("/api/v1/"):
+            parts = endpoint.split("/")
+            endpoint = "/".join(parts[:5]) if len(parts) > 4 else endpoint
+        HTTP_REQUESTS_TOTAL.labels(
+            method=request.method,
+            endpoint=endpoint,
+            status=str(response.status_code),
+        ).inc()
+        HTTP_REQUEST_DURATION.labels(
+            method=request.method,
+            endpoint=endpoint,
+        ).observe((time.perf_counter() - start + duration / 1000))
 
     # Log non-static requests
     path = request.url.path
@@ -157,6 +191,9 @@ app.include_router(pricing_routes.router)
 app.include_router(ml_routes.router)
 app.include_router(dl_routes.router)
 app.include_router(explain_routes.router)
+app.include_router(market_routes.router)
+app.include_router(ws_routes.router)
+app.include_router(quant_routes.router)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -179,6 +216,9 @@ def health() -> dict:
             "dl": "/api/v1/dl",
             "ai": "/api/v1/ai",
             "auth": "/api/v1/auth",
+            "market": "/api/v1/market",
+            "websocket": "/ws/market/{symbol}",
+            "quant": "/api/v1/quant",
         },
     }
 
@@ -187,6 +227,19 @@ def health() -> dict:
 def readiness() -> dict:
     """Kubernetes-style readiness probe."""
     return {"status": "ready"}
+
+
+@app.get("/metrics")
+def metrics():
+    """Prometheus metrics endpoint."""
+    if not PROMETHEUS_AVAILABLE:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Metrics unavailable", "message": "prometheus-client not installed"},
+        )
+    from starlette.responses import Response as StarletteResponse
+    data, content_type = get_metrics_output()
+    return StarletteResponse(content=data, media_type=content_type)
 
 
 # ── Static files (must be LAST so API routes match first) ─────────

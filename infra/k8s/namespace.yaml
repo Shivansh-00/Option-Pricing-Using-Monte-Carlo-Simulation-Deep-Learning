@@ -1,0 +1,45 @@
+# ══════════════════════════════════════════════════════════════
+#  OptiQuant — Kubernetes Namespace
+# ══════════════════════════════════════════════════════════════
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: optiquant
+  labels:
+    app.kubernetes.io/name: optiquant
+    app.kubernetes.io/part-of: optiquant-platform
+    environment: production
+  annotations:
+    description: "OptiQuant Quant Intelligence Platform"
+---
+# Resource Quota
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: optiquant-quota
+  namespace: optiquant
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: 32Gi
+    limits.cpu: "32"
+    limits.memory: 64Gi
+    pods: "50"
+    services: "20"
+    persistentvolumeclaims: "10"
+---
+# Limit Range (defaults for pods)
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: optiquant-limits
+  namespace: optiquant
+spec:
+  limits:
+    - default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      type: Container

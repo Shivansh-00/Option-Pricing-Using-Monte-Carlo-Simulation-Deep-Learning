@@ -250,3 +250,84 @@ class RAGStatsResponse(BaseModel):
     queries_served: int
     avg_search_ms: float
     cache_hit_rate: float
+
+
+# ────────────────────────────────────────────────────────────────
+#  Quant Intelligence Engine — Market Routes Schemas
+# ────────────────────────────────────────────────────────────────
+
+class MispricingDetectRequest(BaseModel):
+    spot: float = Field(100, gt=0)
+    strike: float = Field(100, gt=0)
+    maturity: float = Field(1.0, gt=0)
+    rate: float = Field(0.05)
+    volatility: float = Field(0.2, gt=0)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    market_price: float = Field(..., gt=0, description="Observed market price of the option")
+    bid: float = Field(0.0, ge=0)
+    ask: float = Field(0.0, ge=0)
+    pricing_model: str = Field("black_scholes", pattern="^(black_scholes|monte_carlo|heston)$")
+    significance_threshold: float = Field(2.0, ge=0.5, le=5.0)
+    min_deviation_pct: float = Field(2.0, ge=0.5, le=20.0)
+
+
+class MispricingScanRequest(BaseModel):
+    symbol: str = Field("SPY", min_length=1, max_length=10)
+    pricing_model: str = Field("black_scholes", pattern="^(black_scholes|monte_carlo|heston)$")
+    significance_threshold: float = Field(2.0, ge=0.5, le=5.0)
+    min_deviation_pct: float = Field(2.0, ge=0.5, le=20.0)
+
+
+class RegimeDetectRequest(BaseModel):
+    returns: list[float] = Field(..., min_length=10, description="Recent daily/intraday returns")
+    vix: float = Field(20.0, ge=5, le=100)
+
+
+class ConfidenceRequest(BaseModel):
+    spot: float = Field(100, gt=0)
+    strike: float = Field(100, gt=0)
+    maturity: float = Field(1.0, gt=0)
+    rate: float = Field(0.05)
+    volatility: float = Field(0.2, gt=0)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    confidence_level: float = Field(0.95, ge=0.80, le=0.999)
+    n_bootstrap: int = Field(20, ge=5, le=100)
+
+
+class VaRRequest(BaseModel):
+    spot: float = Field(100, gt=0)
+    strike: float = Field(100, gt=0)
+    maturity: float = Field(1.0, gt=0)
+    rate: float = Field(0.05)
+    volatility: float = Field(0.2, gt=0)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    position_size: float = Field(100.0, gt=0)
+    horizon_days: int = Field(1, ge=1, le=30)
+
+
+class ReliabilityRequest(BaseModel):
+    spot: float = Field(100, gt=0)
+    strike: float = Field(100, gt=0)
+    maturity: float = Field(1.0, gt=0)
+    rate: float = Field(0.05)
+    volatility: float = Field(0.2, gt=0)
+    option_type: str = Field("call", pattern="^(call|put)$")
+
+
+class SHAPExplainRequest(BaseModel):
+    spot: float = Field(100, gt=0)
+    strike: float = Field(100, gt=0)
+    maturity: float = Field(1.0, gt=0)
+    rate: float = Field(0.05)
+    volatility: float = Field(0.2, gt=0)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    pricing_model: str = Field("black_scholes", pattern="^(black_scholes|monte_carlo|heston)$")
+
+
+class BenchmarkRequest(BaseModel):
+    spot: float = Field(100, gt=0)
+    strike: float = Field(100, gt=0)
+    maturity: float = Field(1.0, gt=0)
+    rate: float = Field(0.05)
+    volatility: float = Field(0.2, gt=0)
+    option_type: str = Field("call", pattern="^(call|put)$")

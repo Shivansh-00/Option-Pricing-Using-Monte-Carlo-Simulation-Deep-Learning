@@ -1,0 +1,58 @@
+# ══════════════════════════════════════════════════════════════
+#  OptiQuant — ConfigMap & Secrets
+# ══════════════════════════════════════════════════════════════
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: optiquant-config
+  namespace: optiquant
+  labels:
+    app: optiquant
+data:
+  APP_NAME: "OptiQuant"
+  ENV: "production"
+  LOG_LEVEL: "info"
+  HOST: "0.0.0.0"
+  PORT: "8000"
+  CORS_ORIGINS: "https://optiquant.ai,https://www.optiquant.ai"
+  FRONTEND_DIR: "frontend"
+  MODEL_DIR: "models"
+  
+  # RAG Pipeline
+  RAG_TOP_K: "6"
+  RAG_MIN_SCORE: "0.01"
+  RAG_CHUNK_SIZE: "600"
+  RAG_CHUNK_OVERLAP: "120"
+  RAG_CACHE_MAX: "256"
+  RAG_RESPONSE_TTL: "600"
+  RAG_MAX_CONTEXT_CHARS: "6000"
+  RAG_EMBEDDING_BACKEND: "auto"
+  RAG_TFIDF_MAX_FEATURES: "8000"
+  
+  # LLM Rate Limiting
+  LLM_MAX_RPM: "30"
+  LLM_MAX_TPM: "100000"
+  LLM_CB_THRESHOLD: "5"
+  LLM_CB_RECOVERY: "60"
+  
+  # Gemini
+  GEMINI_MODEL: "gemini-2.0-flash"
+  GEMINI_MAX_TOKENS: "512"
+  GEMINI_TEMPERATURE: "0.4"
+---
+# Secrets (base64 encoded in real deployment)
+# Use: kubectl create secret generic optiquant-secrets --from-env-file=.env
+apiVersion: v1
+kind: Secret
+metadata:
+  name: optiquant-secrets
+  namespace: optiquant
+  labels:
+    app: optiquant
+type: Opaque
+stringData:
+  JWT_SECRET: "CHANGE_ME_IN_PRODUCTION"
+  GEMINI_API_KEY: "CHANGE_ME_IN_PRODUCTION"
+  DATABASE_URL: "postgresql://optiquant:password@postgres-svc:5432/optiquant"
+  REDIS_URL: "redis://redis-svc:6379/0"
+  CELERY_BROKER_URL: "redis://redis-svc:6379/1"

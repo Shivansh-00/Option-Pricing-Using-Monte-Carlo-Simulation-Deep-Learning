@@ -1,0 +1,114 @@
+# ══════════════════════════════════════════════════════════════
+#  OptiQuant — Network Policies (Zero-Trust)
+# ══════════════════════════════════════════════════════════════
+
+# Default deny all ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: optiquant
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Backend: allow from ALB ingress + frontend + monitoring
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-ingress
+  namespace: optiquant
+spec:
+  podSelector:
+    matchLabels:
+      app: optiquant-backend
+  policyTypes:
+    - Ingress
+  ingress:
+    # From ALB/Ingress (any source in VPC)
+    - ports:
+        - port: 8000
+          protocol: TCP
+    # From Prometheus (monitoring)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - port: 8000
+          protocol: TCP
+---
+# Frontend: allow from ALB only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-ingress
+  namespace: optiquant
+spec:
+  podSelector:
+    matchLabels:
+      app: optiquant-frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 80
+          protocol: TCP
+---
+# Redis: allow from backend only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-ingress
+  namespace: optiquant
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: optiquant-backend
+      ports:
+        - port: 6379
+          protocol: TCP
+---
+# Backend: restrict egress to DB, Redis, external APIs
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-egress
+  namespace: optiquant
+spec:
+  podSelector:
+    matchLabels:
+      app: optiquant-backend
+  policyTypes:
+    - Egress
+  egress:
+    # DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # PostgreSQL (RDS)
+    - ports:
+        - port: 5432
+          protocol: TCP
+    # Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - port: 6379
+          protocol: TCP
+    # HTTPS outbound (Gemini API, external services)
+    - ports:
+        - port: 443
+          protocol: TCP

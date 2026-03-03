@@ -1,0 +1,39 @@
+# ══════════════════════════════════════════════════════════════
+#  OptiQuant — Terraform Variables Example
+#  Copy to terraform.tfvars and fill in values
+# ══════════════════════════════════════════════════════════════
+
+aws_region  = "us-east-1"
+environment = "production"
+
+# ── VPC ──────────────────────────────────────────────────────
+vpc_cidr             = "10.0.0.0/16"
+private_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+public_subnet_cidrs  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+
+# ── EKS ──────────────────────────────────────────────────────
+eks_cluster_version     = "1.29"
+eks_node_instance_types = ["m6i.xlarge", "m6a.xlarge"]
+eks_node_min_size       = 2
+eks_node_max_size       = 10
+eks_node_desired_size   = 3
+
+# ── RDS ──────────────────────────────────────────────────────
+rds_instance_class        = "db.r6g.large"
+rds_allocated_storage     = 100
+rds_max_allocated_storage = 500
+rds_master_username       = "optiquant_admin"
+rds_master_password       = "CHANGE_ME_IN_PRODUCTION"  # Use AWS Secrets Manager
+rds_multi_az              = true
+
+# ── Redis ────────────────────────────────────────────────────
+redis_node_type          = "cache.r6g.large"
+redis_num_cache_clusters = 3
+
+# ── Domain & TLS ────────────────────────────────────────────
+domain_name         = "optiquant.ai"
+acm_certificate_arn = ""  # Create ACM cert first: aws acm request-certificate
+
+# ── Monitoring ───────────────────────────────────────────────
+enable_monitoring = true
+alarm_email       = "ops@optiquant.ai"

@@ -90,37 +90,46 @@ def validate_password_strength(password: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 def _init_db() -> None:
-    with _get_conn() as conn:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS users (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                username    TEXT    UNIQUE NOT NULL,
-                email       TEXT    UNIQUE NOT NULL,
-                password    TEXT    NOT NULL,
-                full_name   TEXT    DEFAULT '',
-                role        TEXT    DEFAULT 'user',
-                is_active   INTEGER DEFAULT 1,
-                created_at  TEXT    DEFAULT (datetime('now')),
-                last_login  TEXT
-            );
-            CREATE TABLE IF NOT EXISTS token_blacklist (
-                jti         TEXT    PRIMARY KEY,
-                expires_at  TEXT    NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS rate_limits (
-                ip          TEXT    PRIMARY KEY,
-                attempts    INTEGER DEFAULT 0,
-                window_start REAL   NOT NULL
-            );
-        """)
+    for attempt in range(5):
+        try:
+            with _get_conn() as conn:
+                conn.executescript("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username    TEXT    UNIQUE NOT NULL,
+                        email       TEXT    UNIQUE NOT NULL,
+                        password    TEXT    NOT NULL,
+                        full_name   TEXT    DEFAULT '',
+                        role        TEXT    DEFAULT 'user',
+                        is_active   INTEGER DEFAULT 1,
+                        created_at  TEXT    DEFAULT (datetime('now')),
+                        last_login  TEXT
+                    );
+                    CREATE TABLE IF NOT EXISTS token_blacklist (
+                        jti         TEXT    PRIMARY KEY,
+                        expires_at  TEXT    NOT NULL
+                    );
+                    CREATE TABLE IF NOT EXISTS rate_limits (
+                        ip          TEXT    PRIMARY KEY,
+                        attempts    INTEGER DEFAULT 0,
+                        window_start REAL   NOT NULL
+                    );
+                """)
+            return
+        except sqlite3.OperationalError as exc:
+            if "locked" in str(exc).lower() and attempt < 4:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            raise
 
 
 @contextmanager
 def _get_conn() -> Generator[sqlite3.Connection, None, None]:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH), timeout=5)
+    conn = sqlite3.connect(str(DB_PATH), timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA busy_timeout=30000;")
     try:
         yield conn
         conn.commit()

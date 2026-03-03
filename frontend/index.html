@@ -71,6 +71,52 @@
         <div class="nav-item" data-section="explainability" tabindex="0" role="button" title="AI Explainability">
           <span class="icon">◇</span> <span class="nav-text">AI Explainability</span>
         </div>
+
+        <div class="nav-label"><span class="nav-label-text">Quant Engine</span></div>
+        <div class="nav-item" data-section="market-intel" tabindex="0" role="button" title="Market Intelligence">
+          <span class="icon">📡</span> <span class="nav-text">Market Intel</span>
+        </div>
+        <div class="nav-item" data-section="mispricing" tabindex="0" role="button" title="Mispricing Scanner">
+          <span class="icon">🔍</span> <span class="nav-text">Mispricing</span>
+        </div>
+        <div class="nav-item" data-section="regime" tabindex="0" role="button" title="Regime Detection">
+          <span class="icon">📊</span> <span class="nav-text">Regime</span>
+        </div>
+        <div class="nav-item" data-section="shap-explain" tabindex="0" role="button" title="SHAP Explain">
+          <span class="icon">🧠</span> <span class="nav-text">SHAP Explain</span>
+        </div>
+        <div class="nav-item" data-section="benchmark" tabindex="0" role="button" title="Benchmark">
+          <span class="icon">⚡</span> <span class="nav-text">Benchmark</span>
+        </div>
+
+        <div class="nav-label"><span class="nav-label-text">Quant Intelligence</span></div>
+        <div class="nav-item" data-section="quant-dashboard" tabindex="0" role="button" title="Quant Dashboard">
+          <span class="icon">🧬</span> <span class="nav-text">Quant Dashboard</span>
+        </div>
+        <div class="nav-item" data-section="pinns" tabindex="0" role="button" title="PINNs Pricing">
+          <span class="icon">🔬</span> <span class="nav-text">PINNs Pricing</span>
+        </div>
+        <div class="nav-item" data-section="rl-hedging" tabindex="0" role="button" title="RL Hedging">
+          <span class="icon">🤖</span> <span class="nav-text">RL Hedging</span>
+        </div>
+        <div class="nav-item" data-section="vol-surface" tabindex="0" role="button" title="Vol Surface">
+          <span class="icon">🌊</span> <span class="nav-text">Vol Surface</span>
+        </div>
+        <div class="nav-item" data-section="jump-diffusion" tabindex="0" role="button" title="Jump Diffusion">
+          <span class="icon">📈</span> <span class="nav-text">Jump Diffusion</span>
+        </div>
+        <div class="nav-item" data-section="arbitrage" tabindex="0" role="button" title="Arbitrage Scanner">
+          <span class="icon">🎯</span> <span class="nav-text">Arbitrage Scanner</span>
+        </div>
+        <div class="nav-item" data-section="uncertainty" tabindex="0" role="button" title="Uncertainty">
+          <span class="icon">📊</span> <span class="nav-text">Uncertainty</span>
+        </div>
+        <div class="nav-item" data-section="gpu-mc" tabindex="0" role="button" title="GPU Monte Carlo">
+          <span class="icon">🚀</span> <span class="nav-text">GPU Monte Carlo</span>
+        </div>
+        <div class="nav-item" data-section="portfolio-risk" tabindex="0" role="button" title="Portfolio Risk">
+          <span class="icon">🛡️</span> <span class="nav-text">Portfolio Risk</span>
+        </div>
       </nav>
 
       <div class="sidebar-divider" aria-hidden="true"></div>
@@ -135,8 +181,8 @@
             </div>
             <div class="metric-card dash-card">
               <div class="metric-label">Pricing Models</div>
-              <div class="metric-value" id="dashModels">3</div>
-              <div class="metric-sub">BS · MC · DL</div>
+              <div class="metric-value" id="dashModels">6</div>
+              <div class="metric-sub">BS · MC · DL · PINNs · JD · GPU</div>
             </div>
             <div class="metric-card dash-card">
               <div class="metric-label">ML Models</div>
@@ -162,6 +208,7 @@
               <button class="btn btn-secondary dash-action-btn" data-goto="sentiment">◉ Analyze Sentiment</button>
               <button class="btn btn-secondary dash-action-btn" data-goto="risk-analytics">⊘ Risk Analysis</button>
               <button class="btn btn-accent dash-action-btn" data-goto="explainability">◇ Ask AI</button>
+              <button class="btn btn-primary dash-action-btn" data-goto="quant-dashboard">🧬 Quant Engine</button>
             </div>
           </div>
 
@@ -213,6 +260,48 @@
                   <div class="capability-desc">Knowledge-augmented Q&amp;A with BM25+ hybrid retrieval</div>
                 </div>
               </div>
+              <div class="capability-item">
+                <div class="capability-icon">🔬</div>
+                <div>
+                  <div class="capability-title">PINNs Option Pricing</div>
+                  <div class="capability-desc">Physics-informed neural nets with Black-Scholes PDE constraints</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">🤖</div>
+                <div>
+                  <div class="capability-title">RL Dynamic Hedging</div>
+                  <div class="capability-desc">DQN &amp; PPO agents for optimal delta hedging strategies</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">🌊</div>
+                <div>
+                  <div class="capability-title">Transformer Vol Surface</div>
+                  <div class="capability-desc">Self-attention model for implied volatility surface prediction</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">🎯</div>
+                <div>
+                  <div class="capability-title">Arbitrage Detection</div>
+                  <div class="capability-desc">Multi-dimensional scanner: PCP, butterfly, calendar, box spread</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">🚀</div>
+                <div>
+                  <div class="capability-title">GPU Monte Carlo</div>
+                  <div class="capability-desc">CUDA-accelerated MC with GBM, Heston &amp; Merton models</div>
+                </div>
+              </div>
+              <div class="capability-item">
+                <div class="capability-icon">🛡️</div>
+                <div>
+                  <div class="capability-title">Portfolio Risk Engine</div>
+                  <div class="capability-desc">VaR, stress testing, regime scenario analysis</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -222,12 +311,14 @@
               <div class="card-title"><span class="icon">ℹ️</span> System Info</div>
             </div>
             <div class="dash-info-grid">
-              <div class="dash-info-item"><span class="dash-info-label">Version</span><span class="dash-info-value">v2.0.0</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">Version</span><span class="dash-info-value">v3.0.0</span></div>
               <div class="dash-info-item"><span class="dash-info-label">Backend</span><span class="dash-info-value">FastAPI + Uvicorn</span></div>
               <div class="dash-info-item"><span class="dash-info-label">Frontend</span><span class="dash-info-value">Vanilla JS + Chart.js</span></div>
               <div class="dash-info-item"><span class="dash-info-label">ML Framework</span><span class="dash-info-value">NumPy + Scikit-learn</span></div>
-              <div class="dash-info-item"><span class="dash-info-label">DL Engine</span><span class="dash-info-value">Custom LSTM + Transformer</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">DL Engine</span><span class="dash-info-value">Custom LSTM + Transformer + PINNs</span></div>
               <div class="dash-info-item"><span class="dash-info-label">RAG</span><span class="dash-info-value">BM25+ / TF-IDF Hybrid</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">Quant Engine</span><span class="dash-info-value">9 Modules (PINNs, RL, GPU MC, …)</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">GPU Support</span><span class="dash-info-value">Optional PyTorch CUDA</span></div>
             </div>
           </div>
         </div>
@@ -953,6 +1044,678 @@
               </div>
             </div>
             <div class="source-list" id="sourceList"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 9. MARKET INTELLIGENCE ═══════════ -->
+        <div class="section" id="sec-market-intel">
+          <div class="section-header">
+            <div class="section-title">📡 Market Intelligence</div>
+            <div class="section-desc">Real-time market data, option chains &amp; live streaming</div>
+          </div>
+
+          <div class="metrics-row" id="marketMetrics">
+            <div class="metric-card dash-card">
+              <div class="metric-label">SPY Price</div>
+              <div class="metric-value highlight" id="mktPrice">—</div>
+              <div class="metric-sub" id="mktBidAsk">Bid/Ask: —</div>
+            </div>
+            <div class="metric-card dash-card">
+              <div class="metric-label">VIX</div>
+              <div class="metric-value" id="mktVix">—</div>
+              <div class="metric-sub">Volatility Index</div>
+            </div>
+            <div class="metric-card dash-card">
+              <div class="metric-label">Pipeline</div>
+              <div class="metric-value" id="mktPipelineStatus">—</div>
+              <div class="metric-sub">Data Health</div>
+            </div>
+            <div class="metric-card dash-card">
+              <div class="metric-label">Stream</div>
+              <div class="metric-value" id="mktStreamStatus">Disconnected</div>
+              <div class="metric-sub" id="mktStreamTicks">0 ticks</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">📡</span> Live Market Feed</div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="mktFetchBtn">📥 Fetch Snapshot</button>
+              <button class="btn btn-secondary" id="mktStreamBtn">🔴 Start Stream</button>
+              <button class="btn btn-secondary" id="mktStopStreamBtn" disabled>⏹ Stop Stream</button>
+            </div>
+            <div class="result-block" id="mktStreamLog" style="margin-top:0.75rem;max-height:300px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.75rem;display:none"></div>
+          </div>
+
+          <div class="card" style="margin-top:0.75rem">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">📋</span> Option Chain</div>
+            </div>
+            <div id="mktChainContainer" style="overflow-x:auto">
+              <table class="data-table" id="mktChainTable" style="display:none">
+                <thead>
+                  <tr>
+                    <th>Strike</th><th>Type</th><th>Bid</th><th>Ask</th>
+                    <th>Mid</th><th>IV</th><th>Volume</th><th>OI</th><th>Moneyness</th>
+                  </tr>
+                </thead>
+                <tbody id="mktChainBody"></tbody>
+              </table>
+              <div id="mktChainPlaceholder" class="placeholder-text">Click "Fetch Snapshot" to load option chain</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 10. MISPRICING SCANNER ═══════════ -->
+        <div class="section" id="sec-mispricing">
+          <div class="section-header">
+            <div class="section-title">🔍 Mispricing Scanner</div>
+            <div class="section-desc">Detect arbitrage opportunities &amp; pricing anomalies in real time</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">🔍</span> Single Contract Check</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="mispSpot">Spot ($)</label>
+                <input type="number" id="mispSpot" value="100" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="mispStrike">Strike ($)</label>
+                <input type="number" id="mispStrike" value="100" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="mispMaturity">Maturity (yr)</label>
+                <input type="number" id="mispMaturity" value="0.25" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="mispVol">Volatility</label>
+                <input type="number" id="mispVol" value="0.2" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="mispRate">Rate</label>
+                <input type="number" id="mispRate" value="0.05" step="0.001" />
+              </div>
+              <div class="field">
+                <label for="mispType">Type</label>
+                <select id="mispType"><option value="call">Call</option><option value="put">Put</option></select>
+              </div>
+              <div class="field">
+                <label for="mispMarket">Market Price ($)</label>
+                <input type="number" id="mispMarket" value="10.50" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="mispModel">Pricing Model</label>
+                <select id="mispModel">
+                  <option value="black_scholes">Black-Scholes</option>
+                  <option value="monte_carlo">Monte Carlo</option>
+                  <option value="heston">Heston</option>
+                </select>
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="mispDetectBtn">🔍 Detect Mispricing</button>
+              <button class="btn btn-secondary" id="mispScanBtn">🔎 Full Chain Scan</button>
+            </div>
+          </div>
+
+          <div id="mispResults" style="display:none;margin-top:1rem">
+            <div class="metrics-row">
+              <div class="metric-card">
+                <div class="metric-label">Direction</div>
+                <div class="metric-value highlight" id="mispDirection">—</div>
+                <div class="metric-sub" id="mispModel_used">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Deviation</div>
+                <div class="metric-value" id="mispDeviation">—</div>
+                <div class="metric-sub" id="mispDevDollar">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Z-Score</div>
+                <div class="metric-value" id="mispZScore">—</div>
+                <div class="metric-sub" id="mispSignificant">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Signal Strength</div>
+                <div class="metric-value" id="mispStrength">—</div>
+                <div class="metric-sub" id="mispConfidence">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="mispScanResults" style="display:none;margin-top:1rem">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">📊</span> Scan Results</div>
+              </div>
+              <div class="metrics-row" id="mispScanMetrics"></div>
+              <div style="overflow-x:auto">
+                <table class="data-table" id="mispScanTable">
+                  <thead>
+                    <tr>
+                      <th>Strike</th><th>Type</th><th>Direction</th><th>Dev%</th>
+                      <th>Z-Score</th><th>Strength</th><th>Model</th><th>Significant</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mispScanBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 11. REGIME DETECTION ═══════════ -->
+        <div class="section" id="sec-regime">
+          <div class="section-header">
+            <div class="section-title">📊 Regime Detection</div>
+            <div class="section-desc">Hidden Markov Model regime identification for dynamic model selection</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">📊</span> Detect Current Regime</div>
+            </div>
+            <div class="form-grid">
+              <div class="field" style="grid-column: span 2">
+                <label for="regimeReturns">Recent Returns (comma-separated, ≥10 values)</label>
+                <input type="text" id="regimeReturns" placeholder="0.01, -0.02, 0.005, -0.008, ..." value="0.012,-0.008,0.015,-0.003,0.009,-0.012,0.007,0.001,-0.006,0.018,-0.009,0.011,-0.004,0.016,-0.007,0.003,-0.015,0.008,-0.002,0.014" />
+              </div>
+              <div class="field">
+                <label for="regimeVix">VIX Level</label>
+                <input type="number" id="regimeVix" value="20" step="0.5" min="5" max="100" />
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="regimeDetectBtn">📊 Detect Regime</button>
+            </div>
+          </div>
+
+          <div id="regimeResults" style="display:none;margin-top:1rem">
+            <div class="metrics-row">
+              <div class="metric-card">
+                <div class="metric-label">Current Regime</div>
+                <div class="metric-value highlight" id="regimeLabel">—</div>
+                <div class="metric-sub" id="regimeDuration">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Probability</div>
+                <div class="metric-value" id="regimeProb">—</div>
+                <div class="metric-sub" id="regimeConf">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Risk Level</div>
+                <div class="metric-value" id="regimeRisk">—</div>
+                <div class="metric-sub" id="regimeModel">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Vol Adjustment</div>
+                <div class="metric-value" id="regimeVolAdj">—</div>
+                <div class="metric-sub">Multiplier</div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:0.75rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">🔄</span> Transition Probabilities</div>
+              </div>
+              <div id="regimeTransition" class="transition-matrix"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 12. SHAP EXPLAIN ═══════════ -->
+        <div class="section" id="sec-shap-explain">
+          <div class="section-header">
+            <div class="section-title">🧠 SHAP Explainability</div>
+            <div class="section-desc">Permutation-based feature attribution &amp; model-agnostic pricing explanation</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">🧠</span> Explain Pricing</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="shapSpot">Spot ($)</label>
+                <input type="number" id="shapSpot" value="100" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="shapStrike">Strike ($)</label>
+                <input type="number" id="shapStrike" value="105" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="shapMaturity">Maturity (yr)</label>
+                <input type="number" id="shapMaturity" value="1" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="shapVol">Volatility</label>
+                <input type="number" id="shapVol" value="0.2" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="shapRate">Rate</label>
+                <input type="number" id="shapRate" value="0.05" step="0.001" />
+              </div>
+              <div class="field">
+                <label for="shapType">Option Type</label>
+                <select id="shapType"><option value="call">Call</option><option value="put">Put</option></select>
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="shapExplainBtn">🧠 Explain</button>
+            </div>
+          </div>
+
+          <div id="shapResults" style="display:none;margin-top:1rem">
+            <div class="metrics-row">
+              <div class="metric-card">
+                <div class="metric-label">Base Price</div>
+                <div class="metric-value" id="shapBase">—</div>
+                <div class="metric-sub">Baseline (avg)</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Predicted Price</div>
+                <div class="metric-value highlight" id="shapPredicted">—</div>
+                <div class="metric-sub" id="shapModel">—</div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:0.75rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">📊</span> Feature Attributions (SHAP)</div>
+              </div>
+              <div id="shapWaterfall"></div>
+            </div>
+
+            <div class="card" style="margin-top:0.75rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">📝</span> Narrative Explanation</div>
+              </div>
+              <div id="shapNarrative" class="result-block" style="white-space:pre-wrap"></div>
+            </div>
+
+            <div class="card" style="margin-top:0.75rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">📉</span> Sensitivity: Volatility</div>
+              </div>
+              <div id="shapVolSens"></div>
+            </div>
+
+            <div class="card" style="margin-top:0.75rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">⏰</span> Time Decay Profile</div>
+              </div>
+              <div id="shapTimeDecay"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ 13. PERFORMANCE BENCHMARK ═══════════ -->
+        <div class="section" id="sec-benchmark">
+          <div class="section-header">
+            <div class="section-title">⚡ Performance Benchmark</div>
+            <div class="section-desc">Comprehensive latency profiling, path scaling &amp; throughput analysis</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">⚡</span> Run Benchmark Suite</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="benchSpot">Spot ($)</label>
+                <input type="number" id="benchSpot" value="100" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="benchStrike">Strike ($)</label>
+                <input type="number" id="benchStrike" value="100" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="benchMaturity">Maturity (yr)</label>
+                <input type="number" id="benchMaturity" value="1" step="0.01" min="0.01" />
+              </div>
+              <div class="field">
+                <label for="benchVol">Volatility</label>
+                <input type="number" id="benchVol" value="0.2" step="0.01" min="0.01" />
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="benchRunBtn">⚡ Run Full Benchmark</button>
+            </div>
+            <div class="btn-note" style="font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem">This may take 15-30 seconds</div>
+          </div>
+
+          <div id="benchResults" style="display:none;margin-top:1rem">
+            <div class="metrics-row" id="benchSummary"></div>
+
+            <div class="card" style="margin-top:0.75rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">📈</span> Path Scaling</div>
+              </div>
+              <div style="overflow-x:auto">
+                <table class="data-table">
+                  <thead><tr><th>Paths</th><th>Price</th><th>Std Error</th><th>Time (ms)</th><th>Throughput</th><th>BS Error</th></tr></thead>
+                  <tbody id="benchPathBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:0.75rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">🔬</span> Method Comparison</div>
+              </div>
+              <div style="overflow-x:auto">
+                <table class="data-table">
+                  <thead><tr><th>Method</th><th>Price</th><th>Std Error</th><th>Time (ms)</th><th>Throughput</th><th>BS Error</th></tr></thead>
+                  <tbody id="benchMethodBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:0.75rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">⏱</span> Latency Profiles</div>
+              </div>
+              <div style="overflow-x:auto">
+                <table class="data-table">
+                  <thead><tr><th>Component</th><th>Mean (ms)</th><th>P50</th><th>P95</th><th>P99</th><th>Min</th><th>Max</th></tr></thead>
+                  <tbody id="benchLatencyBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:0.75rem">
+              <div class="card-header">
+                <div class="card-title"><span class="icon">💡</span> Recommendations</div>
+              </div>
+              <div id="benchRecommendations" class="result-block"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ QUANT DASHBOARD ═══════════ -->
+        <div class="section" id="sec-quant-dashboard">
+          <div class="section-header">
+            <div class="section-title">🧬 Quant Intelligence Ecosystem</div>
+            <div class="section-desc">Unified view of all advanced quantitative modules — PINNs, RL Hedging, Vol Surface, Jump Diffusion, Arbitrage, Uncertainty, GPU MC, Portfolio Risk</div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">📡</span> Ecosystem Status</div>
+              <button class="btn btn-primary btn-sm" id="quantStatusBtn">⟳ Refresh Status</button>
+            </div>
+            <div class="metrics-row" id="quantStatusMetrics">
+              <div class="metric-card"><div class="metric-label">Active Modules</div><div class="metric-value highlight" id="quantActiveModules">—</div></div>
+              <div class="metric-card"><div class="metric-label">GPU Available</div><div class="metric-value" id="quantGPU">—</div></div>
+              <div class="metric-card"><div class="metric-label">System Health</div><div class="metric-value" id="quantHealth">—</div></div>
+              <div class="metric-card"><div class="metric-label">Total Modules</div><div class="metric-value" id="quantTotal">9</div></div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0.75rem">
+            <div class="card-header"><div class="card-title"><span class="icon">🧩</span> Module Details</div></div>
+            <div id="quantModuleGrid" class="dash-capabilities"></div>
+          </div>
+          <div class="card" style="margin-top:0.75rem">
+            <div class="card-header"><div class="card-title"><span class="icon">⚡</span> Quick Launch</div></div>
+            <div class="dash-actions">
+              <button class="btn btn-primary dash-action-btn" data-goto="pinns">🔬 PINNs Pricing</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="rl-hedging">🤖 RL Hedging</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="vol-surface">🌊 Vol Surface</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="jump-diffusion">📈 Jump Diffusion</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="arbitrage">🎯 Arbitrage Scan</button>
+              <button class="btn btn-accent dash-action-btn" data-goto="gpu-mc">🚀 GPU MC</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ PINNs PRICING ═══════════ -->
+        <div class="section" id="sec-pinns">
+          <div class="section-header">
+            <div class="section-title">🔬 Physics-Informed Neural Networks</div>
+            <div class="section-desc">PDE-constrained deep learning for option pricing — Black-Scholes residual in loss function</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> PINNs Configuration</div></div>
+            <div class="form-grid">
+              <div class="field"><label for="pinnsSpot">Spot Price ($)</label><input type="number" id="pinnsSpot" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="pinnsStrike">Strike ($)</label><input type="number" id="pinnsStrike" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="pinnsMaturity">Maturity (years)</label><input type="number" id="pinnsMaturity" value="1" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="pinnsRate">Risk-Free Rate</label><input type="number" id="pinnsRate" value="0.05" step="0.001" /></div>
+              <div class="field"><label for="pinnsVol">Volatility (σ)</label><input type="number" id="pinnsVol" value="0.2" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="pinnsType">Option Type</label><select id="pinnsType"><option value="call">Call</option><option value="put">Put</option></select></div>
+              <div class="field"><label for="pinnsEpochs">Training Epochs</label><input type="number" id="pinnsEpochs" value="200" step="10" min="10" /></div>
+              <div class="field"><label for="pinnsSamples">Training Samples</label><input type="number" id="pinnsSamples" value="5000" step="500" min="500" /></div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="pinnsTrainBtn">🧠 Train PINNs</button>
+              <button class="btn btn-secondary" id="pinnsPredictBtn">⚡ Predict</button>
+              <button class="btn btn-secondary" id="pinnsGreeksBtn">Δ Greeks</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0.75rem;display:none" id="pinnsResults">
+            <div class="card-header"><div class="card-title"><span class="icon">📊</span> PINNs Results</div></div>
+            <div class="metrics-row" id="pinnsMetrics"></div>
+            <div id="pinnsNarrative" class="result-block" style="margin-top:0.5rem"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════ RL HEDGING ═══════════ -->
+        <div class="section" id="sec-rl-hedging">
+          <div class="section-header">
+            <div class="section-title">🤖 Reinforcement Learning Dynamic Hedging</div>
+            <div class="section-desc">DQN & PPO agents for optimal delta hedging — outperforms Black-Scholes in volatile regimes</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Hedging Parameters</div></div>
+            <div class="form-grid">
+              <div class="field"><label for="hedgeSpot">Spot ($)</label><input type="number" id="hedgeSpot" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="hedgeStrike">Strike ($)</label><input type="number" id="hedgeStrike" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="hedgeMaturity">Maturity (years)</label><input type="number" id="hedgeMaturity" value="0.25" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="hedgeVol">Volatility (σ)</label><input type="number" id="hedgeVol" value="0.2" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="hedgeRate">Rate</label><input type="number" id="hedgeRate" value="0.05" step="0.001" /></div>
+              <div class="field"><label for="hedgeAgent">Agent Type</label><select id="hedgeAgent"><option value="dqn">DQN</option><option value="ppo">PPO</option></select></div>
+              <div class="field"><label for="hedgeEpisodes">Episodes</label><input type="number" id="hedgeEpisodes" value="500" step="50" min="50" /></div>
+              <div class="field"><label for="hedgeScenarios">Backtest Scenarios</label><input type="number" id="hedgeScenarios" value="100" step="10" min="10" /></div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="hedgeTrainBtn">🧠 Train Agent</button>
+              <button class="btn btn-secondary" id="hedgeBacktestBtn">📊 Backtest</button>
+              <button class="btn btn-accent" id="hedgeSuggestBtn">💡 Suggest Hedge</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0.75rem;display:none" id="hedgeResults">
+            <div class="card-header"><div class="card-title"><span class="icon">📈</span> Hedging Results</div></div>
+            <div class="metrics-row" id="hedgeMetrics"></div>
+            <div id="hedgeNarrative" class="result-block" style="margin-top:0.5rem"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════ VOL SURFACE ═══════════ -->
+        <div class="section" id="sec-vol-surface">
+          <div class="section-header">
+            <div class="section-title">🌊 Transformer Vol Surface</div>
+            <div class="section-desc">Self-attention model predicting full implied volatility surfaces with arbitrage constraints</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Surface Parameters</div></div>
+            <div class="form-grid">
+              <div class="field"><label for="vsSpot">Spot ($)</label><input type="number" id="vsSpot" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="vsRate">Rate</label><input type="number" id="vsRate" value="0.05" step="0.001" /></div>
+              <div class="field"><label for="vsBaseVol">Base Vol (σ)</label><input type="number" id="vsBaseVol" value="0.2" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="vsRegime">Regime</label><select id="vsRegime"><option value="0">Bull</option><option value="1">Bear</option><option value="2">Crisis</option></select></div>
+              <div class="field"><label for="vsEpochs">Train Epochs</label><input type="number" id="vsEpochs" value="100" step="10" min="10" /></div>
+              <div class="field"><label for="vsSamples">Train Samples</label><input type="number" id="vsSamples" value="500" step="50" min="50" /></div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="vsTrainBtn">🧠 Train Model</button>
+              <button class="btn btn-secondary" id="vsPredictBtn">🌊 Predict Surface</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0.75rem;display:none" id="vsResults">
+            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Vol Surface</div></div>
+            <div class="metrics-row" id="vsMetrics"></div>
+            <div style="margin-top:0.75rem"><canvas id="vsChart" height="300"></canvas></div>
+            <div id="vsNarrative" class="result-block" style="margin-top:0.5rem"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════ JUMP DIFFUSION ═══════════ -->
+        <div class="section" id="sec-jump-diffusion">
+          <div class="section-header">
+            <div class="section-title">📈 Jump Diffusion & Regime Switching</div>
+            <div class="section-desc">Merton jump-diffusion pricing with HMM regime detection — Bull, Bear, Crisis</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Parameters</div></div>
+            <div class="form-grid">
+              <div class="field"><label for="jdSpot">Spot ($)</label><input type="number" id="jdSpot" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="jdStrike">Strike ($)</label><input type="number" id="jdStrike" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="jdMaturity">Maturity (years)</label><input type="number" id="jdMaturity" value="1" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="jdRate">Rate</label><input type="number" id="jdRate" value="0.05" step="0.001" /></div>
+              <div class="field"><label for="jdVol">Volatility (σ)</label><input type="number" id="jdVol" value="0.2" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="jdType">Option Type</label><select id="jdType"><option value="call">Call</option><option value="put">Put</option></select></div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="jdPriceBtn">💰 Price Option</button>
+              <button class="btn btn-secondary" id="jdScenarioBtn">📊 Scenario Analysis</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0.75rem;display:none" id="jdResults">
+            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Jump Diffusion Results</div></div>
+            <div class="metrics-row" id="jdMetrics"></div>
+            <div id="jdNarrative" class="result-block" style="margin-top:0.5rem"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════ ARBITRAGE SCANNER ═══════════ -->
+        <div class="section" id="sec-arbitrage">
+          <div class="section-header">
+            <div class="section-title">🎯 Arbitrage Detection Engine</div>
+            <div class="section-desc">Multi-dimensional arbitrage scanning — Put-Call Parity, Calendar, Butterfly, Box Spread, Vol Consistency</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Scan Parameters</div></div>
+            <div class="form-grid">
+              <div class="field"><label for="arbSpot">Spot ($)</label><input type="number" id="arbSpot" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="arbRate">Rate</label><input type="number" id="arbRate" value="0.05" step="0.001" /></div>
+              <div class="field"><label for="arbN">Num Options</label><input type="number" id="arbN" value="20" step="5" min="5" /></div>
+              <div class="field"><label for="arbRegime">Regime</label><select id="arbRegime"><option value="0">Bull</option><option value="1">Bear</option><option value="2">Crisis</option></select></div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="arbScanBtn">🎯 Full Scan</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0.75rem;display:none" id="arbResults">
+            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Arbitrage Signals</div></div>
+            <div class="metrics-row" id="arbMetrics"></div>
+            <div style="overflow-x:auto;margin-top:0.5rem">
+              <table class="data-table">
+                <thead><tr><th>Type</th><th>Strength</th><th>Profit</th><th>Risk</th><th>Action</th></tr></thead>
+                <tbody id="arbSignalBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ UNCERTAINTY ═══════════ -->
+        <div class="section" id="sec-uncertainty">
+          <div class="section-header">
+            <div class="section-title">📊 Uncertainty Quantification</div>
+            <div class="section-desc">Bayesian NN + MC Dropout for epistemic & aleatoric uncertainty decomposition</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Parameters</div></div>
+            <div class="form-grid">
+              <div class="field"><label for="uqSpot">Spot ($)</label><input type="number" id="uqSpot" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="uqStrike">Strike ($)</label><input type="number" id="uqStrike" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="uqMaturity">Maturity (years)</label><input type="number" id="uqMaturity" value="1" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="uqRate">Rate</label><input type="number" id="uqRate" value="0.05" step="0.001" /></div>
+              <div class="field"><label for="uqVol">Volatility (σ)</label><input type="number" id="uqVol" value="0.2" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="uqType">Option Type</label><select id="uqType"><option value="call">Call</option><option value="put">Put</option></select></div>
+              <div class="field"><label for="uqSamples">Samples</label><input type="number" id="uqSamples" value="100" step="10" min="10" /></div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="uqQuantifyBtn">📊 Quantify Uncertainty</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0.75rem;display:none" id="uqResults">
+            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Uncertainty Analysis</div></div>
+            <div class="metrics-row" id="uqMetrics"></div>
+            <div id="uqNarrative" class="result-block" style="margin-top:0.5rem"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════ GPU MONTE CARLO ═══════════ -->
+        <div class="section" id="sec-gpu-mc">
+          <div class="section-header">
+            <div class="section-title">🚀 GPU-Accelerated Monte Carlo</div>
+            <div class="section-desc">PyTorch CUDA-accelerated MC — GBM, Heston, Merton models with variance reduction</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> GPU MC Parameters</div></div>
+            <div class="form-grid">
+              <div class="field"><label for="gmcSpot">Spot ($)</label><input type="number" id="gmcSpot" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="gmcStrike">Strike ($)</label><input type="number" id="gmcStrike" value="100" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="gmcMaturity">Maturity (years)</label><input type="number" id="gmcMaturity" value="1" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="gmcRate">Rate</label><input type="number" id="gmcRate" value="0.05" step="0.001" /></div>
+              <div class="field"><label for="gmcVol">Vol (σ)</label><input type="number" id="gmcVol" value="0.2" step="0.01" min="0.01" /></div>
+              <div class="field"><label for="gmcType">Option Type</label><select id="gmcType"><option value="call">Call</option><option value="put">Put</option></select></div>
+              <div class="field"><label for="gmcPaths">Paths</label><input type="number" id="gmcPaths" value="100000" step="10000" min="1000" /></div>
+              <div class="field"><label for="gmcModel">Model</label><select id="gmcModel"><option value="gbm">GBM</option><option value="heston">Heston</option><option value="merton">Merton</option></select></div>
+              <div class="field"><label for="gmcVR">Variance Reduction</label><select id="gmcVR"><option value="antithetic">Antithetic</option><option value="control_variate">Control Variate</option><option value="stratified">Stratified</option><option value="none">None</option></select></div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="gmcPriceBtn">🚀 Price (GPU)</button>
+              <button class="btn btn-secondary" id="gmcBenchBtn">⚡ Benchmark</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0.75rem;display:none" id="gmcResults">
+            <div class="card-header"><div class="card-title"><span class="icon">📊</span> GPU MC Results</div></div>
+            <div class="metrics-row" id="gmcMetrics"></div>
+            <div id="gmcNarrative" class="result-block" style="margin-top:0.5rem"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════ PORTFOLIO RISK ═══════════ -->
+        <div class="section" id="sec-portfolio-risk">
+          <div class="section-header">
+            <div class="section-title">🛡️ Portfolio Risk Dashboard</div>
+            <div class="section-desc">Multi-option portfolio risk — VaR, stress testing, regime scenario analysis</div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon">📋</span> Portfolio Positions</div>
+              <button class="btn btn-secondary btn-sm" id="pfAddPositionBtn">+ Add Position</button>
+            </div>
+            <div id="pfPositions">
+              <div class="form-grid pf-position" data-idx="0">
+                <div class="field"><label>Spot ($)</label><input type="number" class="pfSpot" value="100" step="0.01" min="0.01" /></div>
+                <div class="field"><label>Strike ($)</label><input type="number" class="pfStrike" value="100" step="0.01" min="0.01" /></div>
+                <div class="field"><label>Maturity</label><input type="number" class="pfMaturity" value="1" step="0.01" min="0.01" /></div>
+                <div class="field"><label>Vol (σ)</label><input type="number" class="pfVol" value="0.2" step="0.01" min="0.01" /></div>
+                <div class="field"><label>Type</label><select class="pfType"><option value="call">Call</option><option value="put">Put</option></select></div>
+                <div class="field"><label>Quantity</label><input type="number" class="pfQty" value="10" step="1" /></div>
+              </div>
+            </div>
+            <div class="btn-group" style="margin-top:0.75rem">
+              <button class="btn btn-primary" id="pfRiskReportBtn">🛡️ Full Risk Report</button>
+              <button class="btn btn-secondary" id="pfStressBtn">⚠️ Stress Test</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0.75rem;display:none" id="pfResults">
+            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Risk Report</div></div>
+            <div class="metrics-row" id="pfMetrics"></div>
+            <div style="overflow-x:auto;margin-top:0.5rem">
+              <table class="data-table">
+                <thead><tr><th>Scenario</th><th>P&L</th><th>P&L %</th><th>New Value</th></tr></thead>
+                <tbody id="pfStressBody"></tbody>
+              </table>
+            </div>
+            <div id="pfNarrative" class="result-block" style="margin-top:0.5rem"></div>
           </div>
         </div>
       </div>

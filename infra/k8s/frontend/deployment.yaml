@@ -1,0 +1,105 @@
+# ══════════════════════════════════════════════════════════════
+#  OptiQuant Frontend — Kubernetes Deployment
+# ══════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: optiquant-frontend
+  namespace: optiquant
+  labels:
+    app: optiquant-frontend
+    tier: web
+    version: v2.0.0
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: optiquant-frontend
+  template:
+    metadata:
+      labels:
+        app: optiquant-frontend
+        tier: web
+        version: v2.0.0
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: false  # nginx needs root for port 80
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - optiquant-frontend
+                topologyKey: kubernetes.io/hostname
+      
+      containers:
+        - name: frontend
+          image: ECR_REPO_URL/optiquant/frontend:latest  # Replace with actual ECR URL
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+          
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: optiquant-frontend-svc
+  namespace: optiquant
+  labels:
+    app: optiquant-frontend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: optiquant-frontend

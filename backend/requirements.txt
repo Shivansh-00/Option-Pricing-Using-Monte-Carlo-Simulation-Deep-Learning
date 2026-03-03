@@ -8,6 +8,10 @@ scipy>=1.11.0
 PyPDF2==3.0.1
 PyJWT==2.9.0
 httpx==0.28.1
+prometheus-client==0.21.0
+
+# Optional: GPU-accelerated Monte Carlo & deep learning (falls back to NumPy CPU)
+# torch>=2.0.0
 
 # Optional: GPU-accelerated dense embeddings (falls back to TF-IDF if absent)
 # sentence-transformers>=2.2.2

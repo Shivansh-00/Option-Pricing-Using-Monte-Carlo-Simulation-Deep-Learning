@@ -193,7 +193,16 @@ const sections = {
   'ml-volatility':{ title: 'ML Volatility',         sub: 'Implied volatility prediction' },
   sentiment:      { title: 'Market Sentiment',      sub: 'Financial news NLP analysis' },
   'risk-analytics':{ title: 'Risk Analytics',       sub: 'VaR & risk decomposition' },
-  explainability: { title: 'AI Explainability',     sub: 'RAG-powered Q&A engine' }
+  explainability: { title: 'AI Explainability',     sub: 'RAG-powered Q&A engine' },
+  'quant-dashboard': { title: 'Quant Intelligence', sub: 'Unified quant ecosystem status' },
+  pinns:          { title: 'PINNs Pricing',         sub: 'Physics-informed neural network pricing' },
+  'rl-hedging':   { title: 'RL Hedging',            sub: 'Reinforcement learning dynamic hedging' },
+  'vol-surface':  { title: 'Vol Surface',            sub: 'Transformer implied vol surface' },
+  'jump-diffusion': { title: 'Jump Diffusion',      sub: 'Merton model & regime switching' },
+  arbitrage:      { title: 'Arbitrage Scanner',      sub: 'Multi-dimensional arbitrage detection' },
+  uncertainty:    { title: 'Uncertainty',             sub: 'Bayesian uncertainty quantification' },
+  'gpu-mc':       { title: 'GPU Monte Carlo',        sub: 'CUDA-accelerated MC pricing' },
+  'portfolio-risk': { title: 'Portfolio Risk',       sub: 'Portfolio VaR & stress testing' },
 };
 
 const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
@@ -1356,3 +1365,949 @@ async function calculateVaR() {
 
 // ── 22. Initialization ────────────────────────────────────────
 console.log('%c◈ OptionQuant v2.0 loaded', 'color:#6d5cff;font-size:14px;font-weight:700');
+
+// ═══════════════════════════════════════════════════════════════
+//  QUANT INTELLIGENCE ENGINE — New Sections
+// ═══════════════════════════════════════════════════════════════
+
+// ── 23. Market Intelligence ───────────────────────────────────
+let _marketWs = null;
+let _marketTicks = 0;
+
+$('mktFetchBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const snap = await apiGet('/api/v1/market/snapshot/SPY');
+    if (!snap) return;
+    $('mktPrice').textContent = '$' + Number(snap.quote.price).toFixed(2);
+    $('mktBidAsk').textContent = `Bid: $${Number(snap.quote.bid).toFixed(2)} / Ask: $${Number(snap.quote.ask).toFixed(2)}`;
+    $('mktVix').textContent = Number(snap.vix).toFixed(1);
+
+    // Option chain table
+    const allContracts = [...(snap.chain.calls || []), ...(snap.chain.puts || [])];
+    if (allContracts.length > 0) {
+      const tbody = $('mktChainBody');
+      tbody.innerHTML = '';
+      allContracts.slice(0, 40).forEach(c => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${Number(c.strike).toFixed(1)}</td>
+          <td>${c.option_type}</td>
+          <td>$${Number(c.bid).toFixed(2)}</td>
+          <td>$${Number(c.ask).toFixed(2)}</td>
+          <td>$${Number(c.mid).toFixed(2)}</td>
+          <td>${(Number(c.implied_vol) * 100).toFixed(1)}%</td>
+          <td>${c.volume || 0}</td>
+          <td>${c.open_interest || 0}</td>
+          <td>${Number(c.moneyness || 1).toFixed(3)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      $('mktChainTable').style.display = '';
+      $('mktChainPlaceholder').style.display = 'none';
+    }
+
+    toast('success', 'Market Data', `SPY: $${Number(snap.quote.price).toFixed(2)}, VIX: ${Number(snap.vix).toFixed(1)}`);
+  } catch (err) {
+    toast('error', 'Market Fetch Failed', err.message);
+  } finally {
+    hideLoading();
+  }
+});
+
+// Pipeline health
+apiGet('/api/v1/market/health').then(h => {
+  if (h) $('mktPipelineStatus').textContent = h.status || 'unknown';
+}).catch(() => {});
+
+$('mktStreamBtn')?.addEventListener('click', () => {
+  if (_marketWs) return;
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${location.host}/ws/market/SPY?interval=1500&mispricing=true&regime=true`;
+  _marketWs = new WebSocket(wsUrl);
+  _marketTicks = 0;
+
+  $('mktStreamBtn').disabled = true;
+  $('mktStopStreamBtn').disabled = false;
+  $('mktStreamLog').style.display = '';
+  $('mktStreamStatus').textContent = 'Connecting…';
+
+  _marketWs.onopen = () => {
+    $('mktStreamStatus').textContent = 'Connected';
+    $('mktStreamStatus').style.color = 'var(--success, #4ade80)';
+    toast('info', 'Stream', 'WebSocket connected to SPY market stream');
+  };
+
+  _marketWs.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    _marketTicks++;
+    $('mktStreamTicks').textContent = _marketTicks + ' ticks';
+    $('mktPrice').textContent = '$' + Number(msg.price).toFixed(2);
+    $('mktBidAsk').textContent = `Bid: $${Number(msg.bid).toFixed(2)} / Ask: $${Number(msg.ask).toFixed(2)}`;
+    if (msg.vix) $('mktVix').textContent = Number(msg.vix).toFixed(1);
+
+    // Log
+    const log = $('mktStreamLog');
+    const line = document.createElement('div');
+    line.className = 'stream-line';
+    let text = `[${msg.timestamp?.substring(11, 19) || 'T?'}] $${Number(msg.price).toFixed(2)} VIX:${Number(msg.vix||0).toFixed(1)}`;
+    if (msg.regime) text += ` regime:${msg.regime.label}`;
+    if (msg.mispricing) text += ` dev:${Number(msg.mispricing.deviation_pct).toFixed(1)}%`;
+    if (msg.alert) text += ` ⚠ ALERT: ${msg.alert.title}`;
+    line.textContent = text;
+    log.prepend(line);
+    if (log.children.length > 100) log.removeChild(log.lastChild);
+  };
+
+  _marketWs.onerror = () => {
+    $('mktStreamStatus').textContent = 'Error';
+    $('mktStreamStatus').style.color = 'var(--danger, #ff5c7c)';
+  };
+
+  _marketWs.onclose = () => {
+    $('mktStreamStatus').textContent = 'Disconnected';
+    $('mktStreamStatus').style.color = '';
+    $('mktStreamBtn').disabled = false;
+    $('mktStopStreamBtn').disabled = true;
+    _marketWs = null;
+  };
+});
+
+$('mktStopStreamBtn')?.addEventListener('click', () => {
+  if (_marketWs) { _marketWs.close(); _marketWs = null; }
+});
+
+
+// ── 24. Mispricing Scanner ───────────────────────────────────
+$('mispDetectBtn')?.addEventListener('click', async () => {
+  const body = {
+    spot:         pf('mispSpot', 100),
+    strike:       pf('mispStrike', 100),
+    maturity:     pf('mispMaturity', 0.25),
+    rate:         pf('mispRate', 0.05),
+    volatility:   pf('mispVol', 0.2),
+    option_type:  $('mispType').value || 'call',
+    market_price: pf('mispMarket', 10.5),
+    pricing_model: $('mispModel').value || 'black_scholes',
+    significance_threshold: 2.0,
+    min_deviation_pct: 2.0,
+  };
+
+  showLoading();
+  try {
+    const d = await api('/api/v1/market/mispricing/detect', body);
+    if (!d) return;
+    $('mispResults').style.display = '';
+
+    $('mispDirection').textContent = d.direction;
+    $('mispDirection').style.color = d.direction === 'overpriced' ? 'var(--danger, #ff5c7c)' : 'var(--success, #4ade80)';
+    $('mispModel_used').textContent = d.model_used || 'BS';
+    $('mispDeviation').textContent = fmt(d.deviation_pct, 2) + '%';
+    $('mispDevDollar').textContent = '$' + fmt(d.deviation_dollar, 4);
+    $('mispZScore').textContent = fmt(d.z_score, 2);
+    $('mispSignificant').textContent = d.is_significant ? '✅ Significant' : '❌ Not significant';
+    $('mispStrength').textContent = fmt(d.signal_strength, 3);
+    $('mispConfidence').textContent = 'Conf: ' + fmtPct(d.confidence);
+
+    toast(d.is_significant ? 'warning' : 'info', 'Mispricing',
+      `${d.direction} by ${fmt(d.deviation_pct, 1)}% (z=${fmt(d.z_score, 2)})`);
+  } catch (err) {
+    toast('error', 'Mispricing Error', err.message);
+  } finally {
+    hideLoading();
+  }
+});
+
+$('mispScanBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/market/mispricing/scan', {
+      symbol: 'SPY',
+      pricing_model: $('mispModel').value || 'black_scholes',
+    }, { timeout: 60000 });
+    if (!d) return;
+
+    $('mispScanResults').style.display = '';
+    const metrics = $('mispScanMetrics');
+    metrics.innerHTML = `
+      <div class="metric-card"><div class="metric-label">Contracts</div><div class="metric-value">${d.total_contracts || 0}</div></div>
+      <div class="metric-card"><div class="metric-label">Mispriced</div><div class="metric-value highlight">${d.significant_count || 0}</div></div>
+      <div class="metric-card"><div class="metric-label">Arbitrage</div><div class="metric-value" style="color:var(--danger)">${d.arbitrage_count || 0}</div></div>
+      <div class="metric-card"><div class="metric-label">Time (ms)</div><div class="metric-value">${fmt(d.scan_time_ms, 0)}</div></div>
+    `;
+
+    const tbody = $('mispScanBody');
+    tbody.innerHTML = '';
+    (d.signals || []).slice(0, 50).forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${Number(s.strike).toFixed(1)}</td>
+        <td>${s.option_type}</td>
+        <td class="${s.direction === 'overpriced' ? 'negative' : 'positive'}">${s.direction}</td>
+        <td>${fmt(s.deviation_pct, 2)}%</td>
+        <td>${fmt(s.z_score, 2)}</td>
+        <td>${fmt(s.signal_strength, 3)}</td>
+        <td>${s.model_used || 'BS'}</td>
+        <td>${s.is_significant ? '✅' : '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    toast('success', 'Scan Complete', `${d.significant_count || 0} mispriced out of ${d.total_contracts || 0}`);
+  } catch (err) {
+    toast('error', 'Scan Failed', err.message);
+  } finally {
+    hideLoading();
+  }
+});
+
+
+// ── 25. Regime Detection ─────────────────────────────────────
+$('regimeDetectBtn')?.addEventListener('click', async () => {
+  const raw = $('regimeReturns').value;
+  const returns = raw.split(',').map(s => parseFloat(s.trim())).filter(v => !isNaN(v));
+  if (returns.length < 10) { toast('error', 'Error', 'Need at least 10 return values'); return; }
+
+  showLoading();
+  try {
+    const d = await api('/api/v1/market/regime/detect', {
+      returns: returns,
+      vix: pf('regimeVix', 20),
+    });
+    if (!d) return;
+
+    $('regimeResults').style.display = '';
+    $('regimeLabel').textContent = (d.label || 'unknown').toUpperCase();
+    $('regimeLabel').className = 'metric-value highlight regime-badge ' + (d.label || '');
+    $('regimeDuration').textContent = `Duration: ${d.duration_days || 0} days`;
+    $('regimeProb').textContent = fmtPct(d.probability);
+    $('regimeConf').textContent = 'Confidence: ' + fmtPct(d.confidence);
+    $('regimeRisk').textContent = (d.risk_level || '—').toUpperCase();
+    $('regimeRisk').style.color = d.risk_level === 'extreme' ? 'var(--danger)' :
+      d.risk_level === 'high' ? '#fbbf24' : 'var(--success)';
+    $('regimeModel').textContent = 'Model: ' + (d.recommended_model || '—');
+    $('regimeVolAdj').textContent = fmt(d.vol_adjustment, 3) + '×';
+
+    // Transition matrix
+    const tp = d.transition_probs || {};
+    const labels = ['bull', 'bear', 'high_vol', 'low_vol'];
+    let html = '<div class="tm-header">&nbsp;</div>';
+    labels.forEach(l => html += `<div class="tm-header">${l}</div>`);
+    labels.forEach(from => {
+      html += `<div class="tm-label">${from}</div>`;
+      labels.forEach(to => {
+        const v = tp[to] !== undefined ? tp[to] : (from === to ? 0.7 : 0.1);
+        const isHigh = v > 0.3;
+        html += `<div class="tm-cell${isHigh ? ' high' : ''}">${(v * 100).toFixed(0)}%</div>`;
+      });
+    });
+    $('regimeTransition').innerHTML = html;
+
+    toast('success', 'Regime Detected', `${(d.label||'').toUpperCase()} (${fmtPct(d.probability)} confidence)`);
+  } catch (err) {
+    toast('error', 'Regime Error', err.message);
+  } finally {
+    hideLoading();
+  }
+});
+
+
+// ── 26. SHAP Explainability ──────────────────────────────────
+$('shapExplainBtn')?.addEventListener('click', async () => {
+  const body = {
+    spot:       pf('shapSpot', 100),
+    strike:     pf('shapStrike', 105),
+    maturity:   pf('shapMaturity', 1),
+    rate:       pf('shapRate', 0.05),
+    volatility: pf('shapVol', 0.2),
+    option_type: $('shapType').value || 'call',
+    pricing_model: 'black_scholes',
+  };
+
+  showLoading();
+  try {
+    const d = await api('/api/v1/market/explain/shap', body, { timeout: 30000 });
+    if (!d) return;
+
+    $('shapResults').style.display = '';
+    $('shapBase').textContent = '$' + fmt(d.base_price, 4);
+    $('shapPredicted').textContent = '$' + fmt(d.predicted_price, 4);
+    $('shapModel').textContent = d.model || 'BS';
+
+    // Waterfall chart
+    const waterfall = $('shapWaterfall');
+    waterfall.innerHTML = '';
+    waterfall.className = 'shap-waterfall';
+    const maxShap = Math.max(...(d.attributions || []).map(a => Math.abs(a.shap_value)), 0.01);
+
+    (d.attributions || []).forEach(a => {
+      const row = document.createElement('div');
+      row.className = 'shap-bar-row';
+      const pct = Math.abs(a.shap_value) / maxShap * 50;
+      const isPos = a.shap_value >= 0;
+      row.innerHTML = `
+        <div class="shap-bar-label">${a.feature}</div>
+        <div class="shap-bar-track">
+          <div class="shap-bar-fill ${isPos ? 'positive' : 'negative'}" style="width:${pct}%"></div>
+        </div>
+        <div class="shap-bar-value" style="color:${isPos ? 'var(--success,#4ade80)' : 'var(--danger,#ff5c7c)'}">
+          ${isPos ? '+' : ''}${fmt(a.shap_value, 4)}
+        </div>
+      `;
+      waterfall.appendChild(row);
+    });
+
+    // Narrative
+    $('shapNarrative').textContent = d.narrative || 'No narrative generated.';
+
+    // Volatility sensitivity
+    const vs = d.vol_sensitivity || {};
+    const sensDiv = $('shapVolSens');
+    sensDiv.className = 'sensitivity-grid';
+    sensDiv.innerHTML = Object.entries(vs).map(([k, v]) =>
+      `<div class="sens-item"><div class="sens-label">σ = ${k}</div><div class="sens-value">$${fmt(v, 4)}</div></div>`
+    ).join('');
+
+    // Time decay
+    const td = d.time_decay_profile || {};
+    const tdDiv = $('shapTimeDecay');
+    tdDiv.className = 'sensitivity-grid';
+    tdDiv.innerHTML = Object.entries(td).map(([k, v]) =>
+      `<div class="sens-item"><div class="sens-label">T = ${k}</div><div class="sens-value">$${fmt(v, 4)}</div></div>`
+    ).join('');
+
+    toast('success', 'SHAP Explanation', `${(d.attributions || []).length} feature attributions computed`);
+  } catch (err) {
+    toast('error', 'SHAP Error', err.message);
+  } finally {
+    hideLoading();
+  }
+});
+
+
+// ── 27. Performance Benchmark ────────────────────────────────
+$('benchRunBtn')?.addEventListener('click', async () => {
+  const body = {
+    spot:       pf('benchSpot', 100),
+    strike:     pf('benchStrike', 100),
+    maturity:   pf('benchMaturity', 1),
+    rate:       0.05,
+    volatility: pf('benchVol', 0.2),
+    option_type: 'call',
+  };
+
+  showLoading();
+  try {
+    const d = await api('/api/v1/market/benchmark', body, { timeout: 90000 });
+    if (!d) return;
+
+    $('benchResults').style.display = '';
+
+    // Summary
+    $('benchSummary').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Total Time</div><div class="metric-value highlight">${fmt(d.total_time_ms, 0)}ms</div></div>
+      <div class="metric-card"><div class="metric-label">Memory Est.</div><div class="metric-value">${d.memory_estimate_mb} MB</div></div>
+      <div class="metric-card"><div class="metric-label">Heston Price</div><div class="metric-value">${d.heston_benchmark?.price || '—'}</div></div>
+      <div class="metric-card"><div class="metric-label">Heston Time</div><div class="metric-value">${fmt(d.heston_benchmark?.elapsed_ms, 1)}ms</div></div>
+    `;
+
+    // Path scaling
+    const pathBody = $('benchPathBody');
+    pathBody.innerHTML = '';
+    (d.path_scaling || []).forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r.name}</td><td>${r.price}</td><td>${r.std_error}</td>
+        <td>${fmt(r.elapsed_ms, 1)}</td><td>${Number(r.throughput_paths_per_sec).toLocaleString()}/s</td>
+        <td>${r.error_vs_bs}</td>
+      `;
+      pathBody.appendChild(tr);
+    });
+
+    // Method comparison
+    const methBody = $('benchMethodBody');
+    methBody.innerHTML = '';
+    (d.method_comparison || []).forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r.name}</td><td>${r.price}</td><td class="highlight-cell">${r.std_error}</td>
+        <td>${fmt(r.elapsed_ms, 1)}</td><td>${Number(r.throughput_paths_per_sec).toLocaleString()}/s</td>
+        <td>${r.error_vs_bs}</td>
+      `;
+      methBody.appendChild(tr);
+    });
+
+    // Latency
+    const latBody = $('benchLatencyBody');
+    latBody.innerHTML = '';
+    (d.latency_profiles || []).forEach(p => {
+      const tr = document.createElement('tr');
+      const warn = p.p95_ms > 200;
+      tr.innerHTML = `
+        <td>${p.component}</td><td>${fmt(p.mean_ms, 2)}</td><td>${fmt(p.p50_ms, 2)}</td>
+        <td class="${warn ? 'negative' : ''}">${fmt(p.p95_ms, 2)}</td>
+        <td>${fmt(p.p99_ms, 2)}</td><td>${fmt(p.min_ms, 2)}</td><td>${fmt(p.max_ms, 2)}</td>
+      `;
+      latBody.appendChild(tr);
+    });
+
+    // Recommendations
+    $('benchRecommendations').innerHTML = (d.recommendations || [])
+      .map(r => `<div style="padding:0.3rem 0;${r.startsWith('WARN') ? 'color:var(--danger,#ff5c7c)' : ''}">${r.startsWith('WARN') ? '⚠️ ' : '✅ '}${r}</div>`)
+      .join('');
+
+    toast('success', 'Benchmark Done', `Completed in ${fmt(d.total_time_ms, 0)}ms`);
+  } catch (err) {
+    toast('error', 'Benchmark Failed', err.message);
+  } finally {
+    hideLoading();
+  }
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+//  QUANT INTELLIGENCE ENGINE — Frontend Handlers
+// ═══════════════════════════════════════════════════════════════
+
+// ── 30. Quant Dashboard Status ─────────────────────────────────
+$('quantStatusBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await apiGet('/api/v1/quant/status');
+    if (!d) return;
+    $('quantActiveModules').textContent = d.active_modules;
+    $('quantGPU').textContent = d.gpu_available ? '✅ CUDA' : '❌ CPU';
+    $('quantGPU').className = `metric-value ${d.gpu_available ? 'positive' : ''}`;
+    $('quantHealth').textContent = d.system_health.toUpperCase();
+    $('quantHealth').className = `metric-value ${d.system_health === 'healthy' ? 'positive' : d.system_health === 'degraded' ? 'negative' : 'highlight'}`;
+    $('quantTotal').textContent = d.total_modules;
+
+    // Module grid
+    const grid = $('quantModuleGrid');
+    const icons = { pinns:'🔬', rl_hedging:'🤖', vol_surface_transformer:'🌊',
+      jump_diffusion:'📈', arbitrage_engine:'🎯', uncertainty:'📊',
+      gpu_monte_carlo:'🚀', portfolio_risk:'🛡️', explainer:'💡' };
+    grid.innerHTML = Object.entries(d.modules || {}).map(([name, info]) => `
+      <div class="capability-item">
+        <div class="capability-icon">${icons[name] || '⚙️'}</div>
+        <div>
+          <div class="capability-title">${name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</div>
+          <div class="capability-desc" style="color:${info.status === 'active' ? 'var(--accent, #22d3ee)' : 'var(--danger, #ff5c7c)'}">
+            ${info.status === 'active' ? '● Active' : '○ Unavailable'}
+            ${info.trained !== undefined ? (info.trained ? ' (trained)' : ' (untrained)') : ''}
+            ${info.backend ? ` [${info.backend}]` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    toast('success', 'Quant Status', `${d.active_modules}/${d.total_modules} modules active`);
+  } catch (err) {
+    toast('error', 'Status Error', err.message);
+  } finally {
+    hideLoading();
+  }
+});
+
+
+// ── 31. PINNs Pricing ──────────────────────────────────────────
+$('pinnsTrainBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/pinns/train', {
+      n_samples: parseInt($('pinnsSamples').value) || 5000,
+      epochs: parseInt($('pinnsEpochs').value) || 200,
+      spot_range: [50, 150],
+      strike: pf('pinnsStrike', 100),
+      rate: pf('pinnsRate', 0.05),
+      volatility: pf('pinnsVol', 0.2),
+    }, { timeout: 120000 });
+    if (!d) return;
+
+    $('pinnsResults').style.display = '';
+    $('pinnsMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Final Loss</div><div class="metric-value highlight">${fmt(d.final_loss, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">PDE Loss</div><div class="metric-value">${fmt(d.pde_loss, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">Data Loss</div><div class="metric-value">${fmt(d.data_loss, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">Training Time</div><div class="metric-value">${fmt(d.training_time_ms, 0)}ms</div></div>
+    `;
+    $('pinnsNarrative').textContent = `PINNs trained for ${d.epochs_trained} epochs. Final total loss: ${fmt(d.final_loss, 6)}. PDE residual loss: ${fmt(d.pde_loss, 6)}, ensuring Black-Scholes PDE is satisfied.`;
+    toast('success', 'PINNs Trained', `Loss: ${fmt(d.final_loss, 6)} in ${fmt(d.training_time_ms, 0)}ms`);
+  } catch (err) {
+    toast('error', 'PINNs Train Error', err.message);
+  } finally { hideLoading(); }
+});
+
+$('pinnsPredictBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/pinns/predict', {
+      spot: pf('pinnsSpot', 100), strike: pf('pinnsStrike', 100),
+      maturity: pf('pinnsMaturity', 1), rate: pf('pinnsRate', 0.05),
+      volatility: pf('pinnsVol', 0.2), option_type: $('pinnsType').value,
+    });
+    if (!d) return;
+    $('pinnsResults').style.display = '';
+    $('pinnsMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">PINNs Price</div><div class="metric-value highlight">$${fmt(d.pinns_price, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">BS Price</div><div class="metric-value">$${fmt(d.bs_price, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">Deviation</div><div class="metric-value ${Math.abs(d.deviation_pct) > 5 ? 'negative' : 'positive'}">${fmt(d.deviation_pct, 2)}%</div></div>
+      <div class="metric-card"><div class="metric-label">PDE Residual</div><div class="metric-value">${fmt(d.pde_residual, 6)}</div></div>
+    `;
+    $('pinnsNarrative').textContent = `PINNs model predicted $${fmt(d.pinns_price, 4)} vs BS analytical $${fmt(d.bs_price, 4)} (${fmt(d.deviation_pct, 2)}% deviation). PDE residual: ${fmt(d.pde_residual, 6)}.`;
+    toast('success', 'PINNs Predict', `$${fmt(d.pinns_price, 4)}`);
+  } catch (err) {
+    toast('error', 'PINNs Error', err.message);
+  } finally { hideLoading(); }
+});
+
+$('pinnsGreeksBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/pinns/greeks', {
+      spot: pf('pinnsSpot', 100), strike: pf('pinnsStrike', 100),
+      maturity: pf('pinnsMaturity', 1), rate: pf('pinnsRate', 0.05),
+      volatility: pf('pinnsVol', 0.2),
+    });
+    if (!d) return;
+    $('pinnsResults').style.display = '';
+    $('pinnsMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Delta (Δ)</div><div class="metric-value highlight">${fmt(d.delta, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">Gamma (Γ)</div><div class="metric-value">${fmt(d.gamma, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">Theta (Θ)</div><div class="metric-value">${fmt(d.theta, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">Vega (ν)</div><div class="metric-value">${fmt(d.vega, 6)}</div></div>
+    `;
+    toast('success', 'PINNs Greeks', `Δ=${fmt(d.delta, 4)}`);
+  } catch (err) {
+    toast('error', 'PINNs Greeks Error', err.message);
+  } finally { hideLoading(); }
+});
+
+
+// ── 32. RL Hedging ─────────────────────────────────────────────
+$('hedgeTrainBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/hedging/train', {
+      agent_type: $('hedgeAgent').value,
+      episodes: parseInt($('hedgeEpisodes').value) || 500,
+      spot: pf('hedgeSpot', 100), strike: pf('hedgeStrike', 100),
+      maturity: pf('hedgeMaturity', 0.25), volatility: pf('hedgeVol', 0.2),
+      rate: pf('hedgeRate', 0.05),
+    }, { timeout: 120000 });
+    if (!d) return;
+    $('hedgeResults').style.display = '';
+    $('hedgeMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Agent</div><div class="metric-value highlight">${d.agent_type.toUpperCase()}</div></div>
+      <div class="metric-card"><div class="metric-label">Episodes</div><div class="metric-value">${d.episodes_trained}</div></div>
+      <div class="metric-card"><div class="metric-label">Avg Reward (last 100)</div><div class="metric-value">${fmt(d.avg_reward_last_100, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">Training Time</div><div class="metric-value">${fmt(d.training_time_ms, 0)}ms</div></div>
+    `;
+    $('hedgeNarrative').textContent = `${d.agent_type.toUpperCase()} agent trained for ${d.episodes_trained} episodes. Average reward (last 100): ${fmt(d.avg_reward_last_100, 4)}.`;
+    toast('success', 'Agent Trained', `${d.agent_type.toUpperCase()} — ${d.episodes_trained} episodes`);
+  } catch (err) {
+    toast('error', 'Hedging Train Error', err.message);
+  } finally { hideLoading(); }
+});
+
+$('hedgeBacktestBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/hedging/backtest', {
+      agent_type: $('hedgeAgent').value,
+      n_scenarios: parseInt($('hedgeScenarios').value) || 100,
+      spot: pf('hedgeSpot', 100), strike: pf('hedgeStrike', 100),
+      maturity: pf('hedgeMaturity', 0.25), volatility: pf('hedgeVol', 0.2),
+      rate: pf('hedgeRate', 0.05),
+    }, { timeout: 60000 });
+    if (!d) return;
+    $('hedgeResults').style.display = '';
+    const improvClass = d.improvement_pct > 0 ? 'positive' : 'negative';
+    $('hedgeMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">RL P&L Mean</div><div class="metric-value highlight">${fmt(d.rl_pnl_mean, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">BS P&L Mean</div><div class="metric-value">${fmt(d.bs_pnl_mean, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">RL Sharpe</div><div class="metric-value">${fmt(d.rl_sharpe, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">Improvement</div><div class="metric-value ${improvClass}">${fmt(d.improvement_pct, 1)}%</div></div>
+    `;
+    $('hedgeNarrative').textContent = `Backtest over ${d.n_scenarios} scenarios: RL agent P&L std ${fmt(d.rl_pnl_std, 4)} vs BS ${fmt(d.bs_pnl_std, 4)}. RL max drawdown: ${fmt(d.rl_max_drawdown, 4)}.`;
+    toast('success', 'Backtest Complete', `Improvement: ${fmt(d.improvement_pct, 1)}%`);
+  } catch (err) {
+    toast('error', 'Backtest Error', err.message);
+  } finally { hideLoading(); }
+});
+
+$('hedgeSuggestBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/hedging/suggest', {
+      spot: pf('hedgeSpot', 100), strike: pf('hedgeStrike', 100),
+      maturity: pf('hedgeMaturity', 0.25), volatility: pf('hedgeVol', 0.2),
+      rate: pf('hedgeRate', 0.05), current_hedge_ratio: 0.5,
+      current_pnl: 0, regime: 0,
+    });
+    if (!d) return;
+    $('hedgeResults').style.display = '';
+    $('hedgeMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Recommended Ratio</div><div class="metric-value highlight">${fmt(d.recommended_ratio, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">BS Delta</div><div class="metric-value">${fmt(d.bs_delta, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">Action</div><div class="metric-value">${d.action}</div></div>
+      <div class="metric-card"><div class="metric-label">Regime</div><div class="metric-value">${d.regime}</div></div>
+    `;
+    $('hedgeNarrative').textContent = d.reasoning || `Suggested hedge ratio: ${fmt(d.recommended_ratio, 4)} (BS delta: ${fmt(d.bs_delta, 4)}). Action: ${d.action}.`;
+    toast('success', 'Hedge Suggestion', d.action);
+  } catch (err) {
+    toast('error', 'Suggest Error', err.message);
+  } finally { hideLoading(); }
+});
+
+
+// ── 33. Vol Surface ────────────────────────────────────────────
+let vsChartInstance = null;
+
+$('vsTrainBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/vol-surface/train', {
+      n_samples: parseInt($('vsSamples').value) || 500,
+      epochs: parseInt($('vsEpochs').value) || 100,
+      regime: parseInt($('vsRegime').value) || 0,
+    }, { timeout: 120000 });
+    if (!d) return;
+    $('vsResults').style.display = '';
+    $('vsMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Final Loss</div><div class="metric-value highlight">${fmt(d.final_loss, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">Smoothness</div><div class="metric-value">${fmt(d.smoothness_loss, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">Arb Loss</div><div class="metric-value">${fmt(d.arbitrage_loss, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">Time</div><div class="metric-value">${fmt(d.training_time_ms, 0)}ms</div></div>
+    `;
+    $('vsNarrative').textContent = `Transformer vol surface model trained for ${d.epochs_trained} epochs. Loss: ${fmt(d.final_loss, 6)}.`;
+    toast('success', 'Vol Surface Trained', `Loss: ${fmt(d.final_loss, 6)}`);
+  } catch (err) {
+    toast('error', 'VS Train Error', err.message);
+  } finally { hideLoading(); }
+});
+
+$('vsPredictBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/vol-surface/predict', {
+      spot: pf('vsSpot', 100), rate: pf('vsRate', 0.05),
+      base_vol: pf('vsBaseVol', 0.2), regime: parseInt($('vsRegime').value) || 0,
+    });
+    if (!d) return;
+    $('vsResults').style.display = '';
+    $('vsMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Regime</div><div class="metric-value highlight">${d.regime}</div></div>
+      <div class="metric-card"><div class="metric-label">Strikes</div><div class="metric-value">${d.strikes.length}</div></div>
+      <div class="metric-card"><div class="metric-label">Maturities</div><div class="metric-value">${d.maturities.length}</div></div>
+      <div class="metric-card"><div class="metric-label">ATM Vol</div><div class="metric-value">${fmt(d.smile_atm[Math.floor(d.smile_atm.length/2)], 4)}</div></div>
+    `;
+
+    // Chart: ATM smile (vol vs maturity)
+    if (vsChartInstance) vsChartInstance.destroy();
+    const ctx = $('vsChart').getContext('2d');
+    vsChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: d.maturities.map(m => m.toFixed(2) + 'Y'),
+        datasets: [{
+          label: 'ATM Vol Smile',
+          data: d.smile_atm,
+          borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,0.1)',
+          fill: true, tension: 0.3,
+        }, {
+          label: 'Term Structure',
+          data: d.term_structure,
+          borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)',
+          fill: true, tension: 0.3,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#cbd5e1' } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } },
+          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' },
+               title: { display: true, text: 'Implied Vol', color: '#94a3b8' } },
+        },
+      },
+    });
+
+    $('vsNarrative').textContent = `Vol surface predicted: ${d.strikes.length}×${d.maturities.length} grid in ${d.regime} regime.`;
+    toast('success', 'Surface Predicted', `${d.strikes.length}×${d.maturities.length} surface`);
+  } catch (err) {
+    toast('error', 'Vol Surface Error', err.message);
+  } finally { hideLoading(); }
+});
+
+
+// ── 34. Jump Diffusion ─────────────────────────────────────────
+$('jdPriceBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/jump-diffusion/price', {
+      spot: pf('jdSpot', 100), strike: pf('jdStrike', 100),
+      maturity: pf('jdMaturity', 1), rate: pf('jdRate', 0.05),
+      volatility: pf('jdVol', 0.2), option_type: $('jdType').value,
+    });
+    if (!d) return;
+    $('jdResults').style.display = '';
+    const premClass = d.jump_premium > 0 ? 'negative' : 'positive';
+    $('jdMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">JD Price</div><div class="metric-value highlight">$${fmt(d.price, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">BS Price</div><div class="metric-value">$${fmt(d.bs_price, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">Jump Premium</div><div class="metric-value ${premClass}">$${fmt(d.jump_premium, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">Premium %</div><div class="metric-value">${fmt(d.jump_premium_pct, 2)}%</div></div>
+    `;
+    const regime = d.metadata?.regime || 'unknown';
+    $('jdNarrative').textContent = `Merton Jump Diffusion price: $${fmt(d.price, 4)} vs BS $${fmt(d.bs_price, 4)}. Jump premium: $${fmt(d.jump_premium, 4)} (${fmt(d.jump_premium_pct, 2)}%). Current regime: ${regime}.`;
+    toast('success', 'JD Price', `$${fmt(d.price, 4)} (+${fmt(d.jump_premium_pct, 1)}% jump premium)`);
+  } catch (err) {
+    toast('error', 'JD Price Error', err.message);
+  } finally { hideLoading(); }
+});
+
+$('jdScenarioBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/jump-diffusion/scenario', {
+      spot: pf('jdSpot', 100), strike: pf('jdStrike', 100),
+      maturity: pf('jdMaturity', 1), rate: pf('jdRate', 0.05),
+      base_vol: pf('jdVol', 0.2), option_type: $('jdType').value,
+    });
+    if (!d) return;
+    $('jdResults').style.display = '';
+    const scenarios = d.scenarios || {};
+    let html = '';
+    for (const [name, data] of Object.entries(scenarios)) {
+      const price = typeof data === 'object' ? data.price : data;
+      html += `<div class="metric-card"><div class="metric-label">${name}</div><div class="metric-value">$${fmt(price, 4)}</div></div>`;
+    }
+    $('jdMetrics').innerHTML = html;
+    $('jdNarrative').textContent = d.regime_impact_summary || 'Scenario analysis complete.';
+    toast('success', 'Scenario Analysis', `${Object.keys(scenarios).length} scenarios computed`);
+  } catch (err) {
+    toast('error', 'Scenario Error', err.message);
+  } finally { hideLoading(); }
+});
+
+
+// ── 35. Arbitrage Scanner ──────────────────────────────────────
+$('arbScanBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/arbitrage/scan', {
+      spot: pf('arbSpot', 100), rate: pf('arbRate', 0.05),
+      n_options: parseInt($('arbN').value) || 20,
+      regime: parseInt($('arbRegime').value) || 0,
+    });
+    if (!d) return;
+    $('arbResults').style.display = '';
+    $('arbMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Total Signals</div><div class="metric-value highlight">${d.total_signals}</div></div>
+      <div class="metric-card"><div class="metric-label">High Confidence</div><div class="metric-value positive">${d.high_confidence}</div></div>
+      <div class="metric-card"><div class="metric-label">Medium</div><div class="metric-value">${d.medium_confidence}</div></div>
+      <div class="metric-card"><div class="metric-label">Expected Profit</div><div class="metric-value">$${fmt(d.total_expected_profit, 2)}</div></div>
+    `;
+    const tbody = $('arbSignalBody');
+    tbody.innerHTML = '';
+    (d.signals || []).forEach(s => {
+      const tr = document.createElement('tr');
+      const strengthClass = s.strength > 0.7 ? 'positive' : s.strength > 0.3 ? '' : 'negative';
+      tr.innerHTML = `
+        <td>${s.type}</td>
+        <td class="${strengthClass}">${fmt(s.strength, 3)}</td>
+        <td>$${fmt(s.expected_profit, 2)}</td>
+        <td>${fmt(s.risk_score, 2)}</td>
+        <td style="font-size:0.75rem">${s.recommendation || '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    toast('success', 'Arbitrage Scan', d.summary);
+  } catch (err) {
+    toast('error', 'Scan Error', err.message);
+  } finally { hideLoading(); }
+});
+
+
+// ── 36. Uncertainty Quantification ─────────────────────────────
+$('uqQuantifyBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/uncertainty/quantify', {
+      spot: pf('uqSpot', 100), strike: pf('uqStrike', 100),
+      maturity: pf('uqMaturity', 1), rate: pf('uqRate', 0.05),
+      volatility: pf('uqVol', 0.2), option_type: $('uqType').value,
+      n_samples: parseInt($('uqSamples').value) || 100,
+    });
+    if (!d) return;
+    $('uqResults').style.display = '';
+    const reliClass = d.reliability === 'high' ? 'positive' : d.reliability === 'low' ? 'negative' : '';
+    $('uqMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Mean Price</div><div class="metric-value highlight">$${fmt(d.mean_price, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">Std Dev</div><div class="metric-value">$${fmt(d.std_price, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">95% CI</div><div class="metric-value">[$${fmt(d.ci_lower, 2)}, $${fmt(d.ci_upper, 2)}]</div></div>
+      <div class="metric-card"><div class="metric-label">Reliability</div><div class="metric-value ${reliClass}">${d.reliability.toUpperCase()}</div></div>
+    `;
+    $('uqNarrative').textContent = `Mean price: $${fmt(d.mean_price, 4)} ± $${fmt(d.std_price, 4)}. Epistemic: ${fmt(d.epistemic_uncertainty, 4)}, Aleatoric: ${fmt(d.aleatoric_uncertainty, 4)}. Reliability: ${d.reliability}.`;
+    toast('success', 'Uncertainty', `Reliability: ${d.reliability}`);
+  } catch (err) {
+    toast('error', 'UQ Error', err.message);
+  } finally { hideLoading(); }
+});
+
+
+// ── 37. GPU Monte Carlo ────────────────────────────────────────
+$('gmcPriceBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/gpu-mc/price', {
+      spot: pf('gmcSpot', 100), strike: pf('gmcStrike', 100),
+      maturity: pf('gmcMaturity', 1), rate: pf('gmcRate', 0.05),
+      volatility: pf('gmcVol', 0.2), option_type: $('gmcType').value,
+      n_paths: parseInt($('gmcPaths').value) || 100000,
+      model: $('gmcModel').value,
+      variance_reduction: $('gmcVR').value,
+    }, { timeout: 60000 });
+    if (!d) return;
+    $('gmcResults').style.display = '';
+    $('gmcMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Price</div><div class="metric-value highlight">$${fmt(d.price, 4)}</div></div>
+      <div class="metric-card"><div class="metric-label">Std Error</div><div class="metric-value">${fmt(d.std_error, 6)}</div></div>
+      <div class="metric-card"><div class="metric-label">95% CI</div><div class="metric-value">[$${fmt(d.ci_lower, 3)}, $${fmt(d.ci_upper, 3)}]</div></div>
+      <div class="metric-card"><div class="metric-label">Backend</div><div class="metric-value">${d.backend.toUpperCase()}</div></div>
+      <div class="metric-card"><div class="metric-label">Time</div><div class="metric-value">${fmt(d.elapsed_ms, 1)}ms</div></div>
+      <div class="metric-card"><div class="metric-label">Paths</div><div class="metric-value">${Number(d.n_paths).toLocaleString()}</div></div>
+    `;
+    $('gmcNarrative').textContent = `GPU MC priced ${d.model.toUpperCase()} at $${fmt(d.price, 4)} ± ${fmt(d.std_error, 6)} using ${d.backend} backend with ${d.variance_reduction} variance reduction in ${fmt(d.elapsed_ms, 1)}ms.`;
+    toast('success', 'GPU MC Price', `$${fmt(d.price, 4)} in ${fmt(d.elapsed_ms, 1)}ms`);
+  } catch (err) {
+    toast('error', 'GPU MC Error', err.message);
+  } finally { hideLoading(); }
+});
+
+$('gmcBenchBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const d = await api('/api/v1/quant/gpu-mc/benchmark', {
+      spot: pf('gmcSpot', 100), strike: pf('gmcStrike', 100),
+      maturity: pf('gmcMaturity', 1), rate: pf('gmcRate', 0.05),
+      volatility: pf('gmcVol', 0.2), option_type: $('gmcType').value,
+      path_counts: [10000, 50000, 100000, 500000],
+    }, { timeout: 120000 });
+    if (!d) return;
+    $('gmcResults').style.display = '';
+    let html = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Paths</th><th>Price</th><th>Time (ms)</th><th>Backend</th></tr></thead><tbody>';
+    (d.results || []).forEach(r => {
+      html += `<tr><td>${Number(r.n_paths || 0).toLocaleString()}</td><td>$${fmt(r.price, 4)}</td><td>${fmt(r.elapsed_ms, 1)}</td><td>${r.backend || 'numpy'}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    $('gmcNarrative').innerHTML = html;
+    $('gmcMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">GPU Available</div><div class="metric-value ${d.gpu_available ? 'positive' : ''}">${d.gpu_available ? '✅ Yes' : '❌ No'}</div></div>
+    `;
+    toast('success', 'Benchmark Done', `${(d.results||[]).length} configurations tested`);
+  } catch (err) {
+    toast('error', 'Benchmark Error', err.message);
+  } finally { hideLoading(); }
+});
+
+
+// ── 38. Portfolio Risk ─────────────────────────────────────────
+$('pfAddPositionBtn')?.addEventListener('click', () => {
+  const container = $('pfPositions');
+  const idx = container.querySelectorAll('.pf-position').length;
+  const div = document.createElement('div');
+  div.className = 'form-grid pf-position';
+  div.dataset.idx = idx;
+  div.innerHTML = `
+    <div class="field"><label>Spot ($)</label><input type="number" class="pfSpot" value="100" step="0.01" min="0.01" /></div>
+    <div class="field"><label>Strike ($)</label><input type="number" class="pfStrike" value="105" step="0.01" min="0.01" /></div>
+    <div class="field"><label>Maturity</label><input type="number" class="pfMaturity" value="0.5" step="0.01" min="0.01" /></div>
+    <div class="field"><label>Vol (σ)</label><input type="number" class="pfVol" value="0.25" step="0.01" min="0.01" /></div>
+    <div class="field"><label>Type</label><select class="pfType"><option value="call">Call</option><option value="put" selected>Put</option></select></div>
+    <div class="field"><label>Quantity</label><input type="number" class="pfQty" value="-5" step="1" /></div>
+  `;
+  container.appendChild(div);
+});
+
+function getPortfolioPositions() {
+  const positions = [];
+  document.querySelectorAll('.pf-position').forEach(row => {
+    positions.push({
+      spot: parseFloat(row.querySelector('.pfSpot').value) || 100,
+      strike: parseFloat(row.querySelector('.pfStrike').value) || 100,
+      maturity: parseFloat(row.querySelector('.pfMaturity').value) || 1,
+      rate: 0.05,
+      volatility: parseFloat(row.querySelector('.pfVol').value) || 0.2,
+      option_type: row.querySelector('.pfType').value,
+      quantity: parseInt(row.querySelector('.pfQty').value) || 1,
+      premium_paid: 0,
+    });
+  });
+  return positions;
+}
+
+$('pfRiskReportBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const positions = getPortfolioPositions();
+    const d = await api('/api/v1/quant/portfolio/risk-report', {
+      positions, confidence_level: 0.95, horizon_days: 1, current_regime: 0,
+    }, { timeout: 60000 });
+    if (!d) return;
+    $('pfResults').style.display = '';
+    const ratingClass = d.risk_rating === 'LOW' ? 'positive' : d.risk_rating === 'CRITICAL' ? 'negative' : '';
+    $('pfMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Portfolio Value</div><div class="metric-value highlight">$${fmt(d.total_value, 2)}</div></div>
+      <div class="metric-card"><div class="metric-label">VaR (95%)</div><div class="metric-value negative">$${fmt(d.var_parametric, 2)}</div></div>
+      <div class="metric-card"><div class="metric-label">Expected Shortfall</div><div class="metric-value">$${fmt(d.expected_shortfall, 2)}</div></div>
+      <div class="metric-card"><div class="metric-label">Risk Rating</div><div class="metric-value ${ratingClass}">${d.risk_rating}</div></div>
+    `;
+    // Stress test table
+    const tbody = $('pfStressBody');
+    tbody.innerHTML = '';
+    (d.stress_tests || []).forEach(s => {
+      const tr = document.createElement('tr');
+      const pnlClass = (s.pnl || 0) < 0 ? 'negative' : 'positive';
+      tr.innerHTML = `<td>${s.scenario || '—'}</td><td class="${pnlClass}">$${fmt(s.pnl, 2)}</td><td>${fmt(s.pnl_pct, 1)}%</td><td>$${fmt(s.new_value, 2)}</td>`;
+      tbody.appendChild(tr);
+    });
+    $('pfNarrative').innerHTML = (d.recommendations || []).map(r => `<div style="padding:0.2rem 0">• ${r}</div>`).join('');
+    toast('success', 'Risk Report', `Rating: ${d.risk_rating}, VaR: $${fmt(d.var_parametric, 2)}`);
+  } catch (err) {
+    toast('error', 'Risk Report Error', err.message);
+  } finally { hideLoading(); }
+});
+
+$('pfStressBtn')?.addEventListener('click', async () => {
+  showLoading();
+  try {
+    const positions = getPortfolioPositions();
+    const d = await api('/api/v1/quant/portfolio/stress-test', { positions }, { timeout: 60000 });
+    if (!d) return;
+    $('pfResults').style.display = '';
+    $('pfMetrics').innerHTML = `
+      <div class="metric-card"><div class="metric-label">Scenarios Run</div><div class="metric-value highlight">${(d.results || []).length}</div></div>
+      <div class="metric-card"><div class="metric-label">Worst Case</div><div class="metric-value negative">${d.worst_case_scenario}</div></div>
+      <div class="metric-card"><div class="metric-label">Worst Loss</div><div class="metric-value negative">$${fmt(d.worst_case_loss, 2)}</div></div>
+    `;
+    const tbody = $('pfStressBody');
+    tbody.innerHTML = '';
+    (d.results || []).forEach(s => {
+      const tr = document.createElement('tr');
+      const pnlClass = (s.pnl || 0) < 0 ? 'negative' : 'positive';
+      tr.innerHTML = `<td>${s.scenario}</td><td class="${pnlClass}">$${fmt(s.pnl, 2)}</td><td>${fmt(s.pnl_pct, 1)}%</td><td>$${fmt(s.new_value, 2)}</td>`;
+      tbody.appendChild(tr);
+    });
+    $('pfNarrative').textContent = d.summary;
+    toast('success', 'Stress Test', d.summary);
+  } catch (err) {
+    toast('error', 'Stress Test Error', err.message);
+  } finally { hideLoading(); }
+});
+
+// ── 39. Dashboard Quick Actions for Quant ──────────────────────
+document.querySelectorAll('.dash-action-btn[data-goto]').forEach(btn => {
+  btn.addEventListener('click', () => navigate(btn.dataset.goto));
+});
