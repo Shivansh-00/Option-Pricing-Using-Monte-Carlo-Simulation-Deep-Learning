@@ -1,0 +1,300 @@
+ Image option-pricing-using-monte-carlo-simulation-deep-learning-frontend Building 
+ Image option-pricing-using-monte-carlo-simulation-deep-learning-backend Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.45kB done
+#1 DONE 0.0s
+
+#2 [backend internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.82kB 0.0s done
+#2 DONE 0.0s
+
+#3 [frontend internal] load build definition from Dockerfile
+#3 transferring dockerfile: 1.21kB done
+#3 DONE 0.0s
+
+#4 [auth] library/python:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#5 ...
+
+#6 [backend internal] load metadata for docker.io/library/python:3.11-slim
+#6 DONE 2.2s
+
+#7 [backend deps 1/5] FROM docker.io/library/python:3.11-slim@sha256:d6e4d224f70f9e0172a06a3a2eba2f768eb146811a349278b38fff3a36463b47
+#7 resolve docker.io/library/python:3.11-slim@sha256:d6e4d224f70f9e0172a06a3a2eba2f768eb146811a349278b38fff3a36463b47 0.0s done
+#7 DONE 0.0s
+
+#8 [backend deps 2/5] WORKDIR /build
+#8 CACHED
+
+#9 [backend deps 3/5] RUN apt-get update &&     apt-get install -y --no-install-recommends gcc g++ &&     rm -rf /var/lib/apt/lists/*
+#9 CACHED
+
+#10 [backend internal] load .dockerignore
+#10 transferring context: 167B done
+#10 DONE 0.0s
+
+#11 [backend internal] load build context
+#11 transferring context: 1.33MB 0.1s done
+#11 DONE 0.1s
+
+#12 [backend deps 4/5] COPY backend/requirements.txt ./
+#12 DONE 0.0s
+
+#13 [backend deps 5/5] RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+#13 2.955 Collecting fastapi==0.115.0 (from -r requirements.txt (line 1))
+#13 3.060   Downloading fastapi-0.115.0-py3-none-any.whl.metadata (27 kB)
+#13 3.132 Collecting uvicorn==0.30.6 (from -r requirements.txt (line 2))
+#13 3.161   Downloading uvicorn-0.30.6-py3-none-any.whl.metadata (6.6 kB)
+#13 3.391 Collecting pydantic==2.9.2 (from -r requirements.txt (line 3))
+#13 3.431   Downloading pydantic-2.9.2-py3-none-any.whl.metadata (149 kB)
+#13 3.626      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 149.4/149.4 kB 726.0 kB/s eta 0:00:00
+#13 3.673 Collecting python-dotenv==1.0.1 (from -r requirements.txt (line 4))
+#13 3.697   Downloading python_dotenv-1.0.1-py3-none-any.whl.metadata (23 kB)
+#13 4.047 Collecting numpy==2.1.2 (from -r requirements.txt (line 5))
+#13 4.071   Downloading numpy-2.1.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
+#13 4.247      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.9/60.9 kB 4.8 MB/s eta 0:00:00
+#13 4.449 Collecting pandas==2.2.3 (from -r requirements.txt (line 6))
+#13 4.511   Downloading pandas-2.2.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (89 kB)
+#13 4.945      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 89.9/89.9 kB 330.0 kB/s eta 0:00:00
+#13 5.105 Collecting scikit-learn==1.5.2 (from -r requirements.txt (line 7))
+#13 5.128   Downloading scikit_learn-1.5.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (13 kB)
+#13 5.388 Collecting scipy>=1.11.0 (from -r requirements.txt (line 8))
+#13 5.419   Downloading scipy-1.17.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (62 kB)
+#13 5.573      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 62.1/62.1 kB 515.4 kB/s eta 0:00:00
+#13 5.813 Collecting matplotlib==3.9.2 (from -r requirements.txt (line 9))
+#13 5.836   Downloading matplotlib-3.9.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+#13 5.955 Collecting PyPDF2==3.0.1 (from -r requirements.txt (line 10))
+#13 5.978   Downloading pypdf2-3.0.1-py3-none-any.whl.metadata (6.8 kB)
+#13 6.258 Collecting PyJWT==2.9.0 (from -r requirements.txt (line 11))
+#13 6.448   Downloading PyJWT-2.9.0-py3-none-any.whl.metadata (3.0 kB)
+#13 6.508 Collecting httpx==0.28.1 (from -r requirements.txt (line 12))
+#13 6.601   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+#13 6.874 Collecting prometheus-client==0.21.0 (from -r requirements.txt (line 13))
+#13 6.916   Downloading prometheus_client-0.21.0-py3-none-any.whl.metadata (1.8 kB)
+#13 7.168 Collecting starlette<0.39.0,>=0.37.2 (from fastapi==0.115.0->-r requirements.txt (line 1))
+#13 7.258   Downloading starlette-0.38.6-py3-none-any.whl.metadata (6.0 kB)
+#13 7.319 Collecting typing-extensions>=4.8.0 (from fastapi==0.115.0->-r requirements.txt (line 1))
+#13 7.406   Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+#13 7.458 Collecting click>=7.0 (from uvicorn==0.30.6->-r requirements.txt (line 2))
+#13 7.489   Downloading click-8.3.1-py3-none-any.whl.metadata (2.6 kB)
+#13 7.509 Collecting h11>=0.8 (from uvicorn==0.30.6->-r requirements.txt (line 2))
+#13 7.596   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+#13 7.753 Collecting annotated-types>=0.6.0 (from pydantic==2.9.2->-r requirements.txt (line 3))
+#13 7.772   Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+#13 9.548 Collecting pydantic-core==2.23.4 (from pydantic==2.9.2->-r requirements.txt (line 3))
+#13 9.567   Downloading pydantic_core-2.23.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+#13 9.806 Collecting python-dateutil>=2.8.2 (from pandas==2.2.3->-r requirements.txt (line 6))
+#13 9.914   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+#13 10.01 Collecting pytz>=2020.1 (from pandas==2.2.3->-r requirements.txt (line 6))
+#13 10.09   Downloading pytz-2026.1.post1-py2.py3-none-any.whl.metadata (22 kB)
+#13 10.21 Collecting tzdata>=2022.7 (from pandas==2.2.3->-r requirements.txt (line 6))
+#13 10.23   Downloading tzdata-2025.3-py2.py3-none-any.whl.metadata (1.4 kB)
+#13 10.30 Collecting joblib>=1.2.0 (from scikit-learn==1.5.2->-r requirements.txt (line 7))
+#13 10.32   Downloading joblib-1.5.3-py3-none-any.whl.metadata (5.5 kB)
+#13 10.35 Collecting threadpoolctl>=3.1.0 (from scikit-learn==1.5.2->-r requirements.txt (line 7))
+#13 10.37   Downloading threadpoolctl-3.6.0-py3-none-any.whl.metadata (13 kB)
+#13 10.50 Collecting contourpy>=1.0.1 (from matplotlib==3.9.2->-r requirements.txt (line 9))
+#13 10.58   Downloading contourpy-1.3.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (5.5 kB)
+#13 10.60 Collecting cycler>=0.10 (from matplotlib==3.9.2->-r requirements.txt (line 9))
+#13 10.64   Downloading cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
+#13 10.88 Collecting fonttools>=4.22.0 (from matplotlib==3.9.2->-r requirements.txt (line 9))
+#13 11.01   Downloading fonttools-4.62.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (117 kB)
+#13 11.17      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 117.5/117.5 kB 731.0 kB/s eta 0:00:00
+#13 11.27 Collecting kiwisolver>=1.3.1 (from matplotlib==3.9.2->-r requirements.txt (line 9))
+#13 11.33   Downloading kiwisolver-1.5.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (5.1 kB)
+#13 11.45 Collecting packaging>=20.0 (from matplotlib==3.9.2->-r requirements.txt (line 9))
+#13 11.49   Downloading packaging-26.0-py3-none-any.whl.metadata (3.3 kB)
+#13 11.80 Collecting pillow>=8 (from matplotlib==3.9.2->-r requirements.txt (line 9))
+#13 11.93   Downloading pillow-12.1.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (8.8 kB)
+#13 12.02 Collecting pyparsing>=2.3.1 (from matplotlib==3.9.2->-r requirements.txt (line 9))
+#13 12.04   Downloading pyparsing-3.3.2-py3-none-any.whl.metadata (5.8 kB)
+#13 12.10 Collecting anyio (from httpx==0.28.1->-r requirements.txt (line 12))
+#13 12.12   Downloading anyio-4.12.1-py3-none-any.whl.metadata (4.3 kB)
+#13 12.20 Collecting certifi (from httpx==0.28.1->-r requirements.txt (line 12))
+#13 12.28   Downloading certifi-2026.2.25-py3-none-any.whl.metadata (2.5 kB)
+#13 12.31 Collecting httpcore==1.* (from httpx==0.28.1->-r requirements.txt (line 12))
+#13 12.43   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+#13 12.53 Collecting idna (from httpx==0.28.1->-r requirements.txt (line 12))
+#13 12.55   Downloading idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+#13 12.78 Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas==2.2.3->-r requirements.txt (line 6))
+#13 12.85   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+#13 12.94 Downloading fastapi-0.115.0-py3-none-any.whl (94 kB)
+#13 13.18    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 94.6/94.6 kB 509.7 kB/s eta 0:00:00
+#13 13.27 Downloading uvicorn-0.30.6-py3-none-any.whl (62 kB)
+#13 13.40    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 62.8/62.8 kB 855.5 kB/s eta 0:00:00
+#13 13.43 Downloading pydantic-2.9.2-py3-none-any.whl (434 kB)
+#13 14.13    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 434.9/434.9 kB 611.8 kB/s eta 0:00:00
+#13 14.15 Downloading python_dotenv-1.0.1-py3-none-any.whl (19 kB)
+#13 14.20 Downloading numpy-2.1.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.3 MB)
+#13 47.81    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.3/16.3 MB 485.7 kB/s eta 0:00:00
+#13 47.90 Downloading pandas-2.2.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (13.1 MB)
+#13 73.48    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.1/13.1 MB 524.3 kB/s eta 0:00:00
+#13 73.54 Downloading scikit_learn-1.5.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (13.3 MB)
+#13 ...
+
+#5 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#5 DONE 3.0s
+
+#10 [frontend internal] load .dockerignore
+#10 transferring context: 167B done
+#10 DONE 0.0s
+
+#14 [frontend 1/8] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#14 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 0.0s done
+#14 DONE 0.0s
+
+#15 [frontend internal] load build context
+#15 transferring context: 451.77kB 0.0s done
+#15 DONE 0.1s
+
+#16 [frontend 3/8] COPY frontend/index.html frontend/login.html frontend/50x.html /usr/share/nginx/html/
+#16 CACHED
+
+#17 [frontend 7/8] COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+#17 CACHED
+
+#18 [frontend 6/8] COPY frontend/charts /usr/share/nginx/html/charts/
+#18 CACHED
+
+#19 [frontend 2/8] RUN rm -rf /usr/share/nginx/html/*
+#19 CACHED
+
+#20 [frontend 4/8] COPY frontend/styles.css frontend/premium.css /usr/share/nginx/html/
+#20 CACHED
+
+#21 [frontend 5/8] COPY frontend/app.js frontend/premium-motion.js /usr/share/nginx/html/
+#21 CACHED
+
+#22 [frontend 8/8] RUN echo 'server_tokens off;' > /etc/nginx/conf.d/security.conf
+#22 CACHED
+
+#13 [backend deps 5/5] RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+#13 ...
+
+#23 [frontend] exporting to image
+#23 exporting layers done
+#23 exporting manifest sha256:223e389835251e449b22afbb6ade8fcf084256bffb88a8925ec7d830e3388ce8 done
+#23 exporting config sha256:ad57356a9edbb1415a6b72b44c2895404d547ec940574e230673b0b8d843957a done
+#23 exporting attestation manifest sha256:a6afb339e26867719c1f94c758a6bd8d430789fd7bb9edd12fd20d7b586ca315 0.0s done
+#23 exporting manifest list sha256:a13ab4327126ffdd9a0f586665f59dc995a4611916d8153118dcd8654e760371 0.0s done
+#23 naming to docker.io/library/option-pricing-using-monte-carlo-simulation-deep-learning-frontend:latest done
+#23 unpacking to docker.io/library/option-pricing-using-monte-carlo-simulation-deep-learning-frontend:latest 0.0s done
+#23 DONE 0.1s
+
+#24 [frontend] resolving provenance for metadata file
+#24 DONE 0.0s
+
+#13 [backend deps 5/5] RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+#13 98.43    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.3/13.3 MB 531.3 kB/s eta 0:00:00
+#13 98.46 Downloading matplotlib-3.9.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (8.3 MB)
+#13 114.8    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.3/8.3 MB 509.8 kB/s eta 0:00:00
+#13 114.8 Downloading pypdf2-3.0.1-py3-none-any.whl (232 kB)
+#13 115.2    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 232.6/232.6 kB 632.8 kB/s eta 0:00:00
+#13 115.2 Downloading PyJWT-2.9.0-py3-none-any.whl (22 kB)
+#13 115.3 Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+#13 115.4    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 73.5/73.5 kB 721.3 kB/s eta 0:00:00
+#13 115.5 Downloading prometheus_client-0.21.0-py3-none-any.whl (54 kB)
+#13 115.5    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 54.7/54.7 kB 875.8 kB/s eta 0:00:00
+#13 115.6 Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+#13 115.8    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 78.8/78.8 kB 384.3 kB/s eta 0:00:00
+#13 115.8 Downloading pydantic_core-2.23.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+#13 119.2    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 612.9 kB/s eta 0:00:00
+#13 119.2 Downloading scipy-1.17.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (35.3 MB)
+#13 189.1    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 35.3/35.3 MB 484.6 kB/s eta 0:00:00
+#13 189.2 Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+#13 189.2 Downloading click-8.3.1-py3-none-any.whl (108 kB)
+#13 189.5    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 108.3/108.3 kB 529.4 kB/s eta 0:00:00
+#13 189.5 Downloading contourpy-1.3.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (355 kB)
+#13 190.2    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 355.2/355.2 kB 573.7 kB/s eta 0:00:00
+#13 190.2 Downloading cycler-0.12.1-py3-none-any.whl (8.3 kB)
+#13 190.2 Downloading fonttools-4.62.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.1 MB)
+#13 205.6    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.1/5.1 MB 329.0 kB/s eta 0:00:00
+#13 205.7 Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+#13 205.7 Downloading joblib-1.5.3-py3-none-any.whl (309 kB)
+#13 206.1    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 309.1/309.1 kB 820.8 kB/s eta 0:00:00
+#13 206.1 Downloading kiwisolver-1.5.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (1.4 MB)
+#13 209.7    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 396.4 kB/s eta 0:00:00
+#13 209.8 Downloading packaging-26.0-py3-none-any.whl (74 kB)
+#13 210.5    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 74.4/74.4 kB 133.8 kB/s eta 0:00:00
+#13 210.5 Downloading pillow-12.1.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (7.0 MB)
+#13 227.8    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.0/7.0 MB 409.5 kB/s eta 0:00:00
+#13 227.9 Downloading pyparsing-3.3.2-py3-none-any.whl (122 kB)
+#13 228.3    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 122.8/122.8 kB 351.6 kB/s eta 0:00:00
+#13 228.3 Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+#13 228.9    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 229.9/229.9 kB 424.0 kB/s eta 0:00:00
+#13 228.9 Downloading pytz-2026.1.post1-py2.py3-none-any.whl (510 kB)
+#13 229.9    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 510.5/510.5 kB 535.8 kB/s eta 0:00:00
+#13 230.0 Downloading starlette-0.38.6-py3-none-any.whl (71 kB)
+#13 230.1    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 71.5/71.5 kB 1.3 MB/s eta 0:00:00
+#13 230.1 Downloading anyio-4.12.1-py3-none-any.whl (113 kB)
+#13 230.2    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 113.6/113.6 kB 1.1 MB/s eta 0:00:00
+#13 230.2 Downloading idna-3.11-py3-none-any.whl (71 kB)
+#13 230.3    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 71.0/71.0 kB 674.6 kB/s eta 0:00:00
+#13 230.5 Downloading threadpoolctl-3.6.0-py3-none-any.whl (18 kB)
+#13 230.5 Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+#13 230.6    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 44.6/44.6 kB 1.2 MB/s eta 0:00:00
+#13 230.6 Downloading tzdata-2025.3-py2.py3-none-any.whl (348 kB)
+#13 230.9    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 348.5/348.5 kB 971.5 kB/s eta 0:00:00
+#13 231.0 Downloading certifi-2026.2.25-py3-none-any.whl (153 kB)
+#13 231.3    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 153.7/153.7 kB 432.1 kB/s eta 0:00:00
+#13 231.3 Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+#13 232.2 Installing collected packages: pytz, tzdata, typing-extensions, threadpoolctl, six, python-dotenv, PyPDF2, pyparsing, PyJWT, prometheus-client, pillow, packaging, numpy, kiwisolver, joblib, idna, h11, fonttools, cycler, click, certifi, annotated-types, uvicorn, scipy, python-dateutil, pydantic-core, httpcore, contourpy, anyio, starlette, scikit-learn, pydantic, pandas, matplotlib, httpx, fastapi
+#13 253.4 Successfully installed PyJWT-2.9.0 PyPDF2-3.0.1 annotated-types-0.7.0 anyio-4.12.1 certifi-2026.2.25 click-8.3.1 contourpy-1.3.3 cycler-0.12.1 fastapi-0.115.0 fonttools-4.62.1 h11-0.16.0 httpcore-1.0.9 httpx-0.28.1 idna-3.11 joblib-1.5.3 kiwisolver-1.5.0 matplotlib-3.9.2 numpy-2.1.2 packaging-26.0 pandas-2.2.3 pillow-12.1.1 prometheus-client-0.21.0 pydantic-2.9.2 pydantic-core-2.23.4 pyparsing-3.3.2 python-dateutil-2.9.0.post0 python-dotenv-1.0.1 pytz-2026.1.post1 scikit-learn-1.5.2 scipy-1.17.1 six-1.17.0 starlette-0.38.6 threadpoolctl-3.6.0 typing-extensions-4.15.0 tzdata-2025.3 uvicorn-0.30.6
+#13 253.4 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+#13 DONE 260.2s
+
+#25 [backend runtime 3/8] WORKDIR /app
+#25 CACHED
+
+#26 [backend deps 4/5] COPY backend/requirements.txt ./
+#26 CACHED
+
+#27 [backend deps 5/5] RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+#27 CACHED
+
+#28 [backend runtime 2/8] RUN groupadd -r optiquant && useradd -r -g optiquant -d /app -s /sbin/nologin optiquant
+#28 CACHED
+
+#29 [backend runtime 4/8] COPY --from=deps /install /usr/local
+#29 CANCELED
+
+#25 [backend runtime 3/8] WORKDIR /app
+#25 CACHED
+
+#30 [backend runtime 4/8] COPY --from=deps /install /usr/local
+#30 DONE 2.9s
+
+#31 [backend runtime 5/8] COPY backend/app ./app
+#31 DONE 0.2s
+
+#32 [backend runtime 6/8] COPY backend/models ./models
+#32 DONE 0.0s
+
+#33 [backend runtime 7/8] COPY frontend ./frontend
+#33 DONE 0.1s
+
+#34 [backend runtime 8/8] RUN mkdir -p /app/models /app/data /tmp/optiquant_logs &&     chown -R optiquant:optiquant /app /tmp/optiquant_logs
+#34 DONE 1.4s
+
+#35 [backend] exporting to image
+#35 exporting layers
+#35 exporting layers 19.0s done
+#35 exporting manifest sha256:31795726e008943958e79de3dd380665a7a9bf8e680871fdaf2cb3ffad379da5 0.0s done
+#35 exporting config sha256:7a8a84af5d2186dd12530fe8e4196251ecbae716128f5bb4e2a14b6d3415860a done
+#35 exporting attestation manifest sha256:a827b40c230c458545b70d3c4c8fda129f1580249936282f3a078e574d038f1d 0.1s done
+#35 exporting manifest list sha256:660622ba10fc0a71588d62015ce4c8095b839f8bf8a6e6d18763f4010a9d01ca
+#35 exporting manifest list sha256:660622ba10fc0a71588d62015ce4c8095b839f8bf8a6e6d18763f4010a9d01ca 0.0s done
+#35 naming to docker.io/library/option-pricing-using-monte-carlo-simulation-deep-learning-backend:latest done
+#35 unpacking to docker.io/library/option-pricing-using-monte-carlo-simulation-deep-learning-backend:latest
+#35 unpacking to docker.io/library/option-pricing-using-monte-carlo-simulation-deep-learning-backend:latest 16.3s done
+#35 DONE 35.7s
+
+#36 [backend] resolving provenance for metadata file
+#36 DONE 0.2s
+ Image option-pricing-using-monte-carlo-simulation-deep-learning-frontend Built 
+ Image option-pricing-using-monte-carlo-simulation-deep-learning-backend Built 
+ Container optiquant-backend Recreate 
+ Container optiquant-backend Error response from daemon: Conflict. The container name "/6fcfa98bbf34_optiquant-backend" is already in use by container "6243e447c69d5a1b83cda3944c65624c916338e437053f099ff8a48a527e135e". You have to remove (or rename) that container to be able to reuse that name. 
+Error response from daemon: Conflict. The container name "/6fcfa98bbf34_optiquant-backend" is already in use by container "6243e447c69d5a1b83cda3944c65624c916338e437053f099ff8a48a527e135e". You have to remove (or rename) that container to be able to reuse that name.

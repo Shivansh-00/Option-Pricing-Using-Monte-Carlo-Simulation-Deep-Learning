@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
-from .api import auth_routes, dl_routes, explain_routes, ml_routes, pricing_routes, market_routes, ws_routes, quant_routes
+from .api import auth_routes, dl_routes, explain_routes, ml_routes, pricing_routes, market_routes, ws_routes, quant_routes, pricing_api
 from .config import settings
 from .prometheus_metrics import (
     PROMETHEUS_AVAILABLE,
@@ -188,6 +188,7 @@ async def global_exception_handler(_: Request, exc: Exception):
 
 app.include_router(auth_routes.router)
 app.include_router(pricing_routes.router)
+app.include_router(pricing_api.router)
 app.include_router(ml_routes.router)
 app.include_router(dl_routes.router)
 app.include_router(explain_routes.router)

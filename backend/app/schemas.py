@@ -331,3 +331,139 @@ class BenchmarkRequest(BaseModel):
     rate: float = Field(0.05)
     volatility: float = Field(0.2, gt=0)
     option_type: str = Field("call", pattern="^(call|put)$")
+
+
+# ── Neural SDE Schemas ───────────────────────────────────────
+class NeuralSDETrainRequest(BaseModel):
+    prices_csv: str = Field(..., description="Path to historical spot price CSV")
+    implied_vol_csv: str | None = Field(None, description="Path to implied volatility CSV")
+    option_chain_csv: str | None = Field(None, description="Path to option chain CSV")
+    indicators_csv: str | None = Field(None, description="Path to indicators CSV")
+
+    timestamp_col: str = Field("timestamp")
+    price_col: str = Field("spot")
+    freq: str = Field("1D")
+
+    lookback: int = Field(30, ge=5, le=252)
+    batch_size: int = Field(128, ge=16, le=2048)
+    hidden_dim: int = Field(96, ge=16, le=512)
+    num_layers: int = Field(3, ge=2, le=8)
+    dropout: float = Field(0.05, ge=0.0, le=0.8)
+    drift_scale: float = Field(0.35, ge=0.01, le=2.0)
+    sigma_floor: float = Field(1e-4, ge=1e-8, le=0.1)
+
+    epochs: int = Field(20, ge=1, le=500)
+    learning_rate: float = Field(1e-3, ge=1e-6, le=1e-1)
+    weight_decay: float = Field(1e-5, ge=0.0, le=1e-2)
+    grad_clip: float = Field(1.0, ge=0.1, le=10.0)
+
+    val_split: float = Field(0.15, gt=0.01, lt=0.49)
+    test_split: float = Field(0.15, gt=0.01, lt=0.49)
+    seed: int = Field(42)
+    model_tag: str = Field("default", min_length=1, max_length=64)
+
+
+class NeuralSDETrainResponse(BaseModel):
+    model_tag: str
+    checkpoint_path: str
+    feature_columns: list[str]
+    train_size: int
+    val_size: int
+    test_size: int
+    best_val_loss: float
+    train_loss: list[float]
+    val_loss: list[float]
+    loss_components: list[dict]
+
+
+class NeuralSDEPriceRequest(BaseModel):
+    model_tag: str = Field("default")
+    spot: float = Field(..., gt=0)
+    strike: float = Field(..., gt=0)
+    maturity: float = Field(..., gt=0)
+    rate: float = Field(...)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    dividend_yield: float = Field(0.0)
+    paths: int = Field(100000, ge=1000, le=2000000)
+    steps: int = Field(252, ge=10, le=5000)
+    max_batch_paths: int = Field(20000, ge=1000, le=200000)
+    seed: int = Field(42)
+
+
+class NeuralSDEPriceResponse(BaseModel):
+    model: str
+    model_tag: str
+    price: float
+    std_error: float
+    ci_lower: float
+    ci_upper: float
+    paths: int
+    steps: int
+    metadata: dict
+
+
+class NeuralSDEGreeksRequest(BaseModel):
+    model_tag: str = Field("default")
+    spot: float = Field(..., gt=0)
+    strike: float = Field(..., gt=0)
+    maturity: float = Field(..., gt=0)
+    rate: float = Field(...)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    paths: int = Field(4096, ge=512, le=200000)
+    steps: int = Field(128, ge=10, le=2000)
+    seed: int = Field(123)
+
+
+class NeuralSDEGreeksResponse(BaseModel):
+    model_tag: str
+    delta: float
+    gamma: float
+    vega: float
+    theta: float
+    rho: float
+
+
+class NeuralSDEBenchmarkRequest(BaseModel):
+    model_tag: str = Field("default")
+    spot: float = Field(..., gt=0)
+    strike: float = Field(..., gt=0)
+    maturity: float = Field(..., gt=0)
+    rate: float = Field(...)
+    implied_vol: float = Field(..., gt=0)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    dividend_yield: float = Field(0.0)
+    paths: int = Field(100000, ge=1000, le=1000000)
+    steps: int = Field(252, ge=10, le=3000)
+    max_batch_paths: int = Field(20000, ge=1000, le=200000)
+    seed: int = Field(42)
+
+
+class NeuralSDEBenchmarkResponse(BaseModel):
+    model_tag: str
+    benchmarks: dict
+
+
+class NeuralSDESimRequest(BaseModel):
+    model_tag: str = Field("default")
+    spot: float = Field(..., gt=0)
+    strike: float = Field(100.0, gt=0)
+    maturity: float = Field(..., gt=0)
+    rate: float = Field(...)
+    option_type: str = Field("call", pattern="^(call|put)$")
+    dividend_yield: float = Field(0.0)
+    paths: int = Field(50000, ge=1000, le=1000000)
+    steps: int = Field(252, ge=10, le=3000)
+    sample_paths: int = Field(30, ge=1, le=500)
+    max_batch_paths: int = Field(20000, ge=1000, le=200000)
+    seed: int = Field(42)
+
+
+class NeuralSDESimResponse(BaseModel):
+    model_tag: str
+    paths: int
+    steps: int
+    terminal_mean: float
+    terminal_std: float
+    terminal_p05: float
+    terminal_p95: float
+    sample_paths: list[list[float]]
