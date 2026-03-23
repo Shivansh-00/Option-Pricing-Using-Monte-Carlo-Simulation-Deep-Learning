@@ -110,6 +110,10 @@ async def pricing_mc_detailed(
             elapsed_ms=result.elapsed_ms,
             convergence=result.convergence,
             sample_paths=result.sample_paths[:50],  # cap paths for response size
+            mean_path=result.mean_path,
+            ci_lower_path=result.ci_lower_path,
+            ci_upper_path=result.ci_upper_path,
+            warnings=result.warnings,
         )
     except Exception as e:
         logger.error("MC detailed error: %s", e, exc_info=True)

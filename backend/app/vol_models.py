@@ -418,6 +418,8 @@ class SimpleLSTMVolModel(VolModel):
 
     def predict(self, X):
         X_scaled = self.scaler.transform(X)
+        if len(X_scaled) < self.seq_len:
+            return np.full(len(X), np.nan)
         seqs = self._create_sequences(X_scaled)
         preds = np.array([self._forward_sequence(s.astype(np.float32)) for s in seqs])
         # Pad front to match input length
@@ -531,6 +533,8 @@ class TemporalCNNVolModel(VolModel):
 
     def predict(self, X):
         X_scaled = self.scaler.transform(X)
+        if len(X_scaled) < self.seq_len:
+            return np.full(len(X), np.nan)
         seqs = [X_scaled[i:i + self.seq_len] for i in range(len(X_scaled) - self.seq_len + 1)]
         preds = np.array([self._forward(s.astype(np.float32)) for s in seqs])
         pad = np.full(self.seq_len - 1, preds[0] if len(preds) else 0)

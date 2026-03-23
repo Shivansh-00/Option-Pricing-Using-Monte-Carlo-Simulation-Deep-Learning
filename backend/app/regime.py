@@ -274,8 +274,18 @@ class RegimeDetector:
             # Fit HMM on recent data
             try:
                 self.hmm.fit(obs, max_iter=20)
+                # Sanitize HMM parameters after fit (replace NaN/Inf)
+                self.hmm.trans = np.nan_to_num(self.hmm.trans, nan=0.0, posinf=1.0, neginf=0.0)
+                row_sums = self.hmm.trans.sum(axis=1, keepdims=True)
+                row_sums[row_sums == 0] = 1.0
+                self.hmm.trans /= row_sums
+                self.hmm.means = np.nan_to_num(self.hmm.means, nan=0.0, posinf=0.01, neginf=-0.01)
+                self.hmm.variances = np.nan_to_num(self.hmm.variances, nan=1e-4, posinf=1e-2, neginf=1e-8)
+                self.hmm.variances = np.clip(self.hmm.variances, 1e-8, None)
                 states = self.hmm.decode(obs)
                 probs = self.hmm.predict_proba(obs)
+                # Sanitize probabilities
+                probs = np.nan_to_num(probs, nan=0.0, posinf=1.0, neginf=0.0)
                 current_state = states[-1]
                 current_probs = probs[-1]
             except Exception as e:
@@ -296,10 +306,20 @@ class RegimeDetector:
                 break
 
         # Transition probabilities from current state
-        trans_probs = {
-            REGIME_LABELS[j]: round(float(self.hmm.trans[current_state, j]), 4)
-            for j in range(4)
-        }
+        trans_probs = {}
+        for j in range(4):
+            v = float(self.hmm.trans[current_state, j])
+            if not math.isfinite(v):
+                v = 0.0
+            trans_probs[REGIME_LABELS[j]] = round(v, 4)
+
+        # Sanitize probability/confidence
+        prob_val = float(current_probs[current_state])
+        conf_val = float(np.max(current_probs))
+        if not math.isfinite(prob_val):
+            prob_val = 0.0
+        if not math.isfinite(conf_val):
+            conf_val = 0.0
 
         # Model recommendation based on regime
         model_map = {
@@ -325,8 +345,8 @@ class RegimeDetector:
 
         self._current_regime = RegimeState(
             label=label,
-            probability=round(float(current_probs[current_state]), 4),
-            confidence=round(float(np.max(current_probs)), 4),
+            probability=round(prob_val, 4),
+            confidence=round(conf_val, 4),
             duration_days=duration,
             transition_probs=trans_probs,
             recommended_model=model_map[label],

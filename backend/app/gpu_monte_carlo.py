@@ -182,6 +182,7 @@ class GPUMonteCarloEngine:
         Z = rng.normal(0, 1, (n_paths, n_steps))
         log_returns = drift + vol * Z
         log_S = np.concatenate([np.zeros((n_paths, 1)), np.cumsum(log_returns, axis=1)], axis=1)
+        np.clip(log_S, -50.0, 50.0, out=log_S)
         return S * np.exp(log_S)
 
     def _numpy_heston_paths(self, S: float, r: float, v0: float, kappa: float,
@@ -200,7 +201,7 @@ class GPUMonteCarloEngine:
             v_arr = v_arr + kappa * (theta - v_pos) * dt + xi * np.sqrt(v_pos * dt) * Z2
             v_arr = np.maximum(v_arr, 0)
             paths.append(S_arr.copy())
-        return np.column_stack([p.reshape(-1, 1) if len(paths) == 1 else p for p in [np.array(paths).T]])
+        return np.array(paths).T  # shape: (n_paths, n_steps+1)
 
     # ═══════════════════════════════════════════════════════════════
     #  Variance Reduction Wrappers
@@ -385,9 +386,11 @@ class GPUMonteCarloEngine:
         Run CPU vs GPU benchmark across path counts.
         Target: <200ms for 1M paths.
         """
-        path_counts = [50_000, 100_000, 500_000, 1_000_000, 2_000_000]
         if HAS_CUDA:
-            path_counts.append(5_000_000)
+            path_counts = [50_000, 100_000, 500_000, 1_000_000, 2_000_000, 5_000_000]
+        else:
+            # CPU-only: keep benchmarks lightweight to avoid timeouts
+            path_counts = [10_000, 50_000, 100_000, 500_000]
 
         results = []
         for n in path_counts:
@@ -419,10 +422,11 @@ class GPUMonteCarloEngine:
             })
 
         # Variance reduction comparison
+        vr_n = 500_000 if HAS_CUDA else 100_000
         vr_results = {}
         for vr in VarianceReduction:
             t0 = time.time()
-            vr_result = self.price(S, K, T, r, sigma, n_paths=500000,
+            vr_result = self.price(S, K, T, r, sigma, n_paths=vr_n,
                                    variance_reduction=vr)
             vr_results[vr.value] = {
                 "price": vr_result["price"],

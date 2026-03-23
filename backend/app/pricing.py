@@ -50,6 +50,10 @@ class MCResult:
     elapsed_ms: float
     convergence: list[float] = field(default_factory=list)
     sample_paths: list[list[float]] = field(default_factory=list)
+    mean_path: list[float] = field(default_factory=list)
+    ci_lower_path: list[float] = field(default_factory=list)
+    ci_upper_path: list[float] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -126,7 +130,9 @@ def _simulate_batch_standard(
     """Generate terminal prices using standard GBM."""
     shocks = rng.standard_normal((size, steps))
     log_increments = drift + diffusion * shocks
-    return spot * np.exp(np.sum(log_increments, axis=1))
+    log_total = np.sum(log_increments, axis=1)
+    # Keep exponent bounded to avoid under/overflow with extreme inputs.
+    return spot * np.exp(np.clip(log_total, -50.0, 50.0))
 
 
 def _simulate_batch_antithetic(
@@ -138,8 +144,8 @@ def _simulate_batch_antithetic(
     shocks = rng.standard_normal((half, steps))
     log_pos = drift + diffusion * shocks
     log_neg = drift - diffusion * shocks  # antithetic paths
-    prices_pos = spot * np.exp(np.sum(log_pos, axis=1))
-    prices_neg = spot * np.exp(np.sum(log_neg, axis=1))
+    prices_pos = spot * np.exp(np.clip(np.sum(log_pos, axis=1), -50.0, 50.0))
+    prices_neg = spot * np.exp(np.clip(np.sum(log_neg, axis=1), -50.0, 50.0))
     return np.concatenate([prices_pos, prices_neg])
 
 
@@ -159,7 +165,41 @@ def _simulate_batch_stratified(
     first_inc = drift + diffusion * first_z
     rest_inc = drift + diffusion * rest_z
     log_total = first_inc + np.sum(rest_inc, axis=1)
-    return spot * np.exp(log_total)
+    return spot * np.exp(np.clip(log_total, -50.0, 50.0))
+
+
+def _validate_mc_inputs(inputs: PricingInputs, steps: int) -> tuple[list[str], float]:
+    """Validate/stabilize Monte Carlo inputs and emit warnings for unstable setups."""
+    if inputs.spot <= 0:
+        raise ValueError("spot must be > 0")
+    if inputs.strike <= 0:
+        raise ValueError("strike must be > 0")
+    if inputs.maturity <= 0:
+        raise ValueError("maturity must be > 0")
+    if inputs.volatility <= 0:
+        raise ValueError("volatility must be > 0")
+    if steps < 2:
+        raise ValueError("steps must be >= 2")
+
+    dt = inputs.maturity / steps
+    warnings: list[str] = []
+
+    if dt > 0.1:
+        warnings.append(
+            "Large dt detected (T/steps > 0.1); increase steps for stable path dynamics."
+        )
+    if inputs.volatility > 2.0:
+        warnings.append(
+            "Very high volatility detected (>200%); tails can dominate and paths may hit clamps."
+        )
+    if abs(inputs.rate) > 1.0:
+        warnings.append(
+            "Extreme risk-free rate detected (|r| > 100%); path drift may look non-standard."
+        )
+    if dt <= 0:
+        raise ValueError("Invalid dt computed from maturity/steps")
+
+    return warnings, dt
 
 
 def _compute_payoffs(
@@ -203,7 +243,7 @@ def monte_carlo_engine(
         paths += 1
 
     rng = np.random.default_rng(seed)
-    dt = inputs.maturity / steps
+    warnings, dt = _validate_mc_inputs(inputs, steps)
     drift = (inputs.rate - 0.5 * inputs.volatility ** 2) * dt
     diffusion = inputs.volatility * math.sqrt(dt)
     discount = math.exp(-inputs.rate * inputs.maturity)
@@ -215,12 +255,11 @@ def monte_carlo_engine(
         "stratified": _simulate_batch_stratified,
     }.get(method, _simulate_batch_standard)
 
-    # Batched simulation with convergence tracking
+    # Batched simulation
     all_payoffs = []
     convergence = []
     sample_paths_data = []
     simulated = 0
-    running_sum = 0.0
 
     while simulated < paths:
         size = min(batch_size, paths - simulated)
@@ -229,15 +268,18 @@ def monte_carlo_engine(
         )
         payoffs = _compute_payoffs(terminal_prices, inputs.strike, inputs.option_type)
         all_payoffs.append(payoffs)
-        running_sum += np.sum(payoffs)
         simulated += size
 
-        # Track convergence
-        if n_convergence > 0:
-            convergence.append(discount * running_sum / simulated)
-
     payoffs_arr = np.concatenate(all_payoffs)
+    payoffs_arr = np.maximum(payoffs_arr.astype(np.float64, copy=False), 0.0)
     mc_price = discount * float(np.mean(payoffs_arr))
+
+    # Build a smooth convergence curve across path counts for visualization.
+    if n_convergence > 0 and paths > 0:
+        n_points = int(min(max(n_convergence, 10), paths))
+        cumsum = np.cumsum(payoffs_arr)
+        sample_counts = np.unique(np.linspace(1, paths, n_points, dtype=int))
+        convergence = [discount * float(cumsum[n - 1] / n) for n in sample_counts]
 
     # Control variate adjustment
     if method == "control_variate":
@@ -263,13 +305,22 @@ def monte_carlo_engine(
     # Sample paths for visualization
     if return_paths:
         n_vis = min(100, paths)
-        vis_shocks = rng.standard_normal((n_vis, steps))
+        vis_shocks = rng.standard_normal((n_vis, steps), dtype=np.float64)
         vis_increments = drift + diffusion * vis_shocks
         vis_log_paths = np.cumsum(vis_increments, axis=1)
-        vis_prices = inputs.spot * np.exp(
-            np.column_stack([np.zeros(n_vis), vis_log_paths])
-        )
+        vis_log_paths = np.clip(vis_log_paths, -50.0, 50.0)
+        vis_prices = inputs.spot * np.exp(np.column_stack([np.zeros(n_vis), vis_log_paths]))
+        vis_prices = np.clip(vis_prices, 1e-9, 1e9)
+
+        mean_path = np.mean(vis_prices, axis=0)
+        std_path = np.std(vis_prices, axis=0, ddof=1)
+        stderr_path = std_path / math.sqrt(max(1, n_vis))
+        ci_delta = 1.96 * stderr_path
+
         sample_paths_data = [row.tolist() for row in vis_prices]
+    else:
+        mean_path = np.array([])
+        ci_delta = np.array([])
 
     elapsed = (time.perf_counter() - t0) * 1000
 
@@ -284,6 +335,10 @@ def monte_carlo_engine(
         elapsed_ms=round(elapsed, 2),
         convergence=convergence,
         sample_paths=sample_paths_data,
+        mean_path=mean_path.tolist() if mean_path.size else [],
+        ci_lower_path=(mean_path - ci_delta).tolist() if mean_path.size else [],
+        ci_upper_path=(mean_path + ci_delta).tolist() if mean_path.size else [],
+        warnings=warnings,
     )
 
 

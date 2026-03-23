@@ -31,6 +31,10 @@ class MCDetailedResponse(BaseModel):
     elapsed_ms: float
     convergence: list[float] = []
     sample_paths: list[list[float]] = []
+    mean_path: list[float] = []
+    ci_lower_path: list[float] = []
+    ci_upper_path: list[float] = []
+    warnings: list[str] = []
 
 
 class MCComparisonResponse(BaseModel):

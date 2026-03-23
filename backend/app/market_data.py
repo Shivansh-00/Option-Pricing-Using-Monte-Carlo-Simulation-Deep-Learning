@@ -155,9 +155,9 @@ def _filter_illiquid(contracts: list[OptionContract],
     filtered = []
     for c in contracts:
         spread_pct = (c.ask - c.bid) / c.mid if c.mid > 0 else 999
-        is_liquid = (c.volume >= min_volume and
-                     c.open_interest >= min_oi and
-                     spread_pct <= max_spread_pct)
+        is_liquid = bool(c.volume >= min_volume and
+                         c.open_interest >= min_oi and
+                         spread_pct <= max_spread_pct)
         c.is_liquid = is_liquid
         filtered.append(c)
     return filtered
@@ -191,7 +191,7 @@ def _impute_missing_iv(contracts: list[OptionContract]) -> list[OptionContract]:
 
 def _compute_moneyness(contracts: list[OptionContract], spot: float) -> list[OptionContract]:
     for c in contracts:
-        c.moneyness = round(c.strike / spot, 4) if spot > 0 else 1.0
+        c.moneyness = float(round(c.strike / spot, 4)) if spot > 0 else 1.0
     return contracts
 
 
@@ -299,7 +299,7 @@ class SyntheticMarketGenerator:
                     oi = int(max(0, self.rng.normal(2000, 1000) * (1.0 / (abs(moneyness - 1.0) + 0.1))))
 
                     contract = OptionContract(
-                        strike=round(K, 2),
+                        strike=float(round(K, 2)),
                         expiry=expiry_str,
                         option_type=opt_type,
                         bid=bid,
@@ -308,12 +308,12 @@ class SyntheticMarketGenerator:
                         last=round(price + self.rng.normal(0, 0.05), 2),
                         volume=max(0, vol),
                         open_interest=max(0, oi),
-                        implied_vol=round(iv, 4),
-                        delta=greeks["delta"],
-                        gamma=greeks["gamma"],
-                        vega=greeks["vega"],
-                        theta=greeks["theta"],
-                        moneyness=round(moneyness, 4),
+                        implied_vol=float(round(iv, 4)),
+                        delta=float(greeks["delta"]),
+                        gamma=float(greeks["gamma"]),
+                        vega=float(greeks["vega"]),
+                        theta=float(greeks["theta"]),
+                        moneyness=float(round(moneyness, 4)),
                     )
                     if opt_type == "call":
                         calls.append(contract)

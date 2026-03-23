@@ -1351,6 +1351,20 @@
         animation: none !important;
       }
     }
+
+    /* ═══ Lucide Icon Sizing ═══ */
+    .card-icon i[data-lucide],
+    .pill-icon i[data-lucide] {
+      width: 1.3rem; height: 1.3rem;
+      stroke: currentColor; stroke-width: 2;
+    }
+    .toggle-pw i[data-lucide] {
+      width: 16px; height: 16px;
+      stroke: currentColor; stroke-width: 2;
+    }
+    .toggle-pw {
+      display: inline-flex; align-items: center; justify-content: center;
+    }
   </style>
 </head>
 <body>
@@ -1435,37 +1449,37 @@
 
     <div class="features-grid reveal-stagger">
       <div class="feature-card" data-accent="green">
-        <div class="card-icon">&#9881;</div>
+        <div class="card-icon"><i data-lucide="settings"></i></div>
         <h3>Monte Carlo Engine</h3>
         <p>Geometric Brownian Motion with antithetic variates, control variates, and Sobol sequences for variance reduction.</p>
         <span class="card-tag">50,000 Paths</span>
       </div>
       <div class="feature-card">
-        <div class="card-icon">&#128200;</div>
+        <div class="card-icon"><i data-lucide="trending-up"></i></div>
         <h3>Deep Learning Models</h3>
         <p>LSTM and Transformer architectures trained on synthetic option data for ultra-fast price prediction with learned Greeks.</p>
         <span class="card-tag">LSTM + Transformer</span>
       </div>
       <div class="feature-card" data-accent="cyan">
-        <div class="card-icon">&#916;</div>
+        <div class="card-icon"><i data-lucide="triangle"></i></div>
         <h3>Greeks &amp; Sensitivities</h3>
         <p>Full suite of option Greeks — Delta, Gamma, Theta, Vega, Rho — computed analytically and via finite differences.</p>
         <span class="card-tag">5 Greeks</span>
       </div>
       <div class="feature-card" data-accent="pink">
-        <div class="card-icon">&#127919;</div>
+        <div class="card-icon"><i data-lucide="target"></i></div>
         <h3>Stochastic Volatility</h3>
         <p>Heston model with mean-reverting variance process, calibratable parameters, and volatility surface generation.</p>
         <span class="card-tag">Heston Model</span>
       </div>
       <div class="feature-card" data-accent="gold">
-        <div class="card-icon">&#129302;</div>
+        <div class="card-icon"><i data-lucide="bot"></i></div>
         <h3>RAG AI Explainer</h3>
         <p>Enterprise-grade Retrieval-Augmented Generation system with semantic search, guardrails, and Gemini-powered explanations.</p>
         <span class="card-tag">LLM Powered</span>
       </div>
       <div class="feature-card" data-accent="cyan">
-        <div class="card-icon">&#128274;</div>
+        <div class="card-icon"><i data-lucide="shield-check"></i></div>
         <h3>Enterprise Auth</h3>
         <p>JWT-based authentication with bcrypt hashing, token refresh, session management, and role-based access control.</p>
         <span class="card-tag">Production Ready</span>
@@ -1482,16 +1496,16 @@
   <section class="tech-section reveal" id="tech">
     <span class="tech-label">Built With Modern Stack</span>
     <div class="tech-pills reveal-stagger">
-      <span class="tech-pill"><span class="pill-icon">&#9889;</span> FastAPI</span>
-      <span class="tech-pill"><span class="pill-icon">&#128293;</span> PyTorch</span>
-      <span class="tech-pill"><span class="pill-icon">&#128202;</span> NumPy</span>
-      <span class="tech-pill"><span class="pill-icon">&#129518;</span> Uvicorn</span>
-      <span class="tech-pill"><span class="pill-icon">&#127912;</span> HTML / CSS / JS</span>
-      <span class="tech-pill"><span class="pill-icon">&#128064;</span> Gemini AI</span>
-      <span class="tech-pill"><span class="pill-icon">&#128051;</span> Docker</span>
-      <span class="tech-pill"><span class="pill-icon">&#128272;</span> JWT Auth</span>
-      <span class="tech-pill"><span class="pill-icon">&#128640;</span> Monte Carlo</span>
-      <span class="tech-pill"><span class="pill-icon">&#129504;</span> LSTM / Transformers</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="zap"></i></span> FastAPI</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="flame"></i></span> PyTorch</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="bar-chart-2"></i></span> NumPy</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="server"></i></span> Uvicorn</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="palette"></i></span> HTML / CSS / JS</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="sparkles"></i></span> Gemini AI</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="box"></i></span> Docker</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="key-round"></i></span> JWT Auth</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="rocket"></i></span> Monte Carlo</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="brain"></i></span> LSTM / Transformers</span>
     </div>
   </section>
 
@@ -1541,7 +1555,7 @@
           <label for="loginPass">Password</label>
           <div class="input-wrap">
             <input type="password" id="loginPass" placeholder="Enter your password" required autocomplete="current-password" />
-            <button type="button" class="toggle-pw" data-target="loginPass" aria-label="Toggle password visibility">👁</button>
+            <button type="button" class="toggle-pw" data-target="loginPass" aria-label="Toggle password visibility"><i data-lucide="eye"></i></button>
           </div>
         </div>
         <button type="submit" class="submit-btn" id="loginBtn">
@@ -1574,7 +1588,7 @@
           <label for="signupPass">Password</label>
           <div class="input-wrap">
             <input type="password" id="signupPass" placeholder="Min 8 characters" required minlength="8" autocomplete="new-password" />
-            <button type="button" class="toggle-pw" data-target="signupPass" aria-label="Toggle password visibility">👁</button>
+            <button type="button" class="toggle-pw" data-target="signupPass" aria-label="Toggle password visibility"><i data-lucide="eye"></i></button>
           </div>
           <div class="pw-strength" id="pwStrength">
             <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
@@ -1594,7 +1608,7 @@
       </form>
 
       <div class="auth-footer">
-        Powered by <a href="#">OptionQuant Engine v2.0</a>
+        Powered by <a href="#">OptionQuant Engine v4.0</a>
       </div>
 
       <div class="security-badges">
@@ -1610,6 +1624,9 @@
   <button class="back-to-top" id="backToTop" aria-label="Back to top" onclick="window.scrollTo({top:0,behavior:'smooth'})">
     <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>
   </button>
+
+  <!-- ═══ Lucide Icons CDN ═══ -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
   <!-- ═══════════════════════════════════════════════════════════════
        PREMIUM MOTION SYSTEM — Visual-only enhancements
@@ -2098,7 +2115,10 @@
         const input = document.getElementById(btn.dataset.target);
         const isPw = input.type === 'password';
         input.type = isPw ? 'text' : 'password';
-        btn.textContent = isPw ? '🙈' : '👁';
+        btn.innerHTML = isPw
+          ? '<i data-lucide="eye-off"></i>'
+          : '<i data-lucide="eye"></i>';
+        if (typeof lucide !== 'undefined') lucide.createIcons({nodes: [btn]});
       });
     });
 
@@ -2127,5 +2147,7 @@
       pwLabel.textContent = val.length > 0 ? levels[score] : '';
     });
   </script>
+<!-- ═══ Initialize Lucide Icons ═══ -->
+  <script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
 </body>
 </html>

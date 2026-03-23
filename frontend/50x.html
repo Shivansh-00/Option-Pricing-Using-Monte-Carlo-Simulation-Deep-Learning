@@ -1,69 +1,164 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OptiQuant — Server Error</title>
+  <title>OptionQuant — Server Error</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0a0e1a;
-      color: #e0e6f0;
-      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: #080a10;
+      color: #f0f1f5;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      overflow: hidden;
     }
+
+    /* Ambient background */
+    .ambient { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(100px); opacity: .18;
+      animation: drift 20s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 500px; height: 500px; background: #6d5cff; top: -15%; left: -10%; }
+    .orb-2 { width: 400px; height: 400px; background: #00e5a0; bottom: -10%; right: -8%; animation-delay: -7s; }
+    .orb-3 { width: 300px; height: 300px; background: #3ea8ff; top: 50%; left: 60%; animation-delay: -14s; }
+    @keyframes drift {
+      0%   { transform: translate(0, 0) scale(1); }
+      50%  { transform: translate(30px, -20px) scale(1.08); }
+      100% { transform: translate(-20px, 15px) scale(.95); }
+    }
+
     .error-container {
+      position: relative; z-index: 1;
       text-align: center;
-      padding: 2rem;
-      max-width: 480px;
+      padding: 3rem 2.5rem;
+      max-width: 520px;
+      background: rgba(16,19,28,.72);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 24px;
+      box-shadow: 0 24px 80px -12px rgba(0,0,0,.5), 0 0 60px -12px rgba(109,92,255,.15);
+      animation: cardIn .6s cubic-bezier(.16,1,.3,1) both;
     }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(24px) scale(.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .error-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .35rem .9rem;
+      background: rgba(255,92,124,.1);
+      border: 1px solid rgba(255,92,124,.2);
+      border-radius: 100px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .75rem; font-weight: 600;
+      color: #ff5c7c;
+      letter-spacing: .5px;
+      margin-bottom: 1.5rem;
+    }
+    .error-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #ff5c7c; animation: pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
     .error-code {
-      font-size: 5rem;
+      font-size: 6rem;
       font-weight: 800;
-      background: linear-gradient(135deg, #6c63ff, #00e5a0);
+      background: linear-gradient(135deg, #6d5cff 0%, #3ea8ff 40%, #00e5a0 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      background-clip: text;
       line-height: 1;
+      letter-spacing: -2px;
+      margin-bottom: .5rem;
     }
+
     .error-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin: 1rem 0 0.5rem;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #f0f1f5;
+      margin-bottom: .75rem;
     }
+
     .error-msg {
-      color: #8892b0;
-      font-size: 0.95rem;
-      line-height: 1.6;
+      color: #9ba1b7;
+      font-size: .9rem;
+      line-height: 1.7;
       margin-bottom: 2rem;
     }
+
+    .btn-group { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+
     .retry-btn {
-      display: inline-block;
-      padding: 0.75rem 2rem;
-      background: linear-gradient(135deg, #6c63ff, #00e5a0);
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .75rem 1.75rem;
+      background: linear-gradient(135deg, #6d5cff, #5748d9);
       color: #fff;
       border: none;
       border-radius: 12px;
-      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      font-size: .9rem;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
-      transition: opacity 0.2s;
+      transition: all .25s cubic-bezier(.16,1,.3,1);
+      box-shadow: 0 4px 16px rgba(109,92,255,.3);
     }
-    .retry-btn:hover { opacity: 0.85; }
+    .retry-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(109,92,255,.4); }
+    .retry-btn:active { transform: translateY(0); }
+
+    .retry-btn-secondary {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .75rem 1.75rem;
+      background: rgba(255,255,255,.04);
+      color: #9ba1b7;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: .9rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all .25s cubic-bezier(.16,1,.3,1);
+    }
+    .retry-btn-secondary:hover { background: rgba(255,255,255,.08); color: #f0f1f5; border-color: rgba(255,255,255,.12); }
+
+    .brand {
+      margin-top: 2rem;
+      font-size: .72rem;
+      color: #3d4358;
+      letter-spacing: .5px;
+    }
+    .brand a { color: #636a82; text-decoration: none; }
   </style>
 </head>
 <body>
+  <div class="ambient">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
   <div class="error-container">
+    <div class="error-badge">SERVER ERROR</div>
     <div class="error-code">5xx</div>
-    <h1 class="error-title">Server Error</h1>
+    <h1 class="error-title">Something went wrong</h1>
     <p class="error-msg">
-      Something went wrong on our end. The OptiQuant backend may be
-      restarting or temporarily unavailable. Please try again in a moment.
+      The OptionQuant backend may be restarting or temporarily unavailable.
+      This is usually resolved within a few seconds.
     </p>
-    <a href="/" class="retry-btn">← Back to Dashboard</a>
+    <div class="btn-group">
+      <a href="/" class="retry-btn">&#8592; Back to Dashboard</a>
+      <button onclick="location.reload()" class="retry-btn-secondary">Retry</button>
+    </div>
+    <div class="brand">Powered by <a href="/">OptionQuant Engine v4.0</a></div>
   </div>
 </body>
 </html>

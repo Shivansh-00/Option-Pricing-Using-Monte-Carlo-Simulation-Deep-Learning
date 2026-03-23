@@ -203,6 +203,11 @@ const sections = {
   uncertainty:    { title: 'Uncertainty',             sub: 'Bayesian uncertainty quantification' },
   'gpu-mc':       { title: 'GPU Monte Carlo',        sub: 'CUDA-accelerated MC pricing' },
   'portfolio-risk': { title: 'Portfolio Risk',       sub: 'Portfolio VaR & stress testing' },
+  'market-intel': { title: 'Market Intelligence',    sub: 'Real-time market data & option chains' },
+  mispricing:     { title: 'Mispricing Scanner',     sub: 'Detect mispriced options vs model fair value' },
+  regime:         { title: 'Regime Detection',       sub: 'HMM-based market regime classification' },
+  'shap-explain': { title: 'SHAP Explain',           sub: 'Shapley value feature attribution' },
+  benchmark:      { title: 'Benchmark',              sub: 'Multi-engine performance profiling' },
 };
 
 const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
@@ -400,28 +405,77 @@ $('logoutBtn').addEventListener('click', async () => {
 });
 
 // ── 9. Chart Defaults ──────────────────────────────────────────
-function chartDefaults() {
+function chartDefaults(overrides) {
   const isDark = document.documentElement.dataset.theme !== 'light';
-  const gridColor = isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
-  const textColor = isDark ? '#9ba1b7' : '#5a6178';
-  return {
+  const gridColor = isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)';
+  const textColor = isDark ? '#a1a7c0' : '#4a5068';
+  const tooltipBg = isDark ? '#161b2e' : '#ffffff';
+  const base = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: { duration: 700, easing: 'easeOutQuart' },
+    interaction: { mode: 'nearest', intersect: false, axis: 'x' },
     plugins: {
-      legend: { labels: { color: textColor, font: { family: "'Inter',sans-serif", size: 12 } } },
+      legend: {
+        labels: {
+          color: textColor,
+          font: { family: "'Inter',sans-serif", size: 12, weight: '500' },
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: 16,
+        },
+      },
       tooltip: {
-        backgroundColor: isDark ? '#1e2338' : '#ffffff',
+        backgroundColor: tooltipBg,
         titleColor: isDark ? '#f0f1f5' : '#1a1d2b',
-        bodyColor: isDark ? '#9ba1b7' : '#5a6178',
-        borderColor: isDark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.1)',
-        borderWidth: 1, cornerRadius: 8, padding: 10
-      }
+        bodyColor: isDark ? '#a1a7c0' : '#4a5068',
+        borderColor: isDark ? 'rgba(109,92,255,.3)' : 'rgba(0,0,0,.08)',
+        borderWidth: 1,
+        cornerRadius: 10,
+        padding: { top: 10, bottom: 10, left: 14, right: 14 },
+        titleFont: { family: "'Inter',sans-serif", size: 13, weight: '600' },
+        bodyFont: { family: "'Inter',sans-serif", size: 12 },
+        boxPadding: 6,
+        usePointStyle: true,
+        displayColors: true,
+        caretSize: 6,
+      },
     },
     scales: {
-      x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } },
-      y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } }
-    }
+      x: {
+        grid: { color: gridColor, drawBorder: false },
+        ticks: { color: textColor, font: { family: "'Inter',sans-serif", size: 11 }, padding: 6 },
+        border: { display: false },
+      },
+      y: {
+        grid: { color: gridColor, drawBorder: false },
+        ticks: { color: textColor, font: { family: "'Inter',sans-serif", size: 11 }, padding: 6 },
+        border: { display: false },
+      },
+    },
   };
+  return overrides ? deepMergeChart(base, overrides) : base;
+}
+
+function deepMergeChart(target, source) {
+  const out = { ...target };
+  for (const key of Object.keys(source)) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      out[key] = deepMergeChart(target[key] || {}, source[key]);
+    } else {
+      out[key] = source[key];
+    }
+  }
+  return out;
+}
+
+function gradientFill(ctx, chartArea, r, g, b) {
+  if (!chartArea) return `rgba(${r},${g},${b},0.15)`;
+  const grad = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  grad.addColorStop(0, `rgba(${r},${g},${b},0.28)`);
+  grad.addColorStop(0.6, `rgba(${r},${g},${b},0.06)`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  return grad;
 }
 
 // Chart instance registry (destroy before re-create)
@@ -450,40 +504,52 @@ async function priceOption() {
   const params = getParams();
   showLoading();
   try {
-    const [bs, mc, greeks] = await Promise.all([
+    const [bsResult, mcResult, greeksResult] = await Promise.allSettled([
       api('/api/v1/pricing/bs',     params),
       api('/api/v1/pricing/mc',     params),
       api('/api/v1/pricing/greeks', params)
     ]);
-    if (!bs || !mc || !greeks) return;
+    const bs = bsResult.status === 'fulfilled' ? bsResult.value : null;
+    const mc = mcResult.status === 'fulfilled' ? mcResult.value : null;
+    const greeks = greeksResult.status === 'fulfilled' ? greeksResult.value : null;
+    if (!bs && !mc && !greeks) { toast('error', 'Pricing Failed', 'All pricing engines failed'); return; }
 
     // Results
     $('pricingResults').style.display = '';
-    $('bsPrice').textContent = fmt(bs.price);
-    $('mcPrice').textContent = fmt(mc.price);
+    $('bsPrice').textContent = bs ? fmt(bs.price) : '—';
+    $('mcPrice').textContent = mc ? fmt(mc.price) : '—';
 
     // Backend returns {model, price, metadata} — use actual std_error & CI from metadata
-    const meta = mc.metadata || {};
-    const se = meta.std_error != null ? meta.std_error : Math.abs(bs.price - mc.price) / 1.96;
-    $('mcStd').textContent = se > 0.00005 ? fmt(se) : '< 0.0001';
-    const ciLo = meta.ci_lower != null ? meta.ci_lower : mc.price - 1.96 * se;
-    const ciHi = meta.ci_upper != null ? meta.ci_upper : mc.price + 1.96 * se;
-    $('mcCI').textContent = se > 0.00005
-      ? `[${fmt(ciLo, 2)}, ${fmt(ciHi, 2)}]`
-      : `≈ ${fmt(mc.price, 2)}`;
+    if (mc) {
+      const meta = mc.metadata || {};
+      const se = meta.std_error != null ? meta.std_error : (bs ? Math.abs(bs.price - mc.price) / 1.96 : 0);
+      $('mcStd').textContent = se > 0.00005 ? fmt(se) : '< 0.0001';
+      const ciLo = meta.ci_lower != null ? meta.ci_lower : mc.price - 1.96 * se;
+      const ciHi = meta.ci_upper != null ? meta.ci_upper : mc.price + 1.96 * se;
+      $('mcCI').textContent = se > 0.00005
+        ? `[${fmt(ciLo, 2)}, ${fmt(ciHi, 2)}]`
+        : `≈ ${fmt(mc.price, 2)}`;
+    } else {
+      $('mcStd').textContent = '—';
+      $('mcCI').textContent = '—';
+    }
 
-    $('resultBadge').style.display = '';
-    $('resultBadge').textContent = `BS: $${fmt(bs.price, 2)}`;
+    if (bs) {
+      $('resultBadge').style.display = '';
+      $('resultBadge').textContent = `BS: $${fmt(bs.price, 2)}`;
+    }
 
     // Greeks quick view
-    $('greeksQuick').style.display = '';
-    $('qDelta').textContent = fmt(greeks.delta);
-    $('qGamma').textContent = fmt(greeks.gamma, 6);
-    $('qTheta').textContent = fmt(greeks.theta);
-    $('qVega').textContent  = fmt(greeks.vega);
-    $('qRho').textContent   = fmt(greeks.rho);
+    if (greeks) {
+      $('greeksQuick').style.display = '';
+      $('qDelta').textContent = fmt(greeks.delta);
+      $('qGamma').textContent = fmt(greeks.gamma, 6);
+      $('qTheta').textContent = fmt(greeks.theta);
+      $('qVega').textContent  = fmt(greeks.vega);
+      $('qRho').textContent   = fmt(greeks.rho);
+    }
 
-    toast('success', 'Pricing Complete', `BS=$${fmt(bs.price,2)}  MC=$${fmt(mc.price,2)}`);
+    toast('success', 'Pricing Complete', `BS=$${bs ? fmt(bs.price,2) : '—'}  MC=$${mc ? fmt(mc.price,2) : '—'}`);
   } catch (err) {
     toast('error', 'Pricing Failed', err.message);
   } finally {
@@ -520,6 +586,9 @@ async function plotGreekSurface() {
     const values = results.map(r => r ? r[greek] : null);
     $('greekChartWrap').style.display = '';
     const colors = { delta:'#6d5cff', gamma:'#00e5a0', theta:'#ff5c7c', vega:'#ffc044', rho:'#3ea8ff' };
+    const rgb = { delta:[109,92,255], gamma:[0,229,160], theta:[255,92,124], vega:[255,192,68], rho:[62,168,255] };
+    const c = colors[greek] || '#6d5cff';
+    const cRGB = rgb[greek] || [109,92,255];
 
     getOrCreateChart('greekChart', {
       type: 'line',
@@ -528,12 +597,24 @@ async function plotGreekSurface() {
         datasets: [{
           label: `${greek.charAt(0).toUpperCase() + greek.slice(1)} vs Spot`,
           data: values,
-          borderColor: colors[greek] || '#6d5cff',
-          backgroundColor: (colors[greek] || '#6d5cff') + '22',
-          fill: true, tension: .3, pointRadius: 2
+          borderColor: c,
+          backgroundColor(ctx) {
+            const chart = ctx.chart;
+            const { ctx: cx, chartArea } = chart;
+            return gradientFill(cx, chartArea, ...cRGB);
+          },
+          fill: true,
+          tension: .35,
+          pointRadius: 1.5,
+          pointHoverRadius: 6,
+          pointBackgroundColor: c,
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: c,
+          pointHoverBorderWidth: 2.5,
+          borderWidth: 2.5,
         }]
       },
-      options: { ...chartDefaults(), plugins: { ...chartDefaults().plugins } }
+      options: chartDefaults()
     });
 
     toast('success', 'Surface Plotted', `${greek} across ${steps} spot points`);
@@ -546,102 +627,260 @@ async function plotGreekSurface() {
 
 // ── 13. Monte Carlo Simulation (client-side GBM) ──────────────
 $('simBtn').addEventListener('click', runMonteCarlo);
-function runMonteCarlo() {
+async function runMonteCarlo() {
   const params = getParams();
-  const nPaths = parseInt($('mcPaths').value) || 200;
-  const nSteps = parseInt($('mcSteps').value) || 252;
-  const dt     = params.maturity / nSteps;
-  const drift  = (params.rate - 0.5 * params.volatility ** 2) * dt;
-  const vol    = params.volatility * Math.sqrt(dt);
+  const requestedPaths = parseInt($('mcPaths').value, 10) || 200;
+  const requestedSteps = parseInt($('mcSteps').value, 10) || 252;
+
+  if (!Number.isFinite(params.spot) || params.spot <= 0 ||
+      !Number.isFinite(params.strike) || params.strike <= 0 ||
+      !Number.isFinite(params.volatility) || params.volatility <= 0 ||
+      !Number.isFinite(params.maturity) || params.maturity <= 0) {
+    toast('warning', 'Invalid Inputs', 'Spot/strike/volatility/maturity must be positive numbers');
+    return;
+  }
+
+  const nPaths = Math.max(10, Math.min(requestedPaths, 500000));
+  const nSteps = Math.max(10, Math.min(requestedSteps, 2000));
 
   showLoading();
-  setTimeout(() => {
-    try {
-      const paths = [];
-      const payoffs = [];
-      const convergence = [];
-      let payoffSum = 0;
+  try {
+    // Primary path: backend detailed MC avoids browser UI-thread stalls.
+    const d = await api('/api/v1/pricing/mc/detailed', {
+      ...params,
+      paths: nPaths,
+      steps: nSteps,
+      method: 'antithetic',
+      return_paths: true,
+      seed: 42,
+    }, { timeout: 180000, retries: 1 });
 
-      for (let p = 0; p < nPaths; p++) {
-        const path = [params.spot];
-        let S = params.spot;
-        for (let s = 0; s < nSteps; s++) {
-          const z = boxMullerRandom();
-          S *= Math.exp(drift + vol * z);
-          path.push(S);
-        }
-        paths.push(path);
+    if (!d) return;
 
-        // Payoff
-        const payoff = params.option_type === 'call'
-          ? Math.max(S - params.strike, 0)
-          : Math.max(params.strike - S, 0);
-        payoffs.push(payoff);
-        payoffSum += payoff;
-        convergence.push(Math.exp(-params.rate * params.maturity) * payoffSum / (p + 1));
+    const paths = Array.isArray(d.sample_paths) ? d.sample_paths : [];
+    const convergence = Array.isArray(d.convergence) ? d.convergence : [];
+    const meanPath = Array.isArray(d.mean_path) ? d.mean_path : [];
+    const ciLowerPath = Array.isArray(d.ci_lower_path) ? d.ci_lower_path : [];
+    const ciUpperPath = Array.isArray(d.ci_upper_path) ? d.ci_upper_path : [];
+    const stabilityWarnings = Array.isArray(d.warnings) ? d.warnings : [];
+
+    if (!paths.length || !convergence.length) {
+      throw new Error('Simulation returned incomplete chart data');
+    }
+
+    renderMonteCarloCharts(paths, convergence, params, {
+      meanPath,
+      ciLowerPath,
+      ciUpperPath,
+    });
+
+    if (stabilityWarnings.length) {
+      toast('warning', 'Monte Carlo Warning', stabilityWarnings[0]);
+    }
+
+    toast('success', 'Simulation Complete', `${d.paths_used || nPaths} paths · Price ≈ $${fmt(d.price, 2)} · ${fmt(d.elapsed_ms, 0)}ms`);
+  } catch (apiErr) {
+    console.warn('Monte Carlo API fallback to local simulation:', apiErr);
+
+    // Fallback path: local simulation with bounded memory usage.
+    const dt = params.maturity / nSteps;
+    const drift = (params.rate - 0.5 * params.volatility ** 2) * dt;
+    const vol = params.volatility * Math.sqrt(dt);
+    const maxDisplay = Math.min(nPaths, 80);
+    const paths = [];
+    const convergence = [];
+    let payoffSum = 0;
+
+    for (let p = 0; p < nPaths; p++) {
+      let S = params.spot;
+      const keepPath = p < maxDisplay;
+      const path = keepPath ? [params.spot] : null;
+
+      for (let s = 0; s < nSteps; s++) {
+        const z = boxMullerRandom();
+        S *= Math.exp(drift + vol * z);
+        if (keepPath) path.push(S);
       }
 
-      // Show charts
-      $('mcChartsWrap').style.display = '';
+      if (keepPath) paths.push(path);
 
-      // Paths chart (show subset)
-      const maxDisplay = Math.min(nPaths, 80);
-      const labels = Array.from({ length: nSteps + 1 }, (_, i) => i);
-      const datasets = [];
-      for (let p = 0; p < maxDisplay; p++) {
-        const hue = (p * 360 / maxDisplay) % 360;
-        datasets.push({
-          data: paths[p],
-          borderColor: `hsla(${hue},70%,60%,.4)`,
-          borderWidth: 1, pointRadius: 0, fill: false, tension: 0
-        });
-      }
-      getOrCreateChart('mcChart', {
-        type: 'line',
-        data: { labels, datasets },
-        options: {
-          ...chartDefaults(),
-          plugins: { ...chartDefaults().plugins, legend: { display: false } },
-          scales: {
-            ...chartDefaults().scales,
-            x: { ...chartDefaults().scales.x, title: { display: true, text: 'Time Step', color: '#9ba1b7' } },
-            y: { ...chartDefaults().scales.y, title: { display: true, text: 'Price ($)', color: '#9ba1b7' } }
-          },
-          animation: false
-        }
-      });
+      const payoff = params.option_type === 'call'
+        ? Math.max(S - params.strike, 0)
+        : Math.max(params.strike - S, 0);
+      payoffSum += payoff;
+      convergence.push(Math.exp(-params.rate * params.maturity) * payoffSum / (p + 1));
+    }
 
-      // Convergence chart
-      getOrCreateChart('convChart', {
-        type: 'line',
-        data: {
-          labels: Array.from({ length: nPaths }, (_, i) => i + 1),
-          datasets: [{
-            label: 'MC Price Convergence',
-            data: convergence,
-            borderColor: '#00e5a0',
-            backgroundColor: 'rgba(0,229,160,.08)',
-            fill: true, tension: .2, pointRadius: 0
-          }]
-        },
-        options: {
-          ...chartDefaults(),
-          scales: {
-            ...chartDefaults().scales,
-            x: { ...chartDefaults().scales.x, title: { display: true, text: 'Number of Paths', color: '#9ba1b7' } },
-            y: { ...chartDefaults().scales.y, title: { display: true, text: 'Estimated Price ($)', color: '#9ba1b7' } }
+    if (!paths.length || !convergence.length) {
+      throw new Error('Local simulation produced no data');
+    }
+
+    renderMonteCarloCharts(paths, convergence, params, computePathStatistics(paths));
+    const finalPrice = convergence[convergence.length - 1];
+    toast('info', 'Simulation Complete (Local Mode)', `${nPaths} paths · Price ≈ $${fmt(finalPrice, 2)}`);
+  } finally {
+    hideLoading();
+  }
+}
+
+function computePathStatistics(paths) {
+  if (!Array.isArray(paths) || !paths.length) {
+    return { meanPath: [], ciLowerPath: [], ciUpperPath: [] };
+  }
+
+  const valid = paths.filter(p => Array.isArray(p) && p.length > 0);
+  if (!valid.length) {
+    return { meanPath: [], ciLowerPath: [], ciUpperPath: [] };
+  }
+
+  const nSteps = Math.max(...valid.map(p => p.length));
+  const nPaths = valid.length;
+  const meanPath = new Array(nSteps).fill(0);
+  const m2Path = new Array(nSteps).fill(0);
+
+  for (let i = 0; i < nSteps; i++) {
+    let count = 0;
+    for (let p = 0; p < nPaths; p++) {
+      const v = valid[p][i];
+      if (!Number.isFinite(v)) continue;
+      count += 1;
+      const delta = v - meanPath[i];
+      meanPath[i] += delta / count;
+      const delta2 = v - meanPath[i];
+      m2Path[i] += delta * delta2;
+    }
+  }
+
+  const ciLowerPath = new Array(nSteps).fill(0);
+  const ciUpperPath = new Array(nSteps).fill(0);
+  for (let i = 0; i < nSteps; i++) {
+    const variance = nPaths > 1 ? (m2Path[i] / (nPaths - 1)) : 0;
+    const stderr = Math.sqrt(Math.max(variance, 0)) / Math.sqrt(Math.max(nPaths, 1));
+    const delta = 1.96 * stderr;
+    ciLowerPath[i] = meanPath[i] - delta;
+    ciUpperPath[i] = meanPath[i] + delta;
+  }
+
+  return { meanPath, ciLowerPath, ciUpperPath };
+}
+
+function renderMonteCarloCharts(paths, convergence, params, pathStats = {}) {
+  $('mcChartsWrap').style.display = '';
+
+  const maxPathLen = paths.reduce((m, p) => Math.max(m, Array.isArray(p) ? p.length : 0), 0);
+  const labels = Array.from({ length: maxPathLen || 1 }, (_, i) => i);
+  const datasets = [];
+  const palette = ['#6d5cff','#00e5a0','#ff5c7c','#3ea8ff','#ffc044','#22d3ee','#a78bfa','#f87171','#34d399','#fbbf24'];
+  const meanPath = Array.isArray(pathStats.meanPath) ? pathStats.meanPath : [];
+  const ciLowerPath = Array.isArray(pathStats.ciLowerPath) ? pathStats.ciLowerPath : [];
+  const ciUpperPath = Array.isArray(pathStats.ciUpperPath) ? pathStats.ciUpperPath : [];
+
+  for (let p = 0; p < paths.length; p++) {
+    const color = palette[p % palette.length];
+    datasets.push({
+      data: paths[p],
+      borderColor: color + '55',
+      borderWidth: 1.2,
+      pointRadius: 0,
+      fill: false,
+      tension: 0,
+    });
+  }
+
+  datasets.push({
+    label: `Strike ($${params.strike})`,
+    data: Array(labels.length).fill(params.strike),
+    borderColor: '#ff5c7c',
+    borderWidth: 1.5,
+    borderDash: [6, 4],
+    pointRadius: 0,
+    fill: false,
+  });
+
+  if (ciLowerPath.length === labels.length && ciUpperPath.length === labels.length) {
+    datasets.push({
+      label: '95% CI Lower',
+      data: ciLowerPath,
+      borderColor: 'rgba(62, 168, 255, 0.1)',
+      backgroundColor: 'rgba(62, 168, 255, 0)',
+      borderWidth: 0,
+      pointRadius: 0,
+      fill: false,
+    });
+    datasets.push({
+      label: '95% CI Band',
+      data: ciUpperPath,
+      borderColor: 'rgba(62, 168, 255, 0.18)',
+      backgroundColor: 'rgba(62, 168, 255, 0.16)',
+      borderWidth: 0,
+      pointRadius: 0,
+      fill: '-1',
+    });
+  }
+
+  if (meanPath.length === labels.length) {
+    datasets.push({
+      label: 'Mean Path',
+      data: meanPath,
+      borderColor: '#3ea8ff',
+      borderWidth: 2.2,
+      pointRadius: 0,
+      fill: false,
+      tension: 0.2,
+    });
+  }
+
+  const isDarkMC = document.documentElement.dataset.theme !== 'light';
+  const axisColor = isDarkMC ? '#a1a7c0' : '#4a5068';
+
+  getOrCreateChart('mcChart', {
+    type: 'line',
+    data: { labels, datasets },
+    options: chartDefaults({
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            filter: item => item.text && !item.text.startsWith('95% CI Lower')
           }
         }
-      });
+      },
+      scales: {
+        x: { title: { display: true, text: 'Time Step', color: axisColor, font: { size: 12, weight: '500' } } },
+        y: { title: { display: true, text: 'Price ($)', color: axisColor, font: { size: 12, weight: '500' } } },
+      },
+      animation: false,
+    })
+  });
 
-      const finalPrice = convergence[convergence.length - 1];
-      toast('success', 'Simulation Complete', `${nPaths} paths · Price ≈ $${fmt(finalPrice, 2)}`);
-    } catch (err) {
-      toast('error', 'Simulation Failed', err.message);
-    } finally {
-      hideLoading();
-    }
-  }, 50);
+  getOrCreateChart('convChart', {
+    type: 'line',
+    data: {
+      labels: Array.from({ length: convergence.length }, (_, i) => i + 1),
+      datasets: [{
+        label: 'MC Price Convergence',
+        data: convergence,
+        borderColor: '#00e5a0',
+        backgroundColor(ctx) {
+          const chart = ctx.chart;
+          const { ctx: cx, chartArea } = chart;
+          return gradientFill(cx, chartArea, 0, 229, 160);
+        },
+        fill: true,
+        tension: .25,
+        pointRadius: 0,
+        borderWidth: 2.5,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#00e5a0',
+      }]
+    },
+    options: chartDefaults({
+      scales: {
+        x: { title: { display: true, text: 'Number of Paths', color: axisColor, font: { size: 12, weight: '500' } } },
+        y: { title: { display: true, text: 'Estimated Price ($)', color: axisColor, font: { size: 12, weight: '500' } } },
+      },
+    })
+  });
 }
 
 function boxMullerRandom() {
@@ -715,19 +954,25 @@ async function dlForecast() {
         datasets: [{
           label: 'Option Price ($)',
           data: chartData,
-          backgroundColor: ['#6d5cff', '#00e5a0', '#3ea8ff'],
-          borderRadius: 8, barThickness: 50
+          backgroundColor: ['rgba(109,92,255,0.75)', 'rgba(0,229,160,0.75)', 'rgba(62,168,255,0.75)'],
+          hoverBackgroundColor: ['#6d5cff', '#00e5a0', '#3ea8ff'],
+          borderColor: ['#6d5cff', '#00e5a0', '#3ea8ff'],
+          borderWidth: 1.5,
+          borderRadius: 10,
+          borderSkipped: false,
+          barPercentage: 0.55,
+          categoryPercentage: 0.7,
         }]
       },
-      options: {
-        ...chartDefaults(),
-        plugins: { ...chartDefaults().plugins, legend: { display: false } },
+      options: chartDefaults({
+        plugins: { legend: { display: false } },
         scales: {
-          ...chartDefaults().scales,
-          y: { ...chartDefaults().scales.y, beginAtZero: true,
-               title: { display: true, text: 'Price ($)', color: '#9ba1b7' } }
-        }
-      }
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Price ($)', color: (document.documentElement.dataset.theme !== 'light') ? '#a1a7c0' : '#4a5068', font: { size: 12, weight: '500' } },
+          },
+        },
+      })
     });
 
     toast('success', 'DL Forecast', `Price ≈ $${fmt(d.forecast_price, 2)}`);
@@ -899,6 +1144,7 @@ async function volTrain() {
       const labels = d.top_features.map(f => f.name);
       const values = d.top_features.map(f => f.importance);
       if (_volFeatureChart) _volFeatureChart.destroy();
+      const isDarkVF = document.documentElement.dataset.theme !== 'light';
       _volFeatureChart = new Chart($('volFeatureChart'), {
         type: 'bar',
         data: {
@@ -906,22 +1152,25 @@ async function volTrain() {
           datasets: [{
             label: 'Importance',
             data: values,
-            backgroundColor: 'rgba(109,92,255,0.55)',
+            backgroundColor: values.map((_, i) => {
+              const opacity = 0.4 + 0.5 * ((values.length - i) / values.length);
+              return `rgba(109,92,255,${opacity})`;
+            }),
+            hoverBackgroundColor: '#6d5cff',
             borderColor: '#6d5cff',
             borderWidth: 1,
-            borderRadius: 4,
+            borderRadius: 6,
+            borderSkipped: false,
           }],
         },
-        options: {
-          ...chartDefaults(),
+        options: chartDefaults({
           indexAxis: 'y',
-          plugins: { ...chartDefaults().plugins, legend: { display: false } },
+          plugins: { legend: { display: false } },
           scales: {
-            ...chartDefaults().scales,
-            x: { ...chartDefaults().scales.x, title: { display: true, text: 'Importance', color: '#9ba1b7' } },
-            y: { ...chartDefaults().scales.y, ticks: { font: { size: 11 }, color: '#c8cce0' } },
+            x: { title: { display: true, text: 'Importance', color: isDarkVF ? '#a1a7c0' : '#4a5068', font: { size: 12, weight: '500' } } },
+            y: { ticks: { font: { size: 11, weight: '500' }, color: isDarkVF ? '#c8cce0' : '#4a5068' } },
           },
-        },
+        }),
       });
     }
 
@@ -1812,11 +2061,15 @@ $('quantStatusBtn')?.addEventListener('click', async () => {
 
 // ── 31. PINNs Pricing ──────────────────────────────────────────
 $('pinnsTrainBtn')?.addEventListener('click', async () => {
+  const nSamples = parseInt($('pinnsSamples').value) || 5000;
+  const nEpochs = parseInt($('pinnsEpochs').value) || 200;
+  if (nSamples < 500) { toast('warning', 'Invalid Input', 'PINNs samples must be at least 500'); return; }
+  if (nEpochs < 10)   { toast('warning', 'Invalid Input', 'PINNs epochs must be at least 10'); return; }
   showLoading();
   try {
     const d = await api('/api/v1/quant/pinns/train', {
-      n_samples: parseInt($('pinnsSamples').value) || 5000,
-      epochs: parseInt($('pinnsEpochs').value) || 200,
+      n_samples: nSamples,
+      epochs: nEpochs,
       spot_range: [50, 150],
       strike: pf('pinnsStrike', 100),
       rate: pf('pinnsRate', 0.05),
@@ -1886,11 +2139,13 @@ $('pinnsGreeksBtn')?.addEventListener('click', async () => {
 
 // ── 32. RL Hedging ─────────────────────────────────────────────
 $('hedgeTrainBtn')?.addEventListener('click', async () => {
+  const episodes = parseInt($('hedgeEpisodes').value) || 500;
+  if (episodes < 50) { toast('warning', 'Invalid Input', 'Episodes must be at least 50'); return; }
   showLoading();
   try {
     const d = await api('/api/v1/quant/hedging/train', {
       agent_type: $('hedgeAgent').value,
-      episodes: parseInt($('hedgeEpisodes').value) || 500,
+      episodes: episodes,
       spot: pf('hedgeSpot', 100), strike: pf('hedgeStrike', 100),
       maturity: pf('hedgeMaturity', 0.25), volatility: pf('hedgeVol', 0.2),
       rate: pf('hedgeRate', 0.05),
@@ -1919,7 +2174,7 @@ $('hedgeBacktestBtn')?.addEventListener('click', async () => {
       spot: pf('hedgeSpot', 100), strike: pf('hedgeStrike', 100),
       maturity: pf('hedgeMaturity', 0.25), volatility: pf('hedgeVol', 0.2),
       rate: pf('hedgeRate', 0.05),
-    }, { timeout: 60000 });
+    }, { timeout: 180000 });
     if (!d) return;
     $('hedgeResults').style.display = '';
     const improvClass = d.improvement_pct > 0 ? 'positive' : 'negative';
@@ -2013,24 +2268,46 @@ $('vsPredictBtn')?.addEventListener('click', async () => {
         datasets: [{
           label: 'ATM Vol Smile',
           data: d.smile_atm,
-          borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,0.1)',
-          fill: true, tension: 0.3,
+          borderColor: '#22d3ee',
+          backgroundColor(ctxDS) {
+            const chart = ctxDS.chart;
+            const { ctx: cx, chartArea } = chart;
+            return gradientFill(cx, chartArea, 34, 211, 238);
+          },
+          fill: true,
+          tension: 0.35,
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#22d3ee',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: '#22d3ee',
+          pointHoverBorderWidth: 2.5,
         }, {
           label: 'Term Structure',
           data: d.term_structure,
-          borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)',
-          fill: true, tension: 0.3,
+          borderColor: '#a78bfa',
+          backgroundColor(ctxDS) {
+            const chart = ctxDS.chart;
+            const { ctx: cx, chartArea } = chart;
+            return gradientFill(cx, chartArea, 167, 139, 250);
+          },
+          fill: true,
+          tension: 0.35,
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#a78bfa',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: '#a78bfa',
+          pointHoverBorderWidth: 2.5,
         }],
       },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: '#cbd5e1' } } },
+      options: chartDefaults({
         scales: {
-          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } },
-          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' },
-               title: { display: true, text: 'Implied Vol', color: '#94a3b8' } },
+          y: { title: { display: true, text: 'Implied Vol', color: (document.documentElement.dataset.theme !== 'light') ? '#a1a7c0' : '#4a5068', font: { size: 12, weight: '500' } } },
         },
-      },
+      }),
     });
 
     $('vsNarrative').textContent = `Vol surface predicted: ${d.strikes.length}×${d.maturities.length} grid in ${d.regime} regime.`;
@@ -2305,9 +2582,4 @@ $('pfStressBtn')?.addEventListener('click', async () => {
   } catch (err) {
     toast('error', 'Stress Test Error', err.message);
   } finally { hideLoading(); }
-});
-
-// ── 39. Dashboard Quick Actions for Quant ──────────────────────
-document.querySelectorAll('.dash-action-btn[data-goto]').forEach(btn => {
-  btn.addEventListener('click', () => navigate(btn.dataset.goto));
 });

@@ -343,20 +343,14 @@ async def vol_surface_train(
         from ..vol_surface_transformer import get_vol_surface_transformer
 
         model = get_vol_surface_transformer()
+        model.config.epochs = request.epochs
 
-        # Generate synthetic training data
-        rng = np.random.default_rng(42)
-        n = request.n_samples
-        market_data = {
-            "moneyness": rng.uniform(0.8, 1.2, n).astype(np.float64),
-            "tau": rng.uniform(0.05, 2.0, n).astype(np.float64),
-            "regime": rng.integers(0, 3, n).astype(np.float64),
-            "hist_vol": rng.uniform(0.10, 0.40, n).astype(np.float64),
-            "iv_target": rng.uniform(0.10, 0.50, n).astype(np.float64),
-        }
+        # Generate synthetic training data with correct shapes for transformer
+        market_data = model.generate_synthetic_surface(
+            n_samples=request.n_samples, seed=42
+        )
 
         start = time.perf_counter()
-        # train(market_data: Dict) -> Dict with epochs, best_loss, training_time_s, history
         result = await asyncio.to_thread(model.train, market_data)
         elapsed = (time.perf_counter() - start) * 1000
 
@@ -1054,7 +1048,17 @@ async def explain_decision(
         if dt == "price":
             key_map = {"spot": "S", "strike": "K", "maturity": "tau",
                        "volatility": "sigma", "rate": "r", "model": "model_name"}
+            opt_type = ctx.pop("option_type", "call")
             ctx = {key_map.get(k, k): v for k, v in ctx.items()}
+            # Compute BS price if not provided (explain_price requires it)
+            if "price" not in ctx:
+                from .. import pricing
+                _inp = pricing.PricingInputs(
+                    spot=float(ctx.get("S", 100)), strike=float(ctx.get("K", 100)),
+                    maturity=float(ctx.get("tau", 1)), rate=float(ctx.get("r", 0.05)),
+                    volatility=float(ctx.get("sigma", 0.2)), option_type=str(opt_type),
+                )
+                ctx["price"] = pricing.black_scholes(_inp)
         # Schema uses "vol_surface" but module dispatches on "surface"
         if dt == "vol_surface":
             dt = "surface"

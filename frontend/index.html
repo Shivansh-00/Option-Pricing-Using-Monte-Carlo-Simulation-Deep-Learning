@@ -10,6 +10,30 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="premium.css" />
+  <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+  <style>
+    .nav-icon svg, .icon svg, .capability-icon svg, .rag-stat-icon svg { width: 1em; height: 1em; vertical-align: -0.125em; stroke-width: 2; }
+    .nav-icon svg { width: 1.15rem; height: 1.15rem; }
+    .capability-icon svg { width: 1.5rem; height: 1.5rem; }
+    .btn svg, .dash-action-btn svg, .action-btn svg { width: 1em; height: 1em; vertical-align: -0.125em; margin-right: 0.15em; }
+    .sidebar-collapse-btn svg { width: 1rem; height: 1rem; }
+    .mobile-toggle svg { width: 1.25rem; height: 1.25rem; }
+  </style>
+
+  <style>
+    /* Lucide icon sizing */
+    [data-lucide], .nav-icon i[data-lucide], .icon i[data-lucide],
+    .capability-icon i[data-lucide], .rag-stat-icon i[data-lucide] {
+      width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em;
+      stroke: currentColor; fill: none; stroke-width: 2;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+    .nav-icon [data-lucide] { width: 18px; height: 18px; }
+    .capability-icon [data-lucide] { width: 28px; height: 28px; }
+    .section-title [data-lucide] { width: 1.1em; height: 1.1em; vertical-align: -0.15em; }
+    .btn [data-lucide] { width: 14px; height: 14px; vertical-align: -0.1em; margin-right: 2px; }
+    .rag-stat-icon [data-lucide] { width: 20px; height: 20px; }
+  </style>
 </head>
 <body>
   <!-- Ambient BG -->
@@ -31,7 +55,7 @@
       <div class="sidebar-brand">
         <div class="logo">OQ</div>
         <h1>OptionQuant<span>Enterprise Platform</span></h1>
-        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle compact mode" aria-label="Toggle compact mode">‹</button>
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle compact mode" aria-label="Toggle compact mode"><i data-lucide="panel-left-close"></i></button>
       </div>
 
       <div class="sidebar-divider" aria-hidden="true"></div>
@@ -39,83 +63,83 @@
       <nav class="sidebar-nav" id="nav" role="navigation" aria-label="Main navigation">
         <div class="nav-label"><span class="nav-label-text">Overview</span></div>
         <div class="nav-item active" data-section="dashboard" tabindex="0" role="button" title="Dashboard">
-          <span class="icon">◈</span> <span class="nav-text">Dashboard</span>
+          <span class="icon"><i data-lucide="layout-dashboard"></i></span> <span class="nav-text">Dashboard</span>
         </div>
 
         <div class="nav-label"><span class="nav-label-text">Analytics</span></div>
         <div class="nav-item" data-section="pricing" tabindex="0" role="button" title="Option Pricing">
-          <span class="icon">◆</span> <span class="nav-text">Option Pricing</span>
+          <span class="icon"><i data-lucide="calculator"></i></span> <span class="nav-text">Option Pricing</span>
         </div>
         <div class="nav-item" data-section="greeks" tabindex="0" role="button" title="Greeks Analysis">
-          <span class="icon">Δ</span> <span class="nav-text">Greeks Analysis</span>
+          <span class="icon"><i data-lucide="triangle"></i></span> <span class="nav-text">Greeks Analysis</span>
         </div>
         <div class="nav-item" data-section="monte-carlo" tabindex="0" role="button" title="Monte Carlo">
-          <span class="icon">⬡</span> <span class="nav-text">Monte Carlo</span>
+          <span class="icon"><i data-lucide="hexagon"></i></span> <span class="nav-text">Monte Carlo</span>
         </div>
 
         <div class="nav-label"><span class="nav-label-text">Intelligence</span></div>
         <div class="nav-item" data-section="deep-learning" tabindex="0" role="button" title="Deep Learning">
-          <span class="icon">◎</span> <span class="nav-text">Deep Learning</span>
+          <span class="icon"><i data-lucide="circle-dot"></i></span> <span class="nav-text">Deep Learning</span>
         </div>
         <div class="nav-item" data-section="ml-volatility" tabindex="0" role="button" title="ML Volatility">
-          <span class="icon">⊞</span> <span class="nav-text">ML Volatility</span>
+          <span class="icon"><i data-lucide="bar-chart-big"></i></span> <span class="nav-text">ML Volatility</span>
         </div>
         <div class="nav-item" data-section="sentiment" tabindex="0" role="button" title="Market Sentiment">
-          <span class="icon">◉</span> <span class="nav-text">Market Sentiment</span>
+          <span class="icon"><i data-lucide="heart-pulse"></i></span> <span class="nav-text">Market Sentiment</span>
         </div>
 
         <div class="nav-label"><span class="nav-label-text">Research</span></div>
         <div class="nav-item" data-section="risk-analytics" tabindex="0" role="button" title="Risk Analytics">
-          <span class="icon">⊘</span> <span class="nav-text">Risk Analytics</span>
+          <span class="icon"><i data-lucide="shield-alert"></i></span> <span class="nav-text">Risk Analytics</span>
         </div>
         <div class="nav-item" data-section="explainability" tabindex="0" role="button" title="AI Explainability">
-          <span class="icon">◇</span> <span class="nav-text">AI Explainability</span>
+          <span class="icon"><i data-lucide="sparkles"></i></span> <span class="nav-text">AI Explainability</span>
         </div>
 
         <div class="nav-label"><span class="nav-label-text">Quant Engine</span></div>
         <div class="nav-item" data-section="market-intel" tabindex="0" role="button" title="Market Intelligence">
-          <span class="icon">📡</span> <span class="nav-text">Market Intel</span>
+          <span class="icon"><i data-lucide="satellite-dish"></i></span> <span class="nav-text">Market Intel</span>
         </div>
         <div class="nav-item" data-section="mispricing" tabindex="0" role="button" title="Mispricing Scanner">
-          <span class="icon">🔍</span> <span class="nav-text">Mispricing</span>
+          <span class="icon"><i data-lucide="search"></i></span> <span class="nav-text">Mispricing</span>
         </div>
         <div class="nav-item" data-section="regime" tabindex="0" role="button" title="Regime Detection">
-          <span class="icon">📊</span> <span class="nav-text">Regime</span>
+          <span class="icon"><i data-lucide="activity"></i></span> <span class="nav-text">Regime</span>
         </div>
         <div class="nav-item" data-section="shap-explain" tabindex="0" role="button" title="SHAP Explain">
-          <span class="icon">🧠</span> <span class="nav-text">SHAP Explain</span>
+          <span class="icon"><i data-lucide="brain"></i></span> <span class="nav-text">SHAP Explain</span>
         </div>
         <div class="nav-item" data-section="benchmark" tabindex="0" role="button" title="Benchmark">
-          <span class="icon">⚡</span> <span class="nav-text">Benchmark</span>
+          <span class="icon"><i data-lucide="zap"></i></span> <span class="nav-text">Benchmark</span>
         </div>
 
         <div class="nav-label"><span class="nav-label-text">Quant Intelligence</span></div>
         <div class="nav-item" data-section="quant-dashboard" tabindex="0" role="button" title="Quant Dashboard">
-          <span class="icon">🧬</span> <span class="nav-text">Quant Dashboard</span>
+          <span class="icon"><i data-lucide="dna"></i></span> <span class="nav-text">Quant Dashboard</span>
         </div>
         <div class="nav-item" data-section="pinns" tabindex="0" role="button" title="PINNs Pricing">
-          <span class="icon">🔬</span> <span class="nav-text">PINNs Pricing</span>
+          <span class="icon"><i data-lucide="atom"></i></span> <span class="nav-text">PINNs Pricing</span>
         </div>
         <div class="nav-item" data-section="rl-hedging" tabindex="0" role="button" title="RL Hedging">
-          <span class="icon">🤖</span> <span class="nav-text">RL Hedging</span>
+          <span class="icon"><i data-lucide="bot"></i></span> <span class="nav-text">RL Hedging</span>
         </div>
         <div class="nav-item" data-section="vol-surface" tabindex="0" role="button" title="Vol Surface">
-          <span class="icon">🌊</span> <span class="nav-text">Vol Surface</span>
+          <span class="icon"><i data-lucide="waves"></i></span> <span class="nav-text">Vol Surface</span>
         </div>
         <div class="nav-item" data-section="jump-diffusion" tabindex="0" role="button" title="Jump Diffusion">
-          <span class="icon">📈</span> <span class="nav-text">Jump Diffusion</span>
+          <span class="icon"><i data-lucide="trending-up"></i></span> <span class="nav-text">Jump Diffusion</span>
         </div>
         <div class="nav-item" data-section="arbitrage" tabindex="0" role="button" title="Arbitrage Scanner">
-          <span class="icon">🎯</span> <span class="nav-text">Arbitrage Scanner</span>
+          <span class="icon"><i data-lucide="target"></i></span> <span class="nav-text">Arbitrage Scanner</span>
         </div>
         <div class="nav-item" data-section="uncertainty" tabindex="0" role="button" title="Uncertainty">
-          <span class="icon">📊</span> <span class="nav-text">Uncertainty</span>
+          <span class="icon"><i data-lucide="gauge"></i></span> <span class="nav-text">Uncertainty</span>
         </div>
         <div class="nav-item" data-section="gpu-mc" tabindex="0" role="button" title="GPU Monte Carlo">
-          <span class="icon">🚀</span> <span class="nav-text">GPU Monte Carlo</span>
+          <span class="icon"><i data-lucide="rocket"></i></span> <span class="nav-text">GPU Monte Carlo</span>
         </div>
         <div class="nav-item" data-section="portfolio-risk" tabindex="0" role="button" title="Portfolio Risk">
-          <span class="icon">🛡️</span> <span class="nav-text">Portfolio Risk</span>
+          <span class="icon"><i data-lucide="shield"></i></span> <span class="nav-text">Portfolio Risk</span>
         </div>
       </nav>
 
@@ -138,10 +162,10 @@
           <span class="icon" id="themeIcon">🌙</span> Toggle Theme
         </div>
         <div class="action-btn" id="healthBtn">
-          <span class="icon">🔗</span> <span id="healthLabel">Check API</span>
+          <span class="icon"><i data-lucide="link"></i></span> <span id="healthLabel">Check API</span>
         </div>
         <div class="action-btn danger" id="logoutBtn">
-          <span class="icon">🚪</span> Sign Out
+          <span class="icon"><i data-lucide="log-out"></i></span> Sign Out
         </div>
       </div>
     </aside>
@@ -150,7 +174,7 @@
     <main class="main-content">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle sidebar" aria-expanded="false" aria-controls="sidebar">☰</button>
+          <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle sidebar" aria-expanded="false" aria-controls="sidebar"><i data-lucide="menu"></i></button>
           <div>
             <div class="page-title" id="pageTitle">Option Pricing</div>
             <div class="page-subtitle" id="pageSubtitle">Black-Scholes & Monte Carlo engines</div>
@@ -168,7 +192,7 @@
         <!-- ═══════════ 0. DASHBOARD ═══════════ -->
         <div class="section active" id="sec-dashboard">
           <div class="section-header">
-            <div class="section-title">◈ Dashboard Overview</div>
+            <div class="section-title"><i data-lucide="layout-dashboard"></i> Dashboard Overview</div>
             <div class="section-desc">Enterprise option pricing platform — system health &amp; quick actions</div>
           </div>
 
@@ -199,104 +223,104 @@
           <!-- Quick Actions -->
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">⚡</span> Quick Actions</div>
+              <div class="card-title"><span class="icon"><i data-lucide="zap"></i></span> Quick Actions</div>
             </div>
             <div class="dash-actions">
-              <button class="btn btn-primary dash-action-btn" data-goto="pricing">◆ Price Option</button>
-              <button class="btn btn-secondary dash-action-btn" data-goto="monte-carlo">⬡ Run Simulation</button>
-              <button class="btn btn-secondary dash-action-btn" data-goto="deep-learning">◎ DL Forecast</button>
-              <button class="btn btn-secondary dash-action-btn" data-goto="sentiment">◉ Analyze Sentiment</button>
-              <button class="btn btn-secondary dash-action-btn" data-goto="risk-analytics">⊘ Risk Analysis</button>
-              <button class="btn btn-accent dash-action-btn" data-goto="explainability">◇ Ask AI</button>
-              <button class="btn btn-primary dash-action-btn" data-goto="quant-dashboard">🧬 Quant Engine</button>
+              <button class="btn btn-primary dash-action-btn" data-goto="pricing"><i data-lucide="calculator"></i> Price Option</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="monte-carlo"><i data-lucide="hexagon"></i> Run Simulation</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="deep-learning"><i data-lucide="circle-dot"></i> DL Forecast</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="sentiment"><i data-lucide="heart-pulse"></i> Analyze Sentiment</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="risk-analytics"><i data-lucide="shield-alert"></i> Risk Analysis</button>
+              <button class="btn btn-accent dash-action-btn" data-goto="explainability"><i data-lucide="sparkles"></i> Ask AI</button>
+              <button class="btn btn-primary dash-action-btn" data-goto="quant-dashboard"><i data-lucide="dna"></i> Quant Engine</button>
             </div>
           </div>
 
           <!-- Platform Capabilities -->
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">🏛</span> Platform Capabilities</div>
+              <div class="card-title"><span class="icon"><i data-lucide="landmark"></i></span> Platform Capabilities</div>
             </div>
             <div class="dash-capabilities">
               <div class="capability-item">
-                <div class="capability-icon">📐</div>
+                <div class="capability-icon"><i data-lucide="ruler"></i></div>
                 <div>
                   <div class="capability-title">Black-Scholes Analytics</div>
                   <div class="capability-desc">Closed-form option pricing with full Greeks (Δ, Γ, Θ, ν, ρ)</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">⬡</div>
+                <div class="capability-icon"><i data-lucide="hexagon"></i></div>
                 <div>
                   <div class="capability-title">Monte Carlo Engine</div>
                   <div class="capability-desc">GBM paths with antithetic, stratified &amp; control variate methods</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">◎</div>
+                <div class="capability-icon"><i data-lucide="circle-dot"></i></div>
                 <div>
                   <div class="capability-title">Deep Learning Models</div>
                   <div class="capability-desc">LSTM price prediction + Transformer sentiment analysis</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">⊞</div>
+                <div class="capability-icon"><i data-lucide="grid-3x3"></i></div>
                 <div>
                   <div class="capability-title">ML Volatility Engine</div>
                   <div class="capability-desc">7-model ensemble with walk-forward validation</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">◉</div>
+                <div class="capability-icon"><i data-lucide="message-circle"></i></div>
                 <div>
                   <div class="capability-title">Market Sentiment NLP</div>
                   <div class="capability-desc">Financial news analysis with transformer-based attention</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">◇</div>
+                <div class="capability-icon"><i data-lucide="sparkles"></i></div>
                 <div>
                   <div class="capability-title">RAG-Powered AI</div>
                   <div class="capability-desc">Knowledge-augmented Q&amp;A with BM25+ hybrid retrieval</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">🔬</div>
+                <div class="capability-icon"><i data-lucide="microscope"></i></div>
                 <div>
                   <div class="capability-title">PINNs Option Pricing</div>
                   <div class="capability-desc">Physics-informed neural nets with Black-Scholes PDE constraints</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">🤖</div>
+                <div class="capability-icon"><i data-lucide="bot"></i></div>
                 <div>
                   <div class="capability-title">RL Dynamic Hedging</div>
                   <div class="capability-desc">DQN &amp; PPO agents for optimal delta hedging strategies</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">🌊</div>
+                <div class="capability-icon"><i data-lucide="waves"></i></div>
                 <div>
                   <div class="capability-title">Transformer Vol Surface</div>
                   <div class="capability-desc">Self-attention model for implied volatility surface prediction</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">🎯</div>
+                <div class="capability-icon"><i data-lucide="target"></i></div>
                 <div>
                   <div class="capability-title">Arbitrage Detection</div>
                   <div class="capability-desc">Multi-dimensional scanner: PCP, butterfly, calendar, box spread</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">🚀</div>
+                <div class="capability-icon"><i data-lucide="rocket"></i></div>
                 <div>
                   <div class="capability-title">GPU Monte Carlo</div>
                   <div class="capability-desc">CUDA-accelerated MC with GBM, Heston &amp; Merton models</div>
                 </div>
               </div>
               <div class="capability-item">
-                <div class="capability-icon">🛡️</div>
+                <div class="capability-icon"><i data-lucide="shield"></i></div>
                 <div>
                   <div class="capability-title">Portfolio Risk Engine</div>
                   <div class="capability-desc">VaR, stress testing, regime scenario analysis</div>
@@ -308,10 +332,10 @@
           <!-- Version Info -->
           <div class="card" style="margin-top:0.5rem">
             <div class="card-header">
-              <div class="card-title"><span class="icon">ℹ️</span> System Info</div>
+              <div class="card-title"><span class="icon"><i data-lucide="info"></i></span> System Info</div>
             </div>
             <div class="dash-info-grid">
-              <div class="dash-info-item"><span class="dash-info-label">Version</span><span class="dash-info-value">v3.0.0</span></div>
+              <div class="dash-info-item"><span class="dash-info-label">Version</span><span class="dash-info-value">v4.0.0</span></div>
               <div class="dash-info-item"><span class="dash-info-label">Backend</span><span class="dash-info-value">FastAPI + Uvicorn</span></div>
               <div class="dash-info-item"><span class="dash-info-label">Frontend</span><span class="dash-info-value">Vanilla JS + Chart.js</span></div>
               <div class="dash-info-item"><span class="dash-info-label">ML Framework</span><span class="dash-info-value">NumPy + Scikit-learn</span></div>
@@ -326,13 +350,13 @@
         <!-- ═══════════ 1. PRICING ═══════════ -->
         <div class="section" id="sec-pricing">
           <div class="section-header">
-            <div class="section-title">⚡ Option Pricing Engine</div>
+            <div class="section-title"><i data-lucide="calculator"></i> Option Pricing Engine</div>
             <div class="section-desc">Compute fair values using Black-Scholes analytics and Monte Carlo simulation simultaneously</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">📐</span> Parameters</div>
+              <div class="card-title"><span class="icon"><i data-lucide="ruler"></i></span> Parameters</div>
               <span class="result-badge" id="resultBadge" style="display:none">—</span>
             </div>
 
@@ -367,7 +391,7 @@
             </div>
 
             <div class="btn-group">
-              <button class="btn btn-primary" id="priceBtn">⚡ Price Option</button>
+              <button class="btn btn-primary" id="priceBtn"><i data-lucide="zap"></i> Price Option</button>
               <button class="btn btn-secondary" id="resetBtn">↻ Reset</button>
             </div>
           </div>
@@ -429,13 +453,13 @@
         <!-- ═══════════ 2. GREEKS ═══════════ -->
         <div class="section" id="sec-greeks">
           <div class="section-header">
-            <div class="section-title">Δ Greeks Surface Analysis</div>
+            <div class="section-title"><i data-lucide="triangle"></i> Greeks Surface Analysis</div>
             <div class="section-desc">Visualise sensitivity across the strike/spot spectrum</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">🎯</span> Surface Parameters</div>
+              <div class="card-title"><span class="icon"><i data-lucide="target"></i></span> Surface Parameters</div>
             </div>
             <div class="form-grid">
               <div class="field">
@@ -454,7 +478,7 @@
               </div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="plotGreekBtn">📈 Plot Surface</button>
+              <button class="btn btn-primary" id="plotGreekBtn"><i data-lucide="trending-up"></i> Plot Surface</button>
             </div>
           </div>
 
@@ -466,13 +490,13 @@
         <!-- ═══════════ 3. MONTE CARLO ═══════════ -->
         <div class="section" id="sec-monte-carlo">
           <div class="section-header">
-            <div class="section-title">🎲 Monte Carlo Simulation</div>
+            <div class="section-title"><i data-lucide="hexagon"></i> Monte Carlo Simulation</div>
             <div class="section-desc">Geometric Brownian Motion path simulation with convergence analysis</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">⚙️</span> Simulation Settings</div>
+              <div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> Simulation Settings</div>
             </div>
             <div class="mc-controls">
               <div class="field">
@@ -483,17 +507,17 @@
                 <label for="mcSteps">Steps</label>
                 <input type="number" id="mcSteps" value="252" min="50" max="1000" step="1" />
               </div>
-              <button class="btn btn-accent" id="simBtn">▶ Run Simulation</button>
+              <button class="btn btn-accent" id="simBtn"><i data-lucide="play"></i> Run Simulation</button>
             </div>
           </div>
 
           <div class="charts-grid" id="mcChartsWrap" style="display:none">
             <div class="chart-container">
-              <div class="card-title mb-4"><span class="icon">📉</span> Price Paths (GBM)</div>
+              <div class="card-title mb-4"><span class="icon"><i data-lucide="trending-down"></i></span> Price Paths (GBM)</div>
               <canvas id="mcChart"></canvas>
             </div>
             <div class="chart-container">
-              <div class="card-title mb-4"><span class="icon">📊</span> Convergence</div>
+              <div class="card-title mb-4"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Convergence</div>
               <canvas id="convChart"></canvas>
             </div>
           </div>
@@ -502,13 +526,13 @@
         <!-- ═══════════ 4. DEEP LEARNING ═══════════ -->
         <div class="section" id="sec-deep-learning">
           <div class="section-header">
-            <div class="section-title">🧠 Deep Learning Forecast</div>
+            <div class="section-title"><i data-lucide="brain-circuit"></i> Deep Learning Forecast</div>
             <div class="section-desc">LSTM &amp; Transformer neural-network pricing with benchmark comparison</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">🔬</span> Model Input</div>
+              <div class="card-title"><span class="icon"><i data-lucide="microscope"></i></span> Model Input</div>
             </div>
             <div class="form-grid">
               <div class="field">
@@ -545,9 +569,9 @@
                 style="width:100%;resize:vertical;font-family:inherit;font-size:0.9rem;padding:0.65rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)"></textarea>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="dlBtn">◎ Forecast</button>
-              <button class="btn btn-secondary" id="dlTrainBtn">⚙ Train Models</button>
-              <button class="btn btn-secondary" id="dlStatusBtn">◈ DL Status</button>
+              <button class="btn btn-primary" id="dlBtn"><i data-lucide="circle-dot"></i> Forecast</button>
+              <button class="btn btn-secondary" id="dlTrainBtn"><i data-lucide="settings"></i> Train Models</button>
+              <button class="btn btn-secondary" id="dlStatusBtn"><i data-lucide="gauge"></i> DL Status</button>
             </div>
           </div>
 
@@ -587,13 +611,13 @@
           <!-- DL Training Status -->
           <div class="card" id="dlTrainStatus" style="display:none;margin-top:1rem">
             <div class="card-header">
-              <div class="card-title"><span class="icon">⚙</span> Training Progress</div>
+              <div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> Training Progress</div>
             </div>
             <div id="dlTrainInfo"></div>
           </div>
 
           <div class="chart-container" id="compChartWrap" style="display:none">
-            <div class="card-title mb-4"><span class="icon">📊</span> Model Comparison</div>
+            <div class="card-title mb-4"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Model Comparison</div>
             <canvas id="compChart"></canvas>
           </div>
         </div>
@@ -601,14 +625,14 @@
         <!-- ═══════════ 5. ML VOLATILITY ═══════════ -->
         <div class="section" id="sec-ml-volatility">
           <div class="section-header">
-            <div class="section-title">📈 ML Volatility Engine</div>
+            <div class="section-title"><i data-lucide="bar-chart-big"></i> ML Volatility Engine</div>
             <div class="section-desc">Production-grade ML volatility forecasting with walk-forward validation and model comparison</div>
           </div>
 
           <!-- ── Engine Status Banner ── -->
           <div class="card" id="volEngineStatus" style="margin-bottom:1.2rem">
             <div class="card-header">
-              <div class="card-title"><span class="icon">⚡</span> Engine Status</div>
+              <div class="card-title"><span class="icon"><i data-lucide="zap"></i></span> Engine Status</div>
             </div>
             <div class="metrics-row" style="margin:0">
               <div class="metric-card">
@@ -633,7 +657,7 @@
           <!-- ── Training Configuration ── -->
           <div class="card" id="volTrainCard">
             <div class="card-header">
-              <div class="card-title"><span class="icon">🧠</span> Model Training</div>
+              <div class="card-title"><span class="icon"><i data-lucide="brain"></i></span> Model Training</div>
             </div>
             <div class="form-grid">
               <div class="field">
@@ -670,8 +694,8 @@
               </div>
             </div>
             <div class="btn-group" style="margin-top:1rem">
-              <button class="btn btn-primary" id="volTrainBtn">🚂 Train Models</button>
-              <button class="btn btn-secondary" id="volStatusBtn">📊 Refresh Status</button>
+              <button class="btn btn-primary" id="volTrainBtn"><i data-lucide="play"></i> Train Models</button>
+              <button class="btn btn-secondary" id="volStatusBtn"><i data-lucide="bar-chart-2"></i> Refresh Status</button>
             </div>
             <div id="volTrainProgress" style="display:none;margin-top:0.8rem;">
               <div style="display:flex;align-items:center;gap:0.6rem">
@@ -684,7 +708,7 @@
           <!-- ── Model Comparison Table ── -->
           <div class="card" id="volComparisonCard" style="display:none;margin-top:1.2rem">
             <div class="card-header">
-              <div class="card-title"><span class="icon">📊</span> Model Comparison</div>
+              <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Model Comparison</div>
             </div>
             <div style="overflow-x:auto">
               <table class="vol-table" id="volCompTable">
@@ -712,9 +736,9 @@
           <!-- ── Feature Importance Chart ── -->
           <div class="card" id="volFeatureCard" style="display:none;margin-top:1.2rem">
             <div class="card-header">
-              <div class="card-title"><span class="icon">🏆</span> Top Feature Importance (Best Model)</div>
+              <div class="card-title"><span class="icon"><i data-lucide="trophy"></i></span> Top Feature Importance (Best Model)</div>
             </div>
-            <div class="chart-container" style="max-height:350px">
+            <div class="chart-container">
               <canvas id="volFeatureChart"></canvas>
             </div>
           </div>
@@ -722,7 +746,7 @@
           <!-- ── IV Prediction (enhanced) ── -->
           <div class="card" style="margin-top:1.2rem">
             <div class="card-header">
-              <div class="card-title"><span class="icon">🔮</span> Single-Point IV Prediction</div>
+              <div class="card-title"><span class="icon"><i data-lucide="wand-2"></i></span> Single-Point IV Prediction</div>
             </div>
             <div class="form-grid">
               <div class="field">
@@ -751,7 +775,7 @@
               </div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="mlBtn">📈 Predict IV</button>
+              <button class="btn btn-primary" id="mlBtn"><i data-lucide="trending-up"></i> Predict IV</button>
             </div>
           </div>
 
@@ -778,13 +802,13 @@
         <!-- ═══════════ 6. MARKET SENTIMENT ═══════════ -->
         <div class="section" id="sec-sentiment">
           <div class="section-header">
-            <div class="section-title">◉ Market Sentiment Analysis</div>
+            <div class="section-title"><i data-lucide="heart-pulse"></i> Market Sentiment Analysis</div>
             <div class="section-desc">Financial news NLP powered by Transformer attention &amp; lexicon scoring</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">📝</span> Analyze Financial Text</div>
+              <div class="card-title"><span class="icon"><i data-lucide="file-text"></i></span> Analyze Financial Text</div>
             </div>
             <div class="field" style="margin-bottom:1rem">
               <label for="sentimentText">Financial News / Market Commentary</label>
@@ -792,15 +816,15 @@
                 style="width:100%;resize:vertical;font-family:inherit;font-size:0.9rem;padding:0.75rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)"></textarea>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="sentimentBtn">◉ Analyze Sentiment</button>
-              <button class="btn btn-secondary" id="sentimentClearBtn">↻ Clear</button>
+              <button class="btn btn-primary" id="sentimentBtn"><i data-lucide="heart-pulse"></i> Analyze Sentiment</button>
+              <button class="btn btn-secondary" id="sentimentClearBtn"><i data-lucide="refresh-cw"></i> Clear</button>
             </div>
           </div>
 
           <!-- Quick Examples -->
           <div class="card" style="margin-top:1rem">
             <div class="card-header">
-              <div class="card-title"><span class="icon">⚡</span> Quick Examples</div>
+              <div class="card-title"><span class="icon"><i data-lucide="zap"></i></span> Quick Examples</div>
             </div>
             <div class="quick-chips" id="sentimentChips">
               <span class="chip" data-text="Strong earnings beat expectations with record revenue growth. Company raises full-year guidance significantly.">Bullish Earnings</span>
@@ -838,7 +862,7 @@
             <!-- Sentiment Gauge -->
             <div class="card" style="margin-top:1rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">📊</span> Sentiment Gauge</div>
+                <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Sentiment Gauge</div>
               </div>
               <div class="sentiment-gauge-wrap">
                 <div class="sentiment-gauge">
@@ -858,13 +882,13 @@
         <!-- ═══════════ 7. RISK ANALYTICS ═══════════ -->
         <div class="section" id="sec-risk-analytics">
           <div class="section-header">
-            <div class="section-title">⊘ Risk Analytics</div>
+            <div class="section-title"><i data-lucide="shield-alert"></i> Risk Analytics</div>
             <div class="section-desc">Value-at-Risk, position analysis, and risk decomposition</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">⚠️</span> Value-at-Risk Calculator</div>
+              <div class="card-title"><span class="icon"><i data-lucide="alert-triangle"></i></span> Value-at-Risk Calculator</div>
             </div>
             <div class="form-grid">
               <div class="field">
@@ -908,7 +932,7 @@
               </div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="varCalcBtn">⊘ Calculate VaR</button>
+              <button class="btn btn-primary" id="varCalcBtn"><i data-lucide="shield-alert"></i> Calculate VaR</button>
             </div>
           </div>
 
@@ -940,7 +964,7 @@
             <!-- Risk Decomposition -->
             <div class="card" style="margin-top:1rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">📊</span> Risk Decomposition</div>
+                <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Risk Decomposition</div>
               </div>
               <div class="risk-breakdown" id="riskBreakdown">
                 <div class="risk-item">
@@ -971,29 +995,29 @@
         <!-- ═══════════ 8. AI EXPLAINABILITY ═══════════ -->
         <div class="section" id="sec-explainability">
           <div class="section-header">
-            <div class="section-title">💡 AI Explainability Engine</div>
+            <div class="section-title"><i data-lucide="sparkles"></i> AI Explainability Engine</div>
             <div class="section-desc">RAG-powered Q&amp;A — ask anything about quantitative finance</div>
           </div>
 
           <!-- RAG Stats Bar -->
           <div class="rag-stats-bar" id="ragStatsBar">
             <div class="rag-stat-item">
-              <span class="rag-stat-icon">📚</span>
+              <span class="rag-stat-icon"><i data-lucide="book-open"></i></span>
               <span class="rag-stat-value" id="ragDocCount">—</span>
               <span class="rag-stat-label">Chunks</span>
             </div>
             <div class="rag-stat-item">
-              <span class="rag-stat-icon">📄</span>
+              <span class="rag-stat-icon"><i data-lucide="file-text"></i></span>
               <span class="rag-stat-value" id="ragSourceCount">—</span>
               <span class="rag-stat-label">Sources</span>
             </div>
             <div class="rag-stat-item">
-              <span class="rag-stat-icon">⚡</span>
+              <span class="rag-stat-icon"><i data-lucide="zap"></i></span>
               <span class="rag-stat-value" id="ragAvgLatency">—</span>
               <span class="rag-stat-label">Avg ms</span>
             </div>
             <div class="rag-stat-item">
-              <span class="rag-stat-icon">🎯</span>
+              <span class="rag-stat-icon"><i data-lucide="target"></i></span>
               <span class="rag-stat-value" id="ragCacheRate">—</span>
               <span class="rag-stat-label">Cache Hit</span>
             </div>
@@ -1004,7 +1028,7 @@
 
             <div class="chat-input-row">
               <input type="text" id="ragInput" placeholder="Ask about Black-Scholes, Greeks, Monte Carlo, Heston, hedging…" />
-              <button class="btn btn-primary" id="ragBtn">Ask →</button>
+              <button class="btn btn-primary" id="ragBtn"><i data-lucide="send"></i> Ask</button>
             </div>
 
             <!-- Follow-up suggestions (dynamic) -->
@@ -1050,7 +1074,7 @@
         <!-- ═══════════ 9. MARKET INTELLIGENCE ═══════════ -->
         <div class="section" id="sec-market-intel">
           <div class="section-header">
-            <div class="section-title">📡 Market Intelligence</div>
+            <div class="section-title"><i data-lucide="satellite-dish"></i> Market Intelligence</div>
             <div class="section-desc">Real-time market data, option chains &amp; live streaming</div>
           </div>
 
@@ -1079,19 +1103,19 @@
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">📡</span> Live Market Feed</div>
+              <div class="card-title"><span class="icon"><i data-lucide="satellite-dish"></i></span> Live Market Feed</div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="mktFetchBtn">📥 Fetch Snapshot</button>
-              <button class="btn btn-secondary" id="mktStreamBtn">🔴 Start Stream</button>
-              <button class="btn btn-secondary" id="mktStopStreamBtn" disabled>⏹ Stop Stream</button>
+              <button class="btn btn-primary" id="mktFetchBtn"><i data-lucide="download"></i> Fetch Snapshot</button>
+              <button class="btn btn-secondary" id="mktStreamBtn"><i data-lucide="radio"></i> Start Stream</button>
+              <button class="btn btn-secondary" id="mktStopStreamBtn" disabled><i data-lucide="square"></i> Stop Stream</button>
             </div>
             <div class="result-block" id="mktStreamLog" style="margin-top:0.75rem;max-height:300px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.75rem;display:none"></div>
           </div>
 
           <div class="card" style="margin-top:0.75rem">
             <div class="card-header">
-              <div class="card-title"><span class="icon">📋</span> Option Chain</div>
+              <div class="card-title"><span class="icon"><i data-lucide="clipboard-list"></i></span> Option Chain</div>
             </div>
             <div id="mktChainContainer" style="overflow-x:auto">
               <table class="data-table" id="mktChainTable" style="display:none">
@@ -1111,13 +1135,13 @@
         <!-- ═══════════ 10. MISPRICING SCANNER ═══════════ -->
         <div class="section" id="sec-mispricing">
           <div class="section-header">
-            <div class="section-title">🔍 Mispricing Scanner</div>
+            <div class="section-title"><i data-lucide="search-code"></i> Mispricing Scanner</div>
             <div class="section-desc">Detect arbitrage opportunities &amp; pricing anomalies in real time</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">🔍</span> Single Contract Check</div>
+              <div class="card-title"><span class="icon"><i data-lucide="search"></i></span> Single Contract Check</div>
             </div>
             <div class="form-grid">
               <div class="field">
@@ -1158,8 +1182,8 @@
               </div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="mispDetectBtn">🔍 Detect Mispricing</button>
-              <button class="btn btn-secondary" id="mispScanBtn">🔎 Full Chain Scan</button>
+              <button class="btn btn-primary" id="mispDetectBtn"><i data-lucide="search"></i> Detect Mispricing</button>
+              <button class="btn btn-secondary" id="mispScanBtn"><i data-lucide="scan-search"></i> Full Chain Scan</button>
             </div>
           </div>
 
@@ -1191,7 +1215,7 @@
           <div id="mispScanResults" style="display:none;margin-top:1rem">
             <div class="card">
               <div class="card-header">
-                <div class="card-title"><span class="icon">📊</span> Scan Results</div>
+                <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Scan Results</div>
               </div>
               <div class="metrics-row" id="mispScanMetrics"></div>
               <div style="overflow-x:auto">
@@ -1212,13 +1236,13 @@
         <!-- ═══════════ 11. REGIME DETECTION ═══════════ -->
         <div class="section" id="sec-regime">
           <div class="section-header">
-            <div class="section-title">📊 Regime Detection</div>
+            <div class="section-title"><i data-lucide="activity"></i> Regime Detection</div>
             <div class="section-desc">Hidden Markov Model regime identification for dynamic model selection</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">📊</span> Detect Current Regime</div>
+              <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Detect Current Regime</div>
             </div>
             <div class="form-grid">
               <div class="field" style="grid-column: span 2">
@@ -1231,7 +1255,7 @@
               </div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="regimeDetectBtn">📊 Detect Regime</button>
+              <button class="btn btn-primary" id="regimeDetectBtn"><i data-lucide="activity"></i> Detect Regime</button>
             </div>
           </div>
 
@@ -1261,7 +1285,7 @@
 
             <div class="card" style="margin-top:0.75rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">🔄</span> Transition Probabilities</div>
+                <div class="card-title"><span class="icon"><i data-lucide="refresh-cw"></i></span> Transition Probabilities</div>
               </div>
               <div id="regimeTransition" class="transition-matrix"></div>
             </div>
@@ -1271,13 +1295,13 @@
         <!-- ═══════════ 12. SHAP EXPLAIN ═══════════ -->
         <div class="section" id="sec-shap-explain">
           <div class="section-header">
-            <div class="section-title">🧠 SHAP Explainability</div>
+            <div class="section-title"><i data-lucide="brain"></i> SHAP Explainability</div>
             <div class="section-desc">Permutation-based feature attribution &amp; model-agnostic pricing explanation</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">🧠</span> Explain Pricing</div>
+              <div class="card-title"><span class="icon"><i data-lucide="brain"></i></span> Explain Pricing</div>
             </div>
             <div class="form-grid">
               <div class="field">
@@ -1306,7 +1330,7 @@
               </div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="shapExplainBtn">🧠 Explain</button>
+              <button class="btn btn-primary" id="shapExplainBtn"><i data-lucide="brain"></i> Explain</button>
             </div>
           </div>
 
@@ -1326,28 +1350,28 @@
 
             <div class="card" style="margin-top:0.75rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">📊</span> Feature Attributions (SHAP)</div>
+                <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Feature Attributions (SHAP)</div>
               </div>
               <div id="shapWaterfall"></div>
             </div>
 
             <div class="card" style="margin-top:0.75rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">📝</span> Narrative Explanation</div>
+                <div class="card-title"><span class="icon"><i data-lucide="file-text"></i></span> Narrative Explanation</div>
               </div>
               <div id="shapNarrative" class="result-block" style="white-space:pre-wrap"></div>
             </div>
 
             <div class="card" style="margin-top:0.75rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">📉</span> Sensitivity: Volatility</div>
+                <div class="card-title"><span class="icon"><i data-lucide="trending-down"></i></span> Sensitivity: Volatility</div>
               </div>
               <div id="shapVolSens"></div>
             </div>
 
             <div class="card" style="margin-top:0.75rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">⏰</span> Time Decay Profile</div>
+                <div class="card-title"><span class="icon"><i data-lucide="clock"></i></span> Time Decay Profile</div>
               </div>
               <div id="shapTimeDecay"></div>
             </div>
@@ -1357,13 +1381,13 @@
         <!-- ═══════════ 13. PERFORMANCE BENCHMARK ═══════════ -->
         <div class="section" id="sec-benchmark">
           <div class="section-header">
-            <div class="section-title">⚡ Performance Benchmark</div>
+            <div class="section-title"><i data-lucide="zap"></i> Performance Benchmark</div>
             <div class="section-desc">Comprehensive latency profiling, path scaling &amp; throughput analysis</div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">⚡</span> Run Benchmark Suite</div>
+              <div class="card-title"><span class="icon"><i data-lucide="zap"></i></span> Run Benchmark Suite</div>
             </div>
             <div class="form-grid">
               <div class="field">
@@ -1384,7 +1408,7 @@
               </div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="benchRunBtn">⚡ Run Full Benchmark</button>
+              <button class="btn btn-primary" id="benchRunBtn"><i data-lucide="zap"></i> Run Full Benchmark</button>
             </div>
             <div class="btn-note" style="font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem">This may take 15-30 seconds</div>
           </div>
@@ -1394,7 +1418,7 @@
 
             <div class="card" style="margin-top:0.75rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">📈</span> Path Scaling</div>
+                <div class="card-title"><span class="icon"><i data-lucide="trending-up"></i></span> Path Scaling</div>
               </div>
               <div style="overflow-x:auto">
                 <table class="data-table">
@@ -1406,7 +1430,7 @@
 
             <div class="card" style="margin-top:0.75rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">🔬</span> Method Comparison</div>
+                <div class="card-title"><span class="icon"><i data-lucide="microscope"></i></span> Method Comparison</div>
               </div>
               <div style="overflow-x:auto">
                 <table class="data-table">
@@ -1418,7 +1442,7 @@
 
             <div class="card" style="margin-top:0.75rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">⏱</span> Latency Profiles</div>
+                <div class="card-title"><span class="icon"><i data-lucide="timer"></i></span> Latency Profiles</div>
               </div>
               <div style="overflow-x:auto">
                 <table class="data-table">
@@ -1430,7 +1454,7 @@
 
             <div class="card" style="margin-top:0.75rem">
               <div class="card-header">
-                <div class="card-title"><span class="icon">💡</span> Recommendations</div>
+                <div class="card-title"><span class="icon"><i data-lucide="lightbulb"></i></span> Recommendations</div>
               </div>
               <div id="benchRecommendations" class="result-block"></div>
             </div>
@@ -1440,13 +1464,13 @@
         <!-- ═══════════ QUANT DASHBOARD ═══════════ -->
         <div class="section" id="sec-quant-dashboard">
           <div class="section-header">
-            <div class="section-title">🧬 Quant Intelligence Ecosystem</div>
+            <div class="section-title"><i data-lucide="dna"></i> Quant Intelligence Ecosystem</div>
             <div class="section-desc">Unified view of all advanced quantitative modules — PINNs, RL Hedging, Vol Surface, Jump Diffusion, Arbitrage, Uncertainty, GPU MC, Portfolio Risk</div>
           </div>
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">📡</span> Ecosystem Status</div>
-              <button class="btn btn-primary btn-sm" id="quantStatusBtn">⟳ Refresh Status</button>
+              <div class="card-title"><span class="icon"><i data-lucide="satellite-dish"></i></span> Ecosystem Status</div>
+              <button class="btn btn-primary btn-sm" id="quantStatusBtn"><i data-lucide="refresh-cw"></i> Refresh Status</button>
             </div>
             <div class="metrics-row" id="quantStatusMetrics">
               <div class="metric-card"><div class="metric-label">Active Modules</div><div class="metric-value highlight" id="quantActiveModules">—</div></div>
@@ -1456,18 +1480,18 @@
             </div>
           </div>
           <div class="card" style="margin-top:0.75rem">
-            <div class="card-header"><div class="card-title"><span class="icon">🧩</span> Module Details</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="puzzle"></i></span> Module Details</div></div>
             <div id="quantModuleGrid" class="dash-capabilities"></div>
           </div>
           <div class="card" style="margin-top:0.75rem">
-            <div class="card-header"><div class="card-title"><span class="icon">⚡</span> Quick Launch</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="zap"></i></span> Quick Launch</div></div>
             <div class="dash-actions">
-              <button class="btn btn-primary dash-action-btn" data-goto="pinns">🔬 PINNs Pricing</button>
-              <button class="btn btn-secondary dash-action-btn" data-goto="rl-hedging">🤖 RL Hedging</button>
-              <button class="btn btn-secondary dash-action-btn" data-goto="vol-surface">🌊 Vol Surface</button>
-              <button class="btn btn-secondary dash-action-btn" data-goto="jump-diffusion">📈 Jump Diffusion</button>
-              <button class="btn btn-secondary dash-action-btn" data-goto="arbitrage">🎯 Arbitrage Scan</button>
-              <button class="btn btn-accent dash-action-btn" data-goto="gpu-mc">🚀 GPU MC</button>
+              <button class="btn btn-primary dash-action-btn" data-goto="pinns"><i data-lucide="atom"></i> PINNs Pricing</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="rl-hedging"><i data-lucide="bot"></i> RL Hedging</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="vol-surface"><i data-lucide="waves"></i> Vol Surface</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="jump-diffusion"><i data-lucide="trending-up"></i> Jump Diffusion</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="arbitrage"><i data-lucide="target"></i> Arbitrage Scan</button>
+              <button class="btn btn-accent dash-action-btn" data-goto="gpu-mc"><i data-lucide="rocket"></i> GPU MC</button>
             </div>
           </div>
         </div>
@@ -1475,11 +1499,11 @@
         <!-- ═══════════ PINNs PRICING ═══════════ -->
         <div class="section" id="sec-pinns">
           <div class="section-header">
-            <div class="section-title">🔬 Physics-Informed Neural Networks</div>
+            <div class="section-title"><i data-lucide="atom"></i> Physics-Informed Neural Networks</div>
             <div class="section-desc">PDE-constrained deep learning for option pricing — Black-Scholes residual in loss function</div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> PINNs Configuration</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> PINNs Configuration</div></div>
             <div class="form-grid">
               <div class="field"><label for="pinnsSpot">Spot Price ($)</label><input type="number" id="pinnsSpot" value="100" step="0.01" min="0.01" /></div>
               <div class="field"><label for="pinnsStrike">Strike ($)</label><input type="number" id="pinnsStrike" value="100" step="0.01" min="0.01" /></div>
@@ -1491,13 +1515,13 @@
               <div class="field"><label for="pinnsSamples">Training Samples</label><input type="number" id="pinnsSamples" value="5000" step="500" min="500" /></div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="pinnsTrainBtn">🧠 Train PINNs</button>
-              <button class="btn btn-secondary" id="pinnsPredictBtn">⚡ Predict</button>
-              <button class="btn btn-secondary" id="pinnsGreeksBtn">Δ Greeks</button>
+              <button class="btn btn-primary" id="pinnsTrainBtn"><i data-lucide="brain"></i> Train PINNs</button>
+              <button class="btn btn-secondary" id="pinnsPredictBtn"><i data-lucide="zap"></i> Predict</button>
+              <button class="btn btn-secondary" id="pinnsGreeksBtn"><i data-lucide="triangle"></i> Greeks</button>
             </div>
           </div>
           <div class="card" style="margin-top:0.75rem;display:none" id="pinnsResults">
-            <div class="card-header"><div class="card-title"><span class="icon">📊</span> PINNs Results</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> PINNs Results</div></div>
             <div class="metrics-row" id="pinnsMetrics"></div>
             <div id="pinnsNarrative" class="result-block" style="margin-top:0.5rem"></div>
           </div>
@@ -1506,11 +1530,11 @@
         <!-- ═══════════ RL HEDGING ═══════════ -->
         <div class="section" id="sec-rl-hedging">
           <div class="section-header">
-            <div class="section-title">🤖 Reinforcement Learning Dynamic Hedging</div>
+            <div class="section-title"><i data-lucide="bot"></i> Reinforcement Learning Dynamic Hedging</div>
             <div class="section-desc">DQN & PPO agents for optimal delta hedging — outperforms Black-Scholes in volatile regimes</div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Hedging Parameters</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> Hedging Parameters</div></div>
             <div class="form-grid">
               <div class="field"><label for="hedgeSpot">Spot ($)</label><input type="number" id="hedgeSpot" value="100" step="0.01" min="0.01" /></div>
               <div class="field"><label for="hedgeStrike">Strike ($)</label><input type="number" id="hedgeStrike" value="100" step="0.01" min="0.01" /></div>
@@ -1522,13 +1546,13 @@
               <div class="field"><label for="hedgeScenarios">Backtest Scenarios</label><input type="number" id="hedgeScenarios" value="100" step="10" min="10" /></div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="hedgeTrainBtn">🧠 Train Agent</button>
-              <button class="btn btn-secondary" id="hedgeBacktestBtn">📊 Backtest</button>
-              <button class="btn btn-accent" id="hedgeSuggestBtn">💡 Suggest Hedge</button>
+              <button class="btn btn-primary" id="hedgeTrainBtn"><i data-lucide="brain"></i> Train Agent</button>
+              <button class="btn btn-secondary" id="hedgeBacktestBtn"><i data-lucide="bar-chart-2"></i> Backtest</button>
+              <button class="btn btn-accent" id="hedgeSuggestBtn"><i data-lucide="lightbulb"></i> Suggest Hedge</button>
             </div>
           </div>
           <div class="card" style="margin-top:0.75rem;display:none" id="hedgeResults">
-            <div class="card-header"><div class="card-title"><span class="icon">📈</span> Hedging Results</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="trending-up"></i></span> Hedging Results</div></div>
             <div class="metrics-row" id="hedgeMetrics"></div>
             <div id="hedgeNarrative" class="result-block" style="margin-top:0.5rem"></div>
           </div>
@@ -1537,11 +1561,11 @@
         <!-- ═══════════ VOL SURFACE ═══════════ -->
         <div class="section" id="sec-vol-surface">
           <div class="section-header">
-            <div class="section-title">🌊 Transformer Vol Surface</div>
+            <div class="section-title"><i data-lucide="waves"></i> Transformer Vol Surface</div>
             <div class="section-desc">Self-attention model predicting full implied volatility surfaces with arbitrage constraints</div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Surface Parameters</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> Surface Parameters</div></div>
             <div class="form-grid">
               <div class="field"><label for="vsSpot">Spot ($)</label><input type="number" id="vsSpot" value="100" step="0.01" min="0.01" /></div>
               <div class="field"><label for="vsRate">Rate</label><input type="number" id="vsRate" value="0.05" step="0.001" /></div>
@@ -1551,14 +1575,14 @@
               <div class="field"><label for="vsSamples">Train Samples</label><input type="number" id="vsSamples" value="500" step="50" min="50" /></div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="vsTrainBtn">🧠 Train Model</button>
-              <button class="btn btn-secondary" id="vsPredictBtn">🌊 Predict Surface</button>
+              <button class="btn btn-primary" id="vsTrainBtn"><i data-lucide="brain"></i> Train Model</button>
+              <button class="btn btn-secondary" id="vsPredictBtn"><i data-lucide="waves"></i> Predict Surface</button>
             </div>
           </div>
           <div class="card" style="margin-top:0.75rem;display:none" id="vsResults">
-            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Vol Surface</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Vol Surface</div></div>
             <div class="metrics-row" id="vsMetrics"></div>
-            <div style="margin-top:0.75rem"><canvas id="vsChart" height="300"></canvas></div>
+            <div class="chart-container" style="margin-top:0.75rem"><canvas id="vsChart"></canvas></div>
             <div id="vsNarrative" class="result-block" style="margin-top:0.5rem"></div>
           </div>
         </div>
@@ -1566,11 +1590,11 @@
         <!-- ═══════════ JUMP DIFFUSION ═══════════ -->
         <div class="section" id="sec-jump-diffusion">
           <div class="section-header">
-            <div class="section-title">📈 Jump Diffusion & Regime Switching</div>
+            <div class="section-title"><i data-lucide="trending-up"></i> Jump Diffusion & Regime Switching</div>
             <div class="section-desc">Merton jump-diffusion pricing with HMM regime detection — Bull, Bear, Crisis</div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Parameters</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> Parameters</div></div>
             <div class="form-grid">
               <div class="field"><label for="jdSpot">Spot ($)</label><input type="number" id="jdSpot" value="100" step="0.01" min="0.01" /></div>
               <div class="field"><label for="jdStrike">Strike ($)</label><input type="number" id="jdStrike" value="100" step="0.01" min="0.01" /></div>
@@ -1580,12 +1604,12 @@
               <div class="field"><label for="jdType">Option Type</label><select id="jdType"><option value="call">Call</option><option value="put">Put</option></select></div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="jdPriceBtn">💰 Price Option</button>
-              <button class="btn btn-secondary" id="jdScenarioBtn">📊 Scenario Analysis</button>
+              <button class="btn btn-primary" id="jdPriceBtn"><i data-lucide="coins"></i> Price Option</button>
+              <button class="btn btn-secondary" id="jdScenarioBtn"><i data-lucide="bar-chart-2"></i> Scenario Analysis</button>
             </div>
           </div>
           <div class="card" style="margin-top:0.75rem;display:none" id="jdResults">
-            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Jump Diffusion Results</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Jump Diffusion Results</div></div>
             <div class="metrics-row" id="jdMetrics"></div>
             <div id="jdNarrative" class="result-block" style="margin-top:0.5rem"></div>
           </div>
@@ -1594,11 +1618,11 @@
         <!-- ═══════════ ARBITRAGE SCANNER ═══════════ -->
         <div class="section" id="sec-arbitrage">
           <div class="section-header">
-            <div class="section-title">🎯 Arbitrage Detection Engine</div>
+            <div class="section-title"><i data-lucide="target"></i> Arbitrage Detection Engine</div>
             <div class="section-desc">Multi-dimensional arbitrage scanning — Put-Call Parity, Calendar, Butterfly, Box Spread, Vol Consistency</div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Scan Parameters</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> Scan Parameters</div></div>
             <div class="form-grid">
               <div class="field"><label for="arbSpot">Spot ($)</label><input type="number" id="arbSpot" value="100" step="0.01" min="0.01" /></div>
               <div class="field"><label for="arbRate">Rate</label><input type="number" id="arbRate" value="0.05" step="0.001" /></div>
@@ -1606,11 +1630,11 @@
               <div class="field"><label for="arbRegime">Regime</label><select id="arbRegime"><option value="0">Bull</option><option value="1">Bear</option><option value="2">Crisis</option></select></div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="arbScanBtn">🎯 Full Scan</button>
+              <button class="btn btn-primary" id="arbScanBtn"><i data-lucide="target"></i> Full Scan</button>
             </div>
           </div>
           <div class="card" style="margin-top:0.75rem;display:none" id="arbResults">
-            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Arbitrage Signals</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Arbitrage Signals</div></div>
             <div class="metrics-row" id="arbMetrics"></div>
             <div style="overflow-x:auto;margin-top:0.5rem">
               <table class="data-table">
@@ -1624,11 +1648,11 @@
         <!-- ═══════════ UNCERTAINTY ═══════════ -->
         <div class="section" id="sec-uncertainty">
           <div class="section-header">
-            <div class="section-title">📊 Uncertainty Quantification</div>
+            <div class="section-title"><i data-lucide="gauge"></i> Uncertainty Quantification</div>
             <div class="section-desc">Bayesian NN + MC Dropout for epistemic & aleatoric uncertainty decomposition</div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> Parameters</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> Parameters</div></div>
             <div class="form-grid">
               <div class="field"><label for="uqSpot">Spot ($)</label><input type="number" id="uqSpot" value="100" step="0.01" min="0.01" /></div>
               <div class="field"><label for="uqStrike">Strike ($)</label><input type="number" id="uqStrike" value="100" step="0.01" min="0.01" /></div>
@@ -1639,11 +1663,11 @@
               <div class="field"><label for="uqSamples">Samples</label><input type="number" id="uqSamples" value="100" step="10" min="10" /></div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="uqQuantifyBtn">📊 Quantify Uncertainty</button>
+              <button class="btn btn-primary" id="uqQuantifyBtn"><i data-lucide="gauge"></i> Quantify Uncertainty</button>
             </div>
           </div>
           <div class="card" style="margin-top:0.75rem;display:none" id="uqResults">
-            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Uncertainty Analysis</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Uncertainty Analysis</div></div>
             <div class="metrics-row" id="uqMetrics"></div>
             <div id="uqNarrative" class="result-block" style="margin-top:0.5rem"></div>
           </div>
@@ -1652,11 +1676,11 @@
         <!-- ═══════════ GPU MONTE CARLO ═══════════ -->
         <div class="section" id="sec-gpu-mc">
           <div class="section-header">
-            <div class="section-title">🚀 GPU-Accelerated Monte Carlo</div>
+            <div class="section-title"><i data-lucide="rocket"></i> GPU-Accelerated Monte Carlo</div>
             <div class="section-desc">PyTorch CUDA-accelerated MC — GBM, Heston, Merton models with variance reduction</div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-title"><span class="icon">⚙️</span> GPU MC Parameters</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> GPU MC Parameters</div></div>
             <div class="form-grid">
               <div class="field"><label for="gmcSpot">Spot ($)</label><input type="number" id="gmcSpot" value="100" step="0.01" min="0.01" /></div>
               <div class="field"><label for="gmcStrike">Strike ($)</label><input type="number" id="gmcStrike" value="100" step="0.01" min="0.01" /></div>
@@ -1669,12 +1693,12 @@
               <div class="field"><label for="gmcVR">Variance Reduction</label><select id="gmcVR"><option value="antithetic">Antithetic</option><option value="control_variate">Control Variate</option><option value="stratified">Stratified</option><option value="none">None</option></select></div>
             </div>
             <div class="btn-group">
-              <button class="btn btn-primary" id="gmcPriceBtn">🚀 Price (GPU)</button>
-              <button class="btn btn-secondary" id="gmcBenchBtn">⚡ Benchmark</button>
+              <button class="btn btn-primary" id="gmcPriceBtn"><i data-lucide="rocket"></i> Price (GPU)</button>
+              <button class="btn btn-secondary" id="gmcBenchBtn"><i data-lucide="zap"></i> Benchmark</button>
             </div>
           </div>
           <div class="card" style="margin-top:0.75rem;display:none" id="gmcResults">
-            <div class="card-header"><div class="card-title"><span class="icon">📊</span> GPU MC Results</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> GPU MC Results</div></div>
             <div class="metrics-row" id="gmcMetrics"></div>
             <div id="gmcNarrative" class="result-block" style="margin-top:0.5rem"></div>
           </div>
@@ -1683,13 +1707,13 @@
         <!-- ═══════════ PORTFOLIO RISK ═══════════ -->
         <div class="section" id="sec-portfolio-risk">
           <div class="section-header">
-            <div class="section-title">🛡️ Portfolio Risk Dashboard</div>
+            <div class="section-title"><i data-lucide="shield"></i> Portfolio Risk Dashboard</div>
             <div class="section-desc">Multi-option portfolio risk — VaR, stress testing, regime scenario analysis</div>
           </div>
           <div class="card">
             <div class="card-header">
-              <div class="card-title"><span class="icon">📋</span> Portfolio Positions</div>
-              <button class="btn btn-secondary btn-sm" id="pfAddPositionBtn">+ Add Position</button>
+              <div class="card-title"><span class="icon"><i data-lucide="clipboard-list"></i></span> Portfolio Positions</div>
+              <button class="btn btn-secondary btn-sm" id="pfAddPositionBtn"><i data-lucide="plus"></i> Add Position</button>
             </div>
             <div id="pfPositions">
               <div class="form-grid pf-position" data-idx="0">
@@ -1702,12 +1726,12 @@
               </div>
             </div>
             <div class="btn-group" style="margin-top:0.75rem">
-              <button class="btn btn-primary" id="pfRiskReportBtn">🛡️ Full Risk Report</button>
-              <button class="btn btn-secondary" id="pfStressBtn">⚠️ Stress Test</button>
+              <button class="btn btn-primary" id="pfRiskReportBtn"><i data-lucide="shield"></i> Full Risk Report</button>
+              <button class="btn btn-secondary" id="pfStressBtn"><i data-lucide="alert-triangle"></i> Stress Test</button>
             </div>
           </div>
           <div class="card" style="margin-top:0.75rem;display:none" id="pfResults">
-            <div class="card-header"><div class="card-title"><span class="icon">📊</span> Risk Report</div></div>
+            <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Risk Report</div></div>
             <div class="metrics-row" id="pfMetrics"></div>
             <div style="overflow-x:auto;margin-top:0.5rem">
               <table class="data-table">
@@ -1733,8 +1757,10 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="app.js"></script>
   <script src="premium-motion.js"></script>
+  <script>lucide.createIcons();</script>
 </body>
 </html>
