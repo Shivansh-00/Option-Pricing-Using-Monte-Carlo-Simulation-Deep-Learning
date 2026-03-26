@@ -1,0 +1,15 @@
+  [OK] Market Quote -> 200 
+  [FAIL] Market Chain -> 400 {"error":"Bad Request","message":"[TypeError(\"'numpy.bool' object is not iterable\"), TypeError('vars() argument must have __dict__ attribute')]"}
+  [FAIL] Market Snapshot -> 400 {"error":"Bad Request","message":"[TypeError(\"'numpy.bool' object is not iterable\"), TypeError('vars() argument must have __dict__ attribute')]"}
+  [OK] Market Health -> 200 
+  [OK] Mispricing Detect -> 200 
+  [FAIL] Regime Detect -> 400 {"error":"Bad Request","message":"Out of range float values are not JSON compliant"}
+  [OK] Confidence -> 200 
+  [OK] VaR -> 200 
+  [OK] Reliability -> 200 
+  [OK] SHAP Explain -> 200 
+  [OK] Benchmark -> 200 
+  [OK] AI Explain -> 200 
+  [OK] RAG Health -> 200 
+
+10/13 passed

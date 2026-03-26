@@ -195,7 +195,7 @@ class FinancialLSTM:
                 h[layer_idx], c[layer_idx] = cell.forward(inp, h[layer_idx], c[layer_idx])
 
         # Output projection from last layer's hidden state
-        out = float(h[-1] @ self.W_out + self.b_out)
+        out = float((h[-1] @ self.W_out + self.b_out).item())
         return max(0.0, min(1.0, out))  # clamp to [0,1] in scaled space
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:

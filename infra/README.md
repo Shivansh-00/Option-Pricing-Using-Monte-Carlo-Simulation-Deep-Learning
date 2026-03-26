@@ -25,9 +25,6 @@ infra/
 │   ├── monitoring/
 │   ├── ingress/
 │   └── autoscaling/
-├── docker/             # Production-optimized Dockerfiles
-│   ├── backend.prod.Dockerfile
-│   └── frontend.prod.Dockerfile
 ├── monitoring/         # Prometheus & Grafana configs
 │   ├── prometheus.yml
 │   ├── alerting-rules.yml
@@ -38,25 +35,22 @@ infra/
 │   ├── deploy.sh
 │   ├── rollback.sh
 │   └── health-check.sh
-└── docker-compose.prod.yml
+└── README.md
 ```
 
 ## Quick Start
 
 ```bash
-# 1. Local production stack
-docker-compose -f infra/docker-compose.prod.yml up --build
-
-# 2. Deploy to AWS
+# 1. Deploy to AWS
 cd infra/terraform
 terraform init
 terraform plan -var-file=terraform.tfvars
 terraform apply -var-file=terraform.tfvars
 
-# 3. Deploy to Kubernetes
+# 2. Deploy to Kubernetes
 kubectl apply -f infra/k8s/namespace.yaml
 kubectl apply -Rf infra/k8s/
 
-# 4. CI/CD (automatic on push)
+# 3. CI/CD (automatic on push)
 # Copy infra/ci-cd/.github/ to repo root .github/
 ```

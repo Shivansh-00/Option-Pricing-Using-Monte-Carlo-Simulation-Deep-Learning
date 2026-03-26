@@ -1,0 +1,10 @@
+Checkpoint neural_sde_default.pt not found; using untrained default model for smoke validation
+Neural SDE price: 29.315147
+StdErr: 0.752945
+95% CI: (27.839374, 30.79092)
+Benchmark summary:
+neural_sde {'price': 29.315146666986713, 'std_error': 0.7529454056583126, 'ci_lower': 27.83937367189642, 'ci_upper': 30.790919662077005}
+black_scholes {'price': 6.059167349719701, 'abs_diff_vs_neural': 23.255979317267013}
+gbm_monte_carlo {'price': 6.043842269528225, 'std_error': 0.15070863511366672, 'elapsed_ms': 45.13, 'abs_diff_vs_neural': 23.271304397458486}
+heston {'price': 5.896568443124504, 'abs_diff_vs_neural': 23.41857822386221}
+Saved plots to C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\backend\data\processed

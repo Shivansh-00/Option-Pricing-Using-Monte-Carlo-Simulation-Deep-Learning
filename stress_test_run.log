@@ -1,0 +1,5 @@
+/api/v1/pricing/bs -> 20/20 ok in 0.36s
+/api/v1/pricing/mc -> 20/20 ok in 1.25s
+/api/v1/pricing/greeks -> 20/20 ok in 0.32s
+/api/v1/ml/iv-predict -> 20/20 ok in 0.26s
+/api/v1/ai/explain -> 20/20 ok in 9.99s

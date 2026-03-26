@@ -1,0 +1,2 @@
+500
+{"detail":"Training error: only 0-dimensional arrays can be converted to Python scalars"}

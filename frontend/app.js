@@ -7,13 +7,18 @@
 let _authReady = Promise.resolve();
 let _tokenRefreshTimer = null;
 
+const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:8000' : '';
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
+
 (function authGuard() {
   const token   = localStorage.getItem('oq-token');
   const expires = localStorage.getItem('oq-expires');
   if (!token || !expires || Date.now() >= Number(expires)) {
     const refresh = localStorage.getItem('oq-refresh');
     if (refresh) {
-      _authReady = fetch('/api/v1/auth/refresh', {
+      _authReady = fetch(apiUrl('/api/v1/auth/refresh'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refresh })
@@ -44,7 +49,7 @@ function scheduleTokenRefresh(expiresInSec) {
     const refresh = localStorage.getItem('oq-refresh');
     if (!refresh) return;
     try {
-      const res = await fetch('/api/v1/auth/refresh', {
+      const res = await fetch(apiUrl('/api/v1/auth/refresh'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refresh })
@@ -65,7 +70,7 @@ function redirectToLogin() {
   localStorage.removeItem('oq-token');
   localStorage.removeItem('oq-refresh');
   localStorage.removeItem('oq-expires');
-  window.location.href = '/login.html';
+  window.location.href = apiUrl('/login.html');
 }
 
 // ── 2. Helpers ─────────────────────────────────────────────────
@@ -87,7 +92,7 @@ async function api(url, body, { retries = 1, timeout = 30000 } = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     try {
-      const res = await fetch(url, {
+      const res = await fetch(apiUrl(url), {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(body),
@@ -116,7 +121,7 @@ async function apiGet(url, { retries = 1, timeout = 15000 } = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     try {
-      const res = await fetch(url, { headers: getAuthHeaders(), signal: controller.signal });
+      const res = await fetch(apiUrl(url), { headers: getAuthHeaders(), signal: controller.signal });
       clearTimeout(timer);
       if (handleAuthError(res.status)) return null;
       const data = await res.json();
@@ -347,7 +352,7 @@ async function checkHealth() {
   try {
     const ctrl = new AbortController();
     setTimeout(() => ctrl.abort(), 5000);
-    const res = await fetch('/health', { signal: ctrl.signal });
+    const res = await fetch(apiUrl('/health'), { signal: ctrl.signal });
     const ok = res.ok;
     $('statusDot').classList.toggle('online', ok);
     $('statusText').textContent = ok ? 'API Online' : 'API Error';
@@ -388,7 +393,7 @@ $('logoutBtn').addEventListener('click', async () => {
   try {
     const token = localStorage.getItem('oq-token');
     if (token) {
-      await fetch('/api/v1/auth/logout', {
+      await fetch(apiUrl('/api/v1/auth/logout'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -401,7 +406,7 @@ $('logoutBtn').addEventListener('click', async () => {
   localStorage.removeItem('oq-refresh');
   localStorage.removeItem('oq-expires');
   sessionStorage.removeItem('oq-chat-history');
-  window.location.href = '/login.html';
+  window.location.href = apiUrl('/login.html');
 });
 
 // ── 9. Chart Defaults ──────────────────────────────────────────

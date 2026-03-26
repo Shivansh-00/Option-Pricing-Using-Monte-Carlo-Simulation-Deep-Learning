@@ -1,0 +1,89 @@
+======================================================================
+COMPREHENSIVE API ENDPOINT TEST
+======================================================================
+
+--- Health & Readiness ---
+  [OK] Health -> 200 (6ms)
+  [OK] Readiness -> 200 (8ms)
+
+--- Authentication ---
+  [OK] Auth Me -> 200 (29ms)
+
+--- Option Pricing ---
+  [OK] Black-Scholes -> 200 (41ms)
+  [OK] Monte Carlo -> 200 (143ms)
+  [OK] MC Detailed -> 200 (108ms)
+  [OK] MC Compare -> 200 (810ms)
+  [OK] Greeks -> 200 (14ms)
+
+--- ML Volatility ---
+  [OK] IV Predict -> 200 (310ms)
+  [OK] Vol Train -> 200 (8894ms)
+  [OK] Vol Status -> 200 (39ms)
+
+--- Deep Learning ---
+  [OK] DL Forecast -> 200 (200ms)
+  [OK] DL Train -> 200 (24159ms)
+  [OK] Market Sentiment -> 200 (32ms)
+
+--- PINNs ---
+  [OK] PINNs Train -> 200 (62372ms)
+  [OK] PINNs Predict -> 200 (19ms)
+  [OK] PINNs Greeks -> 200 (67ms)
+
+--- RL Hedging ---
+  [OK] Hedging Train -> 200 (8463ms)
+  [OK] Hedging Backtest -> 200 (11891ms)
+  [OK] Hedging Suggest -> 200 (12ms)
+
+--- Vol Surface ---
+  [OK] Vol Surface Train -> 200 (3611ms)
+  [OK] Vol Surface Predict -> 200 (27ms)
+
+--- Jump Diffusion ---
+  [OK] Jump Diffusion Price -> 200 (1276ms)
+  [OK] Regime Calibrate -> 200 (686ms)
+  [OK] Scenario Analysis -> 200 (1082ms)
+
+--- Arbitrage ---
+  [OK] Arbitrage Scan -> 200 (55ms)
+  [OK] Put-Call Parity -> 200 (11ms)
+
+--- Uncertainty ---
+  [OK] Uncertainty Quantify -> 200 (36ms)
+  [OK] Uncertainty Train -> 200 (95ms)
+
+--- GPU Monte Carlo ---
+  [OK] GPU MC Price -> 200 (1405ms)
+  [OK] GPU MC Benchmark -> 200 (44144ms)
+
+--- Portfolio Risk ---
+  [OK] Portfolio Risk Report -> 200 (2560ms)
+  [OK] Portfolio Stress Test -> 200 (125ms)
+
+--- Explainer ---
+  [OK] Explain Decision -> 200 (188ms)
+
+--- Ecosystem Status ---
+  [OK] Quant Status -> 200 (22ms)
+
+--- Market Intelligence ---
+  [OK] Market Quote -> 200 (34ms)
+  [OK] Market Chain -> 200 (17ms)
+  [OK] Market Snapshot -> 200 (15ms)
+  [OK] Market Health -> 200 (7ms)
+  [OK] Mispricing Detect -> 200 (32ms)
+  [OK] Regime Detect -> 200 (16282ms)
+  [OK] Confidence -> 200 (1015ms)
+  [OK] VaR -> 200 (170ms)
+  [OK] Reliability -> 200 (407ms)
+  [OK] SHAP Explain -> 200 (20ms)
+  [OK] Benchmark -> 200 (15414ms)
+
+--- AI Explainer ---
+  [OK] AI Explain -> 200 (2005ms)
+  [OK] RAG Health -> 200 (62ms)
+
+======================================================================
+RESULTS: 48 passed, 0 failed, 48 total
+======================================================================

@@ -1502,7 +1502,7 @@
       <span class="tech-pill"><span class="pill-icon"><i data-lucide="server"></i></span> Uvicorn</span>
       <span class="tech-pill"><span class="pill-icon"><i data-lucide="palette"></i></span> HTML / CSS / JS</span>
       <span class="tech-pill"><span class="pill-icon"><i data-lucide="sparkles"></i></span> Gemini AI</span>
-      <span class="tech-pill"><span class="pill-icon"><i data-lucide="box"></i></span> Docker</span>
+      <span class="tech-pill"><span class="pill-icon"><i data-lucide="box"></i></span> Local Runtime</span>
       <span class="tech-pill"><span class="pill-icon"><i data-lucide="key-round"></i></span> JWT Auth</span>
       <span class="tech-pill"><span class="pill-icon"><i data-lucide="rocket"></i></span> Monte Carlo</span>
       <span class="tech-pill"><span class="pill-icon"><i data-lucide="brain"></i></span> LSTM / Transformers</span>
@@ -1978,17 +1978,22 @@
   </script>
 
   <script>
+    const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:8000' : '';
+    function appUrl(path) {
+      return `${API_BASE}${path}`;
+    }
+
     /* ── Redirect if already logged in ── */
     (function() {
       const token = localStorage.getItem('oq-token');
       const expires = localStorage.getItem('oq-expires');
       if (token && expires && Date.now() < Number(expires)) {
-        window.location.href = '/';
+        window.location.href = appUrl('/');
         return;
       }
     })();
 
-    const API = '/api/v1/auth';
+    const API = `${API_BASE}/api/v1/auth`;
 
     /* ── DOM refs ── */
     const tabLogin   = document.getElementById('tabLogin');
@@ -2061,7 +2066,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Login failed');
         storeTokens(data);
-        window.location.href = '/';
+        window.location.href = appUrl('/');
       } catch (err) {
         showError(err.message);
       } finally {
@@ -2101,7 +2106,7 @@
         if (!res.ok) throw new Error(data.detail || 'Signup failed');
         storeTokens(data);
         showSuccess('Account created! Redirecting…');
-        setTimeout(() => { window.location.href = '/'; }, 800);
+        setTimeout(() => { window.location.href = appUrl('/'); }, 800);
       } catch (err) {
         showError(err.message);
       } finally {

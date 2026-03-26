@@ -1,0 +1,101 @@
+======================================================================
+COMPREHENSIVE API ENDPOINT TEST
+======================================================================
+
+--- Health & Readiness ---
+  [OK] Health -> 200 (13ms)
+  [OK] Readiness -> 200 (13ms)
+
+--- Authentication ---
+  [OK] Auth Me -> 200 (82ms)
+
+--- Option Pricing ---
+  [OK] Black-Scholes -> 200 (33ms)
+  [OK] Monte Carlo -> 200 (216ms)
+  [OK] MC Detailed -> 200 (165ms)
+  [OK] MC Compare -> 200 (470ms)
+  [OK] Greeks -> 200 (39ms)
+
+--- ML Volatility ---
+  [OK] IV Predict -> 200 (506ms)
+  [OK] Vol Train -> 200 (8447ms)
+  [OK] Vol Status -> 200 (39ms)
+
+--- Deep Learning ---
+  [OK] DL Forecast -> 200 (213ms)
+  [OK] DL Train -> 200 (29004ms)
+  [OK] Market Sentiment -> 200 (33ms)
+
+--- PINNs ---
+  [OK] PINNs Train -> 200 (56778ms)
+  [OK] PINNs Predict -> 200 (115ms)
+  [OK] PINNs Greeks -> 200 (18ms)
+
+--- RL Hedging ---
+  [OK] Hedging Train -> 200 (11360ms)
+  [OK] Hedging Backtest -> 200 (12001ms)
+  [OK] Hedging Suggest -> 200 (116ms)
+
+--- Vol Surface ---
+  [OK] Vol Surface Train -> 200 (3749ms)
+  [OK] Vol Surface Predict -> 200 (23ms)
+
+--- Jump Diffusion ---
+  [OK] Jump Diffusion Price -> 200 (845ms)
+  [OK] Regime Calibrate -> 200 (735ms)
+  [OK] Scenario Analysis -> 200 (876ms)
+
+--- Arbitrage ---
+  [OK] Arbitrage Scan -> 200 (55ms)
+  [OK] Put-Call Parity -> 200 (24ms)
+
+--- Uncertainty ---
+  [OK] Uncertainty Quantify -> 200 (85ms)
+  [OK] Uncertainty Train -> 200 (128ms)
+
+--- GPU Monte Carlo ---
+  [OK] GPU MC Price -> 200 (2553ms)
+  [OK] GPU MC Benchmark -> 200 (55042ms)
+
+--- Portfolio Risk ---
+  [OK] Portfolio Risk Report -> 200 (3738ms)
+  [OK] Portfolio Stress Test -> 200 (29ms)
+
+--- Explainer ---
+  [OK] Explain Decision -> 200 (498ms)
+
+--- Ecosystem Status ---
+  [OK] Quant Status -> 200 (152ms)
+
+--- Market Intelligence ---
+  [FAIL] Market Quote -> 404 (36ms) | {"detail":"Not Found"}
+  [FAIL] Market Chain -> 404 (45ms) | {"detail":"Not Found"}
+  [FAIL] Market Snapshot -> 404 (20ms) | {"detail":"Not Found"}
+  [OK] Market Health -> 200 (87ms)
+  [FAIL] Mispricing -> 405 (19ms) | {"detail":"Method Not Allowed"}
+  [FAIL] Regime Detect -> 405 (8ms) | {"detail":"Method Not Allowed"}
+  [FAIL] Confidence -> 405 (10ms) | {"detail":"Method Not Allowed"}
+  [FAIL] VaR -> 405 (9ms) | {"detail":"Method Not Allowed"}
+  [FAIL] Reliability -> 405 (18ms) | {"detail":"Method Not Allowed"}
+  [FAIL] SHAP Explain -> 405 (31ms) | {"detail":"Method Not Allowed"}
+  [OK] Benchmark -> 200 (15608ms)
+
+--- AI Explainer ---
+  [FAIL] AI Explain -> 422 (41ms) | {"error":"Validation error","message":"Invalid request parameters. Check the details below.","details":[{"type":"missing
+  [OK] RAG Health -> 200 (1220ms)
+
+======================================================================
+RESULTS: 38 passed, 10 failed, 48 total
+======================================================================
+
+FAILED ENDPOINTS:
+  [404] Market Quote: {"detail":"Not Found"}
+  [404] Market Chain: {"detail":"Not Found"}
+  [404] Market Snapshot: {"detail":"Not Found"}
+  [405] Mispricing: {"detail":"Method Not Allowed"}
+  [405] Regime Detect: {"detail":"Method Not Allowed"}
+  [405] Confidence: {"detail":"Method Not Allowed"}
+  [405] VaR: {"detail":"Method Not Allowed"}
+  [405] Reliability: {"detail":"Method Not Allowed"}
+  [405] SHAP Explain: {"detail":"Method Not Allowed"}
+  [422] AI Explain: {"error":"Validation error","message":"Invalid request parameters. Check the details below.","details":[{"type":"missing","loc":["body","question"],"msg":"Field required","input":{"query":"What is the

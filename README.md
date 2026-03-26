@@ -74,7 +74,7 @@ flowchart LR
   subgraph Ops[8. MLOps & Deployment]
     E --> O1[Training Pipelines]
     O1 --> O2[Model Registry]
-    O2 --> O3[CI/CD + Docker]
+    O2 --> O3[CI/CD + Local Runtime]
     O3 --> O4[Monitoring & Alerts]
   end
 ```
@@ -228,9 +228,9 @@ GET  /api/metrics
 
 * **Training Pipeline:** scheduled retraining + drift monitoring
 * **Model Registry:** store artifacts & metadata
-* **Dockerized Services:** separate API, model, and UI containers
+* **Runtime:** direct FastAPI + static frontend (no containers required)
 * **Monitoring:** latency, pricing errors, stability metrics
-* **Dockerized API:** single container for demo deployments
+* **Serving:** backend exposes APIs and dashboard from one localhost URL
 
 ---
 
@@ -325,22 +325,21 @@ for step in range(steps):
 
 ## 15) Local Run Guide (Prototype)
 
-### Backend
+### Backend (Windows + Chrome)
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate
+python -m venv ..\\.venv
+..\\.venv\\Scripts\\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
 ### Frontend
-*The FastAPI server serves the dashboard automatically at* `http://localhost:8000` *(or* `http://localhost:8000/frontend/index.html` *for static hosting).* 
+*The FastAPI server serves the full UI automatically. Open Chrome at:* `http://localhost:8000/login.html`
 
-### Docker
+### One-Command Local Start (Windows)
 ```bash
-docker build -f backend/Dockerfile -t option-pricing .
-docker run -p 8000:8000 option-pricing
+run_local_chrome.bat
 ```
 
 ---
@@ -383,7 +382,6 @@ backend/
     model_monitor.py
   requirements.txt
   .env
-  Dockerfile
 data/
   raw/
   processed/

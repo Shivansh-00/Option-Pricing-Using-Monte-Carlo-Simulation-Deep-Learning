@@ -1,0 +1,85 @@
+======================================================================
+COMPREHENSIVE API ENDPOINT TEST
+======================================================================
+
+--- Health & Readiness ---
+  [OK] Health -> 200 (9ms)
+  [OK] Readiness -> 200 (24ms)
+
+--- Authentication ---
+  [OK] Auth Me -> 200 (12ms)
+
+--- Option Pricing ---
+  [OK] Black-Scholes -> 200 (11ms)
+  [OK] Monte Carlo -> 200 (35ms)
+  [OK] MC Detailed -> 200 (29ms)
+  [OK] MC Compare -> 200 (585ms)
+  [OK] Greeks -> 200 (22ms)
+
+--- ML Volatility ---
+  [FAIL] IV Predict -> 422 (96ms) | {"error":"Validation error","message":"Invalid request parameters. Check the details below.","details":[{"type":"missing","loc":["body","realized_vol"],"msg":"Field required","input":{"spot":100,"stri
+  [OK] Vol Train -> 200 (11949ms)
+  [OK] Vol Status -> 200 (29ms)
+
+--- Deep Learning ---
+  [OK] DL Forecast -> 200 (295ms)
+  [OK] DL Train -> 200 (44856ms)
+  [OK] Market Sentiment -> 200 (137ms)
+
+--- PINNs ---
+Traceback (most recent call last):
+  File "C:\Python313\Lib\http\client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\http\client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\http\client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\backend\test_all_endpoints.py", line 83, in <module>
+    test("PINNs Train", "POST", "/api/v1/quant/pinns/train", {"n_samples": 500, "epochs": 50, "learning_rate": 0.001})
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\backend\test_all_endpoints.py", line 32, in test
+    r = requests.post(f"{BASE}{path}", headers=headers, json=body, timeout=timeout)
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\.venv\Lib\site-packages\requests\api.py", line 115, in post
+    return request("post", url, data=data, json=json, **kwargs)
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\.venv\Lib\site-packages\requests\api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\.venv\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\.venv\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\.venv\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\.venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\.venv\Lib\site-packages\urllib3\connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+  File "C:\Users\shiva\Downloads\Option-Pricing-Using-Monte-Carlo-Simulation-Deep-Learning\.venv\Lib\site-packages\urllib3\connection.py", line 571, in getresponse
+    httplib_response = super().getresponse()
+  File "C:\Python313\Lib\http\client.py", line 1446, in getresponse
+    response.close()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\http\client.py", line 430, in close
+    def close(self):
+    
+KeyboardInterrupt
+^C

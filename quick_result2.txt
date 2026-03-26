@@ -1,0 +1,15 @@
+  [OK] Market Quote -> 200 
+  [OK] Market Chain -> 200 
+  [OK] Market Snapshot -> 200 
+  [OK] Market Health -> 200 
+  [OK] Mispricing Detect -> 200 
+  [OK] Regime Detect -> 200 
+  [OK] Confidence -> 200 
+  [OK] VaR -> 200 
+  [OK] Reliability -> 200 
+  [OK] SHAP Explain -> 200 
+  [OK] Benchmark -> 200 
+  [ERR] AI Explain -> HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=60)
+  [ERR] RAG Health -> HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=60)
+
+11/13 passed

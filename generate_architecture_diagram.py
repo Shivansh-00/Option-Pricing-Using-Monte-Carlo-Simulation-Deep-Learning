@@ -464,7 +464,7 @@ dh2 = 6.5
 box(dxs2[0], dy2, dbw3, dh2, "SQLite\nDatabase", P["data"],
     "Users Table\nToken Blacklist\nRate Limits\nWAL Mode", fs=8, fs2=5.5)
 box(dxs2[1], dy2, dbw3, dh2, "Model\nStore", P["data"],
-    "lstm_model.pt\ntransformer_model.pt\nDocker Volume\nPersistent", fs=8, fs2=5.5)
+    "lstm_model.pt\ntransformer_model.pt\nLocal Filesystem\nPersistent", fs=8, fs2=5.5)
 box(dxs2[2], dy2, dbw3, dh2, "Event\nLog", P["data"],
     "JSON-Line Format\nUTC Timestamps\nAudit Trail\ndata/processed/", fs=8, fs2=5.5)
 box(dxs2[3], dy2, dbw3, dh2, "Embedding\nCache", P["data"],
@@ -476,7 +476,7 @@ box(dxs2[5], dy2, dbw3, dh2, "Config\nStore", P["data"],
 
 # Volume bar
 box(ML+5, L5y+1.5, 50, 3,
-    "Docker Volumes:   model_data (persistent)  │  knowledge_base (read-only bind mount)",
+    "Local Paths:   models/ (persistent)  │  app/rag/knowledge_base/",
     P["data"], bold=False, fs=7.5, lw=0.4, shadow=False)
 box(ML+57, L5y+1.5, 50, 3,
     "Local Directories:   data/raw/  ·  data/processed/  │  Logs:  /tmp/optiquant_logs",
@@ -495,12 +495,12 @@ ey2 = L6y + 9
 eh2 = 6
 box(exs2[0], ey2, ebw2, eh2, "Google Gemini\nAPI", P["ext"],
     "gemini-2.0-flash\nRate Limit: 30 RPM\n100 K TPM Budget\nCircuit Breaker (5/60s)", fs=8.5, fs2=5.5)
-box(exs2[1], ey2, ebw2, eh2, "Docker\nCompose", P["ext"],
-    "Multi-Container Orch.\nBridge Network\nVolume Management\nService Dependencies", fs=8.5, fs2=5.5)
-box(exs2[2], ey2, ebw2, eh2, "Backend\nContainer", P["ext"],
-    "Python 3.11-slim\n2 CPU · 2 GB RAM\nNon-Root User\nMulti-Stage Build", fs=8.5, fs2=5.5)
-box(exs2[3], ey2, ebw2, eh2, "Frontend\nContainer", P["ext"],
-    "Nginx 1.27-alpine\n0.5 CPU · 128 MB\nStatic Serving\nReverse Proxy", fs=8.5, fs2=5.5)
+box(exs2[1], ey2, ebw2, eh2, "Local\nRuntime", P["ext"],
+    "Direct Uvicorn Start\nSingle-Origin Serving\nNo Container Runtime\nNo Compose Layer", fs=8.5, fs2=5.5)
+box(exs2[2], ey2, ebw2, eh2, "Backend\nProcess", P["ext"],
+    "Python 3.11+\nUvicorn + FastAPI\nJWT + API Routes\nStatic Mount Enabled", fs=8.5, fs2=5.5)
+box(exs2[3], ey2, ebw2, eh2, "Frontend\nAssets", P["ext"],
+    "HTML/CSS/JS Files\nServed by FastAPI\nChrome Access\nSame-Origin API", fs=8.5, fs2=5.5)
 box(exs2[4], ey2, ebw2, eh2, "Health &\nSecurity", P["ext"],
     "/health · /ready\nAuto-Restart: unless-stopped\nSecurity Headers\nCompression", fs=8.5, fs2=5.5)
 

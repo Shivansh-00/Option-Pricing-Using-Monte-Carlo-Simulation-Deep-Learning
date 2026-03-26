@@ -143,9 +143,9 @@ The platform follows a **layered, modular architecture** with four core planes:
 | **Authentication** | PyJWT + SQLite + PBKDF2-SHA256 | Secure user management |
 | **Frontend** | Vanilla JavaScript (ES6+) + HTML5 + CSS3 | Interactive dashboard |
 | **Charting** | Chart.js 4.4 | Monte Carlo paths, Greeks, comparison charts |
-| **Containerisation** | Docker (multi-stage builds) | Reproducible deployments |
-| **Orchestration** | Docker Compose | Multi-container management |
-| **Web Server** | Nginx 1.27 | Reverse proxy, static assets, gzip, security headers |
+| **Runtime** | FastAPI static mount + Uvicorn | Single-process local serving |
+| **Orchestration** | Native process runtime | Direct backend + UI integration |
+| **Web Server** | Uvicorn ASGI server | API + static assets from one origin |
 | **Documentation** | Markdown knowledge base (10 domain files) | RAG source documents |
 
 ### 5.3 Flow Diagram
@@ -153,12 +153,6 @@ The platform follows a **layered, modular architecture** with four core planes:
 ```
 User Request (Browser)
         │
-        ▼
-┌───────────────┐
-│   Nginx       │──── Static Assets (HTML/CSS/JS)
-│   (Port 3000) │
-└───────┬───────┘
-        │ /api/*
         ▼
 ┌───────────────┐     ┌──────────────────────────┐
 │   FastAPI      │────▶│  JWT Authentication       │
@@ -218,11 +212,11 @@ User Request (Browser)
 |------|--------|-------------|
 | 9 | Backend API | FastAPI application (`main.py`), route handlers (`pricing_routes.py`, `ml_routes.py`, `dl_routes.py`, `explain_routes.py`, `auth_routes.py`), JWT authentication (`auth.py`), Pydantic schemas (`schemas.py`) |
 | 10 | Frontend Dashboard | Interactive pricing UI (`index.html`, `app.js`), Chart.js visualisations (`monte_carlo_paths.js`, `greeks_chart.js`, `comparison_chart.js`), login system (`login.html`), premium styling (`styles.css`, `premium.css`, `premium-motion.js`) |
-| 11 | Containerisation | Multi-stage Docker builds (backend + frontend), Docker Compose orchestration, Nginx reverse proxy configuration, health checks, security hardening |
+| 11 | Runtime Hardening | Local process startup, health checks, security headers, and auth/session stability |
 | 12 | Testing & Documentation | Stress testing (`stress_test.py`), model monitoring (`model_monitor.py`), event logging (`event_log.py`), system documentation, final integration testing |
 
 ### Expected Completion
-**12 weeks** from project initiation — a fully functional, containerised, production-grade platform.
+**12 weeks** from project initiation — a fully functional, production-grade platform.
 
 ---
 
@@ -230,7 +224,7 @@ User Request (Browser)
 
 ### 7.1 Product / Research Output
 
-1. **Production-Grade Web Application:** A fully containerised (Docker + Docker Compose) option pricing platform accessible via browser, featuring:
+1. **Production-Grade Web Application:** A full-stack option pricing platform accessible via browser, featuring:
    - Multi-model pricing (Black-Scholes, Monte Carlo, Heston, DL-enhanced).
    - Real-time Greeks computation and sensitivity dashboard.
    - Monte Carlo path visualisation with convergence analytics.
@@ -264,7 +258,7 @@ User Request (Browser)
 | **Conference Paper** | IEEE International Conference on Computational Intelligence in Financial Engineering / ACM ICAIF | Month 4–5 |
 | **Journal Article** | *Journal of Computational Finance* or *Expert Systems with Applications* (Elsevier) | Month 6–8 |
 | **Topic Focus** | "Hybrid Residual Deep Learning for Monte Carlo Option Pricing with RAG-Based Explainability" | — |
-| **Open-Source Release** | GitHub repository with full documentation and Docker deployment | Month 3 |
+| **Open-Source Release** | GitHub repository with full documentation and local runtime guide | Month 3 |
 
 ---
 
@@ -272,7 +266,7 @@ User Request (Browser)
 
 ### 8.1 Summary of Proposed Work
 
-This project proposes the design and development of an **Intelligent Option Pricing & Risk Analytics Platform** that bridges classical quantitative finance with modern AI. The system integrates Black-Scholes analytical pricing, Monte Carlo simulation (with GBM and Heston stochastic volatility), advanced variance reduction techniques, and deep learning models (LSTM + Transformer) into a unified, containerised web application. A novel hybrid residual learning framework enables deep learning to learn and correct the pricing errors of traditional models, while a RAG-based explainability pipeline powered by Google Gemini provides transparent, citation-grounded natural-language explanations of pricing decisions. The platform is secured with JWT authentication, served through a FastAPI backend with Nginx reverse proxy, and visualised through an interactive Chart.js dashboard — making it suitable for both academic research and industry deployment.
+This project proposes the design and development of an **Intelligent Option Pricing & Risk Analytics Platform** that bridges classical quantitative finance with modern AI. The system integrates Black-Scholes analytical pricing, Monte Carlo simulation (with GBM and Heston stochastic volatility), advanced variance reduction techniques, and deep learning models (LSTM + Transformer) into a unified web application. A novel hybrid residual learning framework enables deep learning to learn and correct the pricing errors of traditional models, while a RAG-based explainability pipeline powered by Google Gemini provides transparent, citation-grounded natural-language explanations of pricing decisions. The platform is secured with JWT authentication, served through a FastAPI backend, and visualised through an interactive Chart.js dashboard — making it suitable for both academic research and industry deployment.
 
 ### 8.2 Future Scope
 
