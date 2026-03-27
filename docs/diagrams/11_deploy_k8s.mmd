@@ -1,0 +1,53 @@
+---
+title: "Deployment Diagram — Production Kubernetes"
+---
+flowchart TB
+    Users["👥 Users (HTTPS)"]
+
+    subgraph CLOUD["☁️ PRODUCTION KUBERNETES CLUSTER"]
+        subgraph INGRESS["🌐 Ingress Layer"]
+            IG["Nginx Ingress\nHTTPS Termination\nTLS Certificate"]
+        end
+
+        subgraph SERVICES["🔌 Service Mesh"]
+            BESvc["Backend Service\nClusterIP :8000"]
+            FESvc["Frontend Service\nClusterIP :80"]
+        end
+
+        subgraph BACKEND["⚙️ Backend Pods — 2-5 replicas"]
+            BE1["FastAPI Container\nPod 1"]
+            BE2["FastAPI Container\nPod 2"]
+            BE3["FastAPI Container\nPod N"]
+        end
+
+        subgraph FRONTEND["🖥️ Frontend Pods — 2 replicas"]
+            FE1["Nginx + Static\nPod 1"]
+            FE2["Nginx + Static\nPod 2"]
+        end
+
+        subgraph CACHE["⚡ Cache"]
+            Redis["Redis\nPort 6379\nSession Cache"]
+        end
+
+        subgraph AUTOSCALE["📈 Auto Scaling"]
+            HPA["HPA\nCPU > 70%\nMin: 2  Max: 5"]
+        end
+
+        subgraph MON["📊 Monitoring Stack"]
+            Prom["Prometheus\nMetrics Scraper"]
+            Graf["Grafana\nDashboards"]
+            Alert["AlertManager\nSlack + Email"]
+        end
+    end
+
+    Users --> IG
+    IG --> FESvc --> FRONTEND
+    IG --> BESvc --> BACKEND
+    BACKEND --> Redis
+    HPA -.->|"scale"| BACKEND
+    BACKEND --> Prom
+    Prom --> Graf
+    Prom --> Alert
+
+    ExtMkt["🌐 Market APIs"]
+    BACKEND <-->|"Data Feeds"| ExtMkt

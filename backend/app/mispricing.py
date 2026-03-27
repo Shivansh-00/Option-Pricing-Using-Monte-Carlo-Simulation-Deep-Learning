@@ -18,6 +18,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Optional
 
 import numpy as np
@@ -26,6 +27,17 @@ from .pricing import PricingInputs, black_scholes, monte_carlo_engine
 from .stochastic_vol import HestonParams, heston_mc
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_maturity(expiry_str: str) -> float:
+    """Parse expiry date string and return time-to-maturity in years."""
+    try:
+        expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d")
+        now = datetime.now()
+        days = max(1, (expiry_date - now).days)
+        return days / 365.0
+    except (ValueError, TypeError):
+        return 30 / 365.0  # fallback
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -139,14 +151,14 @@ def detect_mispricing(
     direction = "overpriced" if deviation_dollar > 0 else "underpriced"
 
     # Statistical significance
-    is_significant = abs(z_score) >= significance_threshold and abs(deviation_pct) >= min_deviation_pct
+    is_significant = bool(abs(z_score) >= significance_threshold and abs(deviation_pct) >= min_deviation_pct)
 
     # Signal strength: combines z-score magnitude + deviation %
     raw_strength = min(1.0, (abs(z_score) / 5.0) * 0.5 + (abs(deviation_pct) / 20.0) * 0.5)
 
     # Bid-ask spread filter
     spread_pct = ((ask - bid) / market_price * 100) if market_price > 0 and ask > bid else 0.0
-    passes_spread = abs(deviation_pct) > spread_pct * 1.5
+    passes_spread = bool(abs(deviation_pct) > spread_pct * 1.5)
 
     # Confidence: degrades if spread is wide or z-score is marginal
     confidence = raw_strength
@@ -355,7 +367,7 @@ def scan_chain(
             if mid < 0.01 or strike <= 0:
                 continue
 
-            maturity = 30 / 365.0  # default; in production parse expiry
+            maturity = _parse_maturity(expiry)
 
             sig = detect_mispricing(
                 spot=spot, strike=strike, maturity=maturity,
@@ -386,9 +398,10 @@ def scan_chain(
         c_ask = c.get("ask", c.ask if hasattr(c, 'ask') else 0)
         p_bid = p.get("bid", p.bid if hasattr(p, 'bid') else 0)
         p_ask = p.get("ask", p.ask if hasattr(p, 'ask') else 0)
+        c_expiry = c.get("expiry", c.expiry if hasattr(c, 'expiry') else "")
 
         arb = check_put_call_parity(
-            spot=spot, strike=k, maturity=30 / 365.0, rate=rate,
+            spot=spot, strike=k, maturity=_parse_maturity(c_expiry), rate=rate,
             call_price=c_mid, put_price=p_mid,
             call_bid=c_bid, call_ask=c_ask,
             put_bid=p_bid, put_ask=p_ask,

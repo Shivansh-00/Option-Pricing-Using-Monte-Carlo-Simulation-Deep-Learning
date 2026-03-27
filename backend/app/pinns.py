@@ -73,8 +73,10 @@ class PINNsConfig:
     lambda_pde: float = 1.0
     lambda_arb: float = 0.5
     lambda_smooth: float = 0.1
-    epochs: int = 2000
+    epochs: int = 200
     batch_size: int = 256
+    pde_batch_size: int = 32
+    early_stop_patience: int = 40
     seed: int = 42
     activation: str = "tanh"  # tanh | softplus | gelu
 
@@ -130,38 +132,49 @@ class PINNsOptionPricer:
             z = h @ layer.W + layer.b
             h = self._act(z)
             activations.append(z)
-        # Output layer — softplus to ensure positivity
+        # Output layer — ReLU for positivity with full gradient flow
         z_out = h @ self.layers[-1].W + self.layers[-1].b
-        out = _softplus(z_out)
+        out = np.maximum(z_out, 0.0)
         activations.append(z_out)
         return out, activations
 
-    # ---- PDE residual via finite differences ----
+    # ---- PDE residual via finite differences (batched) ----
     def _pde_residual(self, S: np.ndarray, K: np.ndarray, tau: np.ndarray,
                       sigma: np.ndarray, r: np.ndarray) -> np.ndarray:
         """
         Compute Black-Scholes PDE residual:
             R = ∂V/∂τ + ½σ²S²∂²V/∂S² + rS∂V/∂S - rV
 
-        Uses central finite differences through the network.
+        Uses central finite differences — batched into single forward pass.
         """
         eps_S = S * 1e-4 + 1e-6
         eps_t = 1e-5
+        n = len(S)
 
-        def _price(s, t):
-            m = s / K
-            X = np.column_stack([m, t, sigma, r])
-            V, _ = self.forward(X)
-            return V.ravel() * K.ravel()
+        m_c = S / K
+        m_up = (S + eps_S) / K
+        m_dn = (S - eps_S) / K
 
-        V = _price(S, tau)
-        V_Sup = _price(S + eps_S, tau)
-        V_Sdn = _price(S - eps_S, tau)
-        V_tup = _price(S, tau + eps_t)
+        # Batch all 4 evaluations into single forward pass
+        X_all = np.vstack([
+            np.column_stack([m_c, tau, sigma, r]),
+            np.column_stack([m_up, tau, sigma, r]),
+            np.column_stack([m_dn, tau, sigma, r]),
+            np.column_stack([m_c, tau + eps_t, sigma, r]),
+        ])
+        K_rep = np.vstack([K, K, K, K])
+        V_all, _ = self.forward(X_all)
+        V_prices = (V_all * K_rep).ravel()
 
-        dV_dS = (V_Sup - V_Sdn) / (2 * eps_S.ravel())
-        d2V_dS2 = (V_Sup - 2 * V + V_Sdn) / (eps_S.ravel() ** 2)
-        dV_dtau = (V_tup - V) / eps_t  # ∂V/∂τ (positive τ direction)
+        V = V_prices[:n]
+        V_Sup = V_prices[n:2*n]
+        V_Sdn = V_prices[2*n:3*n]
+        V_tup = V_prices[3*n:]
+
+        eps_S_flat = eps_S.ravel()
+        dV_dS = (V_Sup - V_Sdn) / (2 * eps_S_flat)
+        d2V_dS2 = (V_Sup - 2 * V + V_Sdn) / (eps_S_flat ** 2)
+        dV_dtau = (V_tup - V) / eps_t
 
         S_flat = S.ravel()
         sigma_flat = sigma.ravel()
@@ -234,40 +247,72 @@ class PINNsOptionPricer:
         dgamma = gamma_up - gamma_center
         return float(np.mean(dgamma ** 2))
 
-    # ---- SPSA gradient estimation ----
-    def _spsa_gradient(self, loss_fn, perturbation: float = 1e-3):
-        """Simultaneous Perturbation Stochastic Approximation."""
-        grads = []
-        for layer in self.layers:
-            dW = self.rng.choice([-1.0, 1.0], size=layer.W.shape)
-            db = self.rng.choice([-1.0, 1.0], size=layer.b.shape)
+    # ---- Backpropagation (exact gradients) ----
+    def _forward_backprop(self, X: np.ndarray):
+        """Forward pass storing pre/post activations for backprop."""
+        pre_acts = []   # z values before activation
+        post_acts = [X] # h values after activation (input is first)
+        h = X
+        for layer in self.layers[:-1]:
+            z = h @ layer.W + layer.b
+            pre_acts.append(z)
+            h = self._act(z)
+            post_acts.append(h)
+        # Output layer — ReLU for positivity
+        z_out = h @ self.layers[-1].W + self.layers[-1].b
+        pre_acts.append(z_out)
+        out = np.maximum(z_out, 0.0)
+        return out, pre_acts, post_acts
 
-            # Perturb +
-            layer.W += perturbation * dW
-            layer.b += perturbation * db
-            loss_plus = loss_fn()
+    def _backprop_data_loss(self, X: np.ndarray, K_batch: np.ndarray,
+                            V_market_batch: np.ndarray):
+        """Compute exact gradients of data loss via backpropagation.
 
-            # Perturb -
-            layer.W -= 2 * perturbation * dW
-            layer.b -= 2 * perturbation * db
-            loss_minus = loss_fn()
+        Loss computed in normalized (V/K) space to avoid K-scaling bias.
+        """
+        n = X.shape[0]
+        out, pre_acts, post_acts = self._forward_backprop(X)
 
-            # Restore
-            layer.W += perturbation * dW
-            layer.b += perturbation * db
+        # Normalised target: V_market / K
+        target = V_market_batch / K_batch
+        residual = out - target
+        loss = float(np.mean(residual ** 2))
 
-            grad_W = (loss_plus - loss_minus) / (2 * perturbation * dW)
-            grad_b = (loss_plus - loss_minus) / (2 * perturbation * db)
-            grads.append((grad_W, grad_b))
-        return grads
+        # dL/d(out) = (2/n) * (out - target)
+        d_out = (2.0 / n) * residual
+
+        # Through ReLU output: d/dz max(0,z) = 1 if z>0 else 0
+        d_z = d_out * (pre_acts[-1] > 0).astype(np.float64)
+
+        grads = [None] * len(self.layers)
+
+        # Output layer gradients
+        h_prev = post_acts[-1]  # last hidden activation
+        grads[-1] = (h_prev.T @ d_z, np.sum(d_z, axis=0, keepdims=True))
+
+        # Propagate backward
+        d_h = d_z @ self.layers[-1].W.T
+
+        # Hidden layers (reverse order)
+        for i in range(len(self.layers) - 2, -1, -1):
+            d_z = d_h * self._act_grad(pre_acts[i])
+            h_prev = post_acts[i]
+            grads[i] = (h_prev.T @ d_z, np.sum(d_z, axis=0, keepdims=True))
+            if i > 0:
+                d_h = d_z @ self.layers[i].W.T
+
+        return loss, grads
 
     # ---- Training ----
     def train(self, train_data: Dict[str, np.ndarray],
-              val_data: Optional[Dict[str, np.ndarray]] = None) -> Dict[str, Any]:
+              val_data: Optional[Dict[str, np.ndarray]] = None,
+              progress_callback=None) -> Dict[str, Any]:
         """
-        Train with combined loss.
+        Train with combined loss using backpropagation + Adam optimiser.
 
         train_data keys: S, K, tau, sigma, r, V_market
+        Uses exact gradients via backprop for data loss, with PDE/arb/smooth
+        computed for monitoring at log intervals.
         """
         S = train_data["S"].reshape(-1, 1).astype(np.float64)
         K = train_data["K"].reshape(-1, 1).astype(np.float64)
@@ -283,77 +328,123 @@ class PINNsOptionPricer:
         cfg = self.config
         lr = cfg.learning_rate
         best_loss = float("inf")
+        patience_ctr = 0
+        self._train_history = []
+        actual_epochs = 0
         t0 = time.time()
+        log_interval = max(1, cfg.epochs // 20)
+
+        # Adam optimiser state
+        beta1, beta2, eps_adam = 0.9, 0.999, 1e-8
+        adam_m = [(np.zeros_like(l.W), np.zeros_like(l.b)) for l in self.layers]
+        adam_v = [(np.zeros_like(l.W), np.zeros_like(l.b)) for l in self.layers]
 
         for epoch in range(cfg.epochs):
+            actual_epochs = epoch + 1
+
             # Mini-batch
             idx = self.rng.choice(n, size=min(cfg.batch_size, n), replace=False)
             Sb, Kb, tb, sb, rb, Vb = S[idx], K[idx], tau[idx], sigma[idx], r[idx], V_market[idx]
 
-            # Forward
+            # Build input features
             m = Sb / Kb
             X = np.column_stack([m, tb, sb, rb])
-            V_pred, _ = self.forward(X)
-            V_pred_price = V_pred * Kb
 
-            # Data loss
-            data_loss = float(np.mean((V_pred_price - Vb) ** 2))
+            # Backpropagation — exact gradients for data loss
+            data_loss, grads = self._backprop_data_loss(X, Kb, Vb)
 
-            # PDE residual loss (subsample for speed)
-            pde_idx = self.rng.choice(len(Sb), size=min(64, len(Sb)), replace=False)
-            residual = self._pde_residual(Sb[pde_idx], Kb[pde_idx], tb[pde_idx],
-                                          sb[pde_idx], rb[pde_idx])
-            pde_loss = float(np.mean(residual ** 2))
+            # NaN / inf guard
+            if math.isnan(data_loss) or math.isinf(data_loss):
+                logger.warning("PINNs epoch %d: NaN/inf loss — halving LR", epoch)
+                lr *= 0.5
+                if lr < 1e-8:
+                    logger.error("PINNs LR collapsed, stopping")
+                    break
+                continue
 
-            # Arbitrage loss
-            arb_loss = self._arbitrage_penalty(Sb[pde_idx], Kb[pde_idx], tb[pde_idx],
-                                               sb[pde_idx], rb[pde_idx])
+            # Adam update with gradient clipping and weight decay
+            t_adam = epoch + 1
+            weight_decay = 1e-4
+            for i, (layer, (gW, gb)) in enumerate(zip(self.layers, grads)):
+                # Add L2 regularization gradient
+                gW_reg = gW + weight_decay * layer.W
+                gW_c = np.clip(gW_reg, -5.0, 5.0)
+                gb_c = np.clip(gb, -5.0, 5.0)
 
-            # Smoothness loss
-            smooth_loss = self._smoothness_penalty(Sb[pde_idx], Kb[pde_idx], tb[pde_idx],
-                                                   sb[pde_idx], rb[pde_idx])
+                mW, mb = adam_m[i]
+                vW, vb = adam_v[i]
 
-            total_loss = data_loss + cfg.lambda_pde * pde_loss + \
-                         cfg.lambda_arb * arb_loss + cfg.lambda_smooth * smooth_loss
+                mW = beta1 * mW + (1 - beta1) * gW_c
+                mb = beta1 * mb + (1 - beta1) * gb_c
+                vW = beta2 * vW + (1 - beta2) * gW_c ** 2
+                vb = beta2 * vb + (1 - beta2) * gb_c ** 2
 
-            # SPSA update
-            def _loss_fn():
-                Vp, _ = self.forward(X)
-                dl = float(np.mean((Vp * Kb - Vb) ** 2))
-                res = self._pde_residual(Sb[pde_idx], Kb[pde_idx], tb[pde_idx],
-                                         sb[pde_idx], rb[pde_idx])
-                return dl + cfg.lambda_pde * float(np.mean(res ** 2))
+                adam_m[i] = (mW, mb)
+                adam_v[i] = (vW, vb)
 
-            grads = self._spsa_gradient(_loss_fn)
-            for layer, (gW, gb) in zip(self.layers, grads):
-                layer.W -= lr * np.clip(gW, -1.0, 1.0)
-                layer.b -= lr * np.clip(gb, -1.0, 1.0)
+                mW_hat = mW / (1 - beta1 ** t_adam)
+                mb_hat = mb / (1 - beta1 ** t_adam)
+                vW_hat = vW / (1 - beta2 ** t_adam)
+                vb_hat = vb / (1 - beta2 ** t_adam)
 
-            if total_loss < best_loss:
-                best_loss = total_loss
+                layer.W -= lr * mW_hat / (np.sqrt(vW_hat) + eps_adam)
+                layer.b -= lr * mb_hat / (np.sqrt(vb_hat) + eps_adam)
 
-            if epoch % 100 == 0:
-                logger.info(f"PINNs epoch {epoch}: total={total_loss:.6f} "
-                            f"data={data_loss:.6f} pde={pde_loss:.6f} "
-                            f"arb={arb_loss:.6f} smooth={smooth_loss:.6f}")
+            # Early stopping on data loss
+            if data_loss < best_loss:
+                best_loss = data_loss
+                patience_ctr = 0
+            else:
+                patience_ctr += 1
+            if patience_ctr >= cfg.early_stop_patience and epoch > 30:
+                logger.info("PINNs early stop at epoch %d (patience=%d)",
+                            epoch, cfg.early_stop_patience)
+                break
+
+            # Monitoring: compute PDE/arb/smooth at log intervals
+            pde_loss = 0.0
+            arb_loss = 0.0
+            smooth_loss = 0.0
+            if epoch % log_interval == 0:
+                pde_size = min(cfg.pde_batch_size, len(Sb))
+                pde_idx = self.rng.choice(len(Sb), size=pde_size, replace=False)
+                residual = self._pde_residual(Sb[pde_idx], Kb[pde_idx], tb[pde_idx],
+                                              sb[pde_idx], rb[pde_idx])
+                pde_loss = float(np.mean(residual ** 2))
+                arb_loss = self._arbitrage_penalty(
+                    Sb[pde_idx], Kb[pde_idx], tb[pde_idx], sb[pde_idx], rb[pde_idx])
+                smooth_loss = self._smoothness_penalty(
+                    Sb[pde_idx], Kb[pde_idx], tb[pde_idx], sb[pde_idx], rb[pde_idx])
+
+                total_loss = (data_loss + cfg.lambda_pde * pde_loss
+                              + cfg.lambda_arb * arb_loss
+                              + cfg.lambda_smooth * smooth_loss)
+
+                logger.info(
+                    "PINNs epoch %d: total=%.6f data=%.6f pde=%.6f "
+                    "arb=%.6f smooth=%.6f",
+                    epoch, total_loss, data_loss, pde_loss,
+                    arb_loss, smooth_loss)
                 self._train_history.append({
                     "epoch": epoch, "total_loss": total_loss,
                     "data_loss": data_loss, "pde_loss": pde_loss,
-                    "arb_loss": arb_loss, "smooth_loss": smooth_loss
+                    "arb_loss": arb_loss, "smooth_loss": smooth_loss,
                 })
+                if progress_callback:
+                    progress_callback(epoch, cfg.epochs, data_loss)
 
             # Learning rate decay
-            if epoch > 0 and epoch % 500 == 0:
+            if epoch > 0 and epoch % 100 == 0:
                 lr *= 0.5
 
         elapsed = time.time() - t0
         return {
-            "epochs": cfg.epochs,
+            "epochs": actual_epochs,
             "best_loss": best_loss,
             "final_losses": self._train_history[-1] if self._train_history else {},
             "training_time_s": round(elapsed, 2),
             "params": sum(l.W.size + l.b.size for l in self.layers),
-            "history": self._train_history
+            "history": self._train_history,
         }
 
     # ---- Predict ----
@@ -442,8 +533,8 @@ class PINNsOptionPricer:
 # ---------------------------------------------------------------------------
 _pinns_instance: Optional[PINNsOptionPricer] = None
 
-def get_pinns_pricer() -> PINNsOptionPricer:
+def get_pinns_pricer(reset: bool = False) -> PINNsOptionPricer:
     global _pinns_instance
-    if _pinns_instance is None:
+    if _pinns_instance is None or reset:
         _pinns_instance = PINNsOptionPricer()
     return _pinns_instance

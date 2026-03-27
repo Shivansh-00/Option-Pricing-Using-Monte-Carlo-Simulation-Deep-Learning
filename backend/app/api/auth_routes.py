@@ -44,6 +44,7 @@ class UserResponse(BaseModel):
     full_name: str
     role: str
     created_at: str
+    updated_at: str
     last_login: str | None
 
 
@@ -112,5 +113,6 @@ def me(user: auth.UserRecord = Depends(auth.get_current_user)) -> UserResponse:
         full_name=user.full_name,
         role=user.role,
         created_at=user.created_at,
+        updated_at=user.updated_at,
         last_login=user.last_login,
     )

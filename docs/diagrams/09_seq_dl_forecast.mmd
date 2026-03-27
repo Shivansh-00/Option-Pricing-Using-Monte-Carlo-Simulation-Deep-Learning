@@ -1,0 +1,35 @@
+---
+title: "Sequence Diagram — DL Forecast with Residual Learning"
+---
+sequenceDiagram
+    actor User as 👤 User
+    participant FE as 🖥️ Frontend
+    participant API as 🔌 FastAPI
+    participant DL as 🧠 DL Service
+    participant LSTM as 📈 LSTM Model
+    participant TF as 🔮 Transformer
+    participant MC as 🎲 Monte Carlo
+
+    User->>FE: Request DL forecast
+    FE->>API: POST /api/v1/dl/forecast
+
+    rect rgb(235, 230, 255)
+        Note over DL: Deep Learning Inference
+        API->>DL: forecast(inputs)
+        DL->>MC: mc_price(inputs)
+        MC-->>DL: base_price = 8.15
+
+        DL->>LSTM: forward(feature_sequence)
+        LSTM-->>DL: lstm_pred = 8.42
+
+        DL->>TF: forward(feature_sequence)
+        TF-->>DL: sentiment = bullish
+
+        DL->>DL: residual = lstm_pred - base_price
+        DL->>DL: final = base_price + residual
+        Note over DL: Hybrid Residual Learning
+    end
+
+    DL-->>API: DLForecastResponse
+    API-->>FE: {price, residual, benchmarks}
+    FE-->>User: Forecast with MC vs DL comparison

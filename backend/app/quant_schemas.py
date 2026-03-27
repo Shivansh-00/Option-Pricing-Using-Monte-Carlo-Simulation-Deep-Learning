@@ -22,8 +22,8 @@ from pydantic import BaseModel, Field
 # ═══════════════════════════════════════════════════════════════
 
 class PINNsTrainRequest(BaseModel):
-    n_samples: int = Field(5000, ge=500, le=50000, description="Training samples")
-    epochs: int = Field(200, ge=10, le=2000)
+    n_samples: int = Field(1000, ge=500, le=50000, description="Training samples")
+    epochs: int = Field(200, ge=10, le=5000)
     spot_range: list[float] = Field([50.0, 150.0], min_length=2, max_length=2)
     strike: float = Field(100.0, gt=0)
     rate: float = Field(0.05)
@@ -38,6 +38,18 @@ class PINNsTrainResponse(BaseModel):
     arbitrage_loss: float
     training_time_ms: float
     loss_history: list[float] = []
+
+
+class PINNsStatusResponse(BaseModel):
+    job_id: str = ""
+    status: str = "idle"
+    progress: float = 0.0
+    current_epoch: int = 0
+    total_epochs: int = 0
+    current_loss: float = 0.0
+    elapsed_seconds: float = 0.0
+    result: dict = {}
+    error: str = ""
 
 
 class PINNsPredictRequest(BaseModel):
@@ -80,22 +92,35 @@ class PINNsGreeksResponse(BaseModel):
 
 class HedgingTrainRequest(BaseModel):
     agent_type: str = Field("dqn", pattern="^(dqn|ppo)$")
-    episodes: int = Field(500, ge=50, le=5000)
+    episodes: int = Field(100, ge=10, le=5000)
     spot: float = Field(100.0, gt=0)
     strike: float = Field(100.0, gt=0)
     maturity: float = Field(0.25, gt=0)
     volatility: float = Field(0.2, gt=0)
     rate: float = Field(0.05)
-    steps_per_episode: int = Field(63, ge=10, le=500)
 
 
 class HedgingTrainResponse(BaseModel):
     agent_type: str
     episodes_trained: int
-    final_reward: float
-    avg_reward_last_100: float
-    training_time_ms: float
+    final_reward: float = 0.0
+    avg_reward_last_100: float = 0.0
+    training_time_ms: float = 0.0
     reward_history: list[float] = []
+
+
+class HedgingStatusResponse(BaseModel):
+    """Polling endpoint for training progress."""
+    job_id: str = ""
+    status: str = "idle"
+    progress: float = 0.0
+    current_episode: int = 0
+    total_episodes: int = 0
+    avg_reward: float = 0.0
+    reward_history: list[float] = []
+    elapsed_seconds: float = 0.0
+    result: dict = {}
+    error: str = ""
 
 
 class HedgingBacktestRequest(BaseModel):

@@ -215,10 +215,15 @@ class FinancialLSTM:
         lr: float = 0.001,
         patience: int = 10,
         val_split: float = 0.2,
+        progress_callback: Optional[callable] = None,
     ) -> LSTMResult:
         """
         Train LSTM using SPSA (Simultaneous Perturbation Stochastic Approximation).
         Works without backpropagation — ideal for NumPy-only deployment.
+
+        Args:
+            progress_callback: Optional callable(epoch, total_epochs, train_loss, val_loss)
+                               called after each epoch for progress tracking.
         """
         t0 = time.perf_counter()
 
@@ -279,6 +284,10 @@ class FinancialLSTM:
             val_loss = self._loss(X_val, y_val)
             train_losses.append(float(train_loss))
             val_losses.append(float(val_loss))
+
+            # Report progress
+            if progress_callback is not None:
+                progress_callback(epoch + 1, epochs, float(train_loss), float(val_loss))
 
             # Early stopping
             if val_loss < best_val - 1e-6:
@@ -639,6 +648,7 @@ class HybridDLPredictor:
         rate: float = 0.05,
         n_days: int = 500,
         seed: int = 42,
+        progress_callback: Optional[callable] = None,
     ) -> LSTMResult:
         """Train LSTM on synthetic GBM price data."""
         rng = np.random.default_rng(seed)
@@ -657,7 +667,8 @@ class HybridDLPredictor:
             )
 
         result = self.lstm.train(
-            prices, lookback=30, epochs=50, lr=0.002, patience=8
+            prices, lookback=30, epochs=50, lr=0.002, patience=8,
+            progress_callback=progress_callback,
         )
         self._trained = True
         self._last_result = result

@@ -3,7 +3,8 @@ OptionQuant — Deep Learning API Routes (Enterprise)
 ════════════════════════════════════════════════════
 Endpoints:
   POST /forecast          — Hybrid LSTM+Transformer pricing forecast
-  POST /train             — Train LSTM on synthetic data
+  POST /train             — Train LSTM on synthetic data (async background)
+  GET  /training-status   — Training job progress & metrics
   POST /predict-volatility — DL-based volatility prediction
   POST /market-sentiment  — Transformer sentiment analysis
   GET  /status            — DL model status
@@ -12,6 +13,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
+import time
+import uuid
 from dataclasses import asdict
 
 import numpy as np
@@ -31,6 +35,164 @@ from ..schemas import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/dl", tags=["dl"])
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Background Training Job Manager
+# ═══════════════════════════════════════════════════════════════
+
+class _TrainingJob:
+    """Holds state for a single background training run."""
+
+    __slots__ = (
+        "job_id", "status", "progress", "total_epochs",
+        "current_epoch", "train_loss", "val_loss",
+        "result", "error", "started_at", "finished_at",
+        "params",
+    )
+
+    def __init__(self, job_id: str, params: dict):
+        self.job_id = job_id
+        self.status = "queued"          # queued → training → completed | failed
+        self.progress = 0.0             # 0.0 — 100.0
+        self.total_epochs = 50
+        self.current_epoch = 0
+        self.train_loss: list[float] = []
+        self.val_loss: list[float] = []
+        self.result: dict | None = None
+        self.error: str | None = None
+        self.started_at: float = time.time()
+        self.finished_at: float | None = None
+        self.params = params
+
+    def to_dict(self) -> dict:
+        d: dict = {
+            "job_id": self.job_id,
+            "status": self.status,
+            "progress": round(self.progress, 1),
+            "current_epoch": self.current_epoch,
+            "total_epochs": self.total_epochs,
+            "train_loss": self.train_loss[-20:],
+            "val_loss": self.val_loss[-20:],
+            "elapsed_seconds": round(time.time() - self.started_at, 1),
+        }
+        if self.result is not None:
+            d["result"] = self.result
+        if self.error is not None:
+            d["error"] = self.error
+        if self.finished_at is not None:
+            d["elapsed_seconds"] = round(self.finished_at - self.started_at, 1)
+        return d
+
+
+class _TrainingManager:
+    """Thread-safe manager that keeps track of the current (and last) training job."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._current: _TrainingJob | None = None
+        self._thread: threading.Thread | None = None
+
+    # -- public API -------------------------------------------------------
+
+    @property
+    def is_busy(self) -> bool:
+        with self._lock:
+            return (
+                self._current is not None
+                and self._current.status in ("queued", "training")
+            )
+
+    def start(self, params: dict) -> _TrainingJob:
+        """Launch a new training job in a daemon thread.  Rejects if one is already running."""
+        if self.is_busy:
+            raise HTTPException(
+                status_code=409,
+                detail="Training already in progress. Check /training-status.",
+            )
+        job = _TrainingJob(job_id=uuid.uuid4().hex[:12], params=params)
+        with self._lock:
+            self._current = job
+        t = threading.Thread(target=self._run, args=(job,), daemon=True)
+        self._thread = t
+        t.start()
+        return job
+
+    def get_status(self) -> dict:
+        with self._lock:
+            if self._current is None:
+                return {"status": "idle", "message": "No training has been started yet"}
+            return self._current.to_dict()
+
+    # -- background worker ------------------------------------------------
+
+    def _run(self, job: _TrainingJob) -> None:
+        try:
+            job.status = "training"
+            logger.info("Training started: job=%s params=%s", job.job_id, job.params)
+
+            predictor = dl.get_predictor()
+
+            def _progress_cb(epoch: int, total: int, t_loss: float, v_loss: float):
+                job.current_epoch = epoch
+                job.total_epochs = total
+                job.progress = (epoch / total) * 100
+                job.train_loss.append(round(t_loss, 6))
+                job.val_loss.append(round(v_loss, 6))
+
+            result = predictor.train_on_synthetic(
+                spot=job.params.get("spot", 100.0),
+                volatility=job.params.get("volatility", 0.2),
+                rate=job.params.get("rate", 0.05),
+                n_days=job.params.get("n_days", 500),
+                seed=job.params.get("seed", 42),
+                progress_callback=_progress_cb,
+            )
+
+            # Validate transformer
+            transformer = predictor.transformer
+            test_texts = [
+                ("Markets rally on strong earnings", "bullish"),
+                ("Recession fears grow sharply", "bearish"),
+                ("Fed holds rates steady", "neutral"),
+            ]
+            correct = sum(
+                1 for text, exp in test_texts
+                if transformer.analyze(text).sentiment == exp
+            )
+            transformer_acc = correct / len(test_texts)
+
+            job.result = {
+                "lstm_epochs": result.epochs_trained,
+                "lstm_rmse": round(result.final_rmse, 6),
+                "lstm_r_squared": round(result.r_squared, 4),
+                "lstm_elapsed_ms": round(result.elapsed_ms, 2),
+                "transformer_accuracy": round(transformer_acc, 4),
+                "total_time_ms": round(result.elapsed_ms, 2),
+                "train_loss": result.train_loss[-20:],
+                "val_loss": result.val_loss[-20:],
+                "details": {
+                    "final_mae": round(result.final_mae, 6),
+                    "n_predictions": len(result.predictions),
+                },
+            }
+            job.status = "completed"
+            job.progress = 100.0
+            logger.info(
+                "Training completed: job=%s epochs=%d rmse=%.6f r2=%.4f in %.1fs",
+                job.job_id, result.epochs_trained, result.final_rmse,
+                result.r_squared, result.elapsed_ms / 1000,
+            )
+
+        except Exception as exc:
+            job.status = "failed"
+            job.error = str(exc)
+            logger.error("Training failed: job=%s error=%s", job.job_id, exc, exc_info=True)
+        finally:
+            job.finished_at = time.time()
+
+
+_training_mgr = _TrainingManager()
 
 
 @router.post("/forecast", response_model=DLForecastResponse)
@@ -95,58 +257,55 @@ async def dl_forecast_legacy(
         raise HTTPException(status_code=500, detail=f"Forecast error: {e}")
 
 
-@router.post("/train", response_model=DLTrainResponse)
+@router.post("/train")
 async def dl_train(
     request: DLTrainRequest,
     _user: UserRecord = Depends(get_current_user),
-) -> DLTrainResponse:
+) -> dict:
     """
-    Train LSTM on synthetic market data.
-    Also validates Transformer sentiment accuracy.
+    Start LSTM training as a background job.
+
+    Returns immediately with a job_id.  Poll GET /training-status
+    (or GET /training-status/{job_id}) for progress and results.
     """
     try:
-        predictor = dl.get_predictor()
-
-        # Run training in thread pool to avoid blocking the event loop
-        result = await asyncio.to_thread(
-            predictor.train_on_synthetic,
-            spot=request.spot,
-            volatility=request.volatility,
-            rate=request.rate,
-            n_days=request.n_days,
-            seed=request.seed,
-        )
-
-        # Validate transformer
-        transformer = predictor.transformer
-        test_texts = [
-            ("Markets rally on strong earnings", "bullish"),
-            ("Recession fears grow sharply", "bearish"),
-            ("Fed holds rates steady", "neutral"),
-        ]
-        correct = sum(
-            1 for text, exp in test_texts
-            if transformer.analyze(text).sentiment == exp
-        )
-        transformer_acc = correct / len(test_texts)
-
-        return DLTrainResponse(
-            lstm_epochs=result.epochs_trained,
-            lstm_rmse=round(result.final_rmse, 6),
-            lstm_r_squared=round(result.r_squared, 4),
-            lstm_elapsed_ms=round(result.elapsed_ms, 2),
-            transformer_accuracy=round(transformer_acc, 4),
-            total_time_ms=round(result.elapsed_ms, 2),
-            train_loss=result.train_loss[-20:],
-            val_loss=result.val_loss[-20:],
-            details={
-                "final_mae": round(result.final_mae, 6),
-                "n_predictions": len(result.predictions),
-            },
-        )
+        job = _training_mgr.start({
+            "spot": request.spot,
+            "volatility": request.volatility,
+            "rate": request.rate,
+            "n_days": request.n_days,
+            "seed": request.seed,
+        })
+        return {
+            "message": "Training started in background",
+            "job_id": job.job_id,
+            "status": job.status,
+            "poll_url": "/api/v1/dl/training-status",
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("DL training error: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Training error: {e}")
+        logger.error("DL training start error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Training start error: {e}")
+
+
+@router.get("/training-status")
+async def training_status(
+    _user: UserRecord = Depends(get_current_user),
+) -> dict:
+    """
+    Get current/last training job status.
+
+    Returns:
+        status: idle / queued / training / completed / failed
+        progress: 0-100 %
+        current_epoch / total_epochs
+        train_loss / val_loss (last 20)
+        result (when completed): full DLTrainResponse-compatible dict
+        error (when failed): error message
+        elapsed_seconds
+    """
+    return _training_mgr.get_status()
 
 
 @router.post("/predict-volatility")

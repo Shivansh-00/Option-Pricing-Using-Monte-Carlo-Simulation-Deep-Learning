@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Auth database (contains user credentials)
+backend/data/optiquant_auth.db
+
+# Test output / temp files
+pinns_test_output.txt
+pinns_out.txt
+dl_test.txt
+dl_train_check.txt
+validate_output.txt
+validate_out2.txt
+validation_output.txt
+vs_result.txt
+py_processes.txt
+js_syntax_log.txt
+login_resp.json
+backend/login_resp.json
+train_result.json
+test_pinns.py
+test_pinns_debug.py
+test_single.py
+test_remaining.py
+validate_modules.py
+

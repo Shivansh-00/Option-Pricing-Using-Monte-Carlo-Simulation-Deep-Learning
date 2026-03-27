@@ -1,0 +1,123 @@
+---
+title: "Class Diagram — OptionQuant Platform"
+---
+classDiagram
+    class PricingInputs {
+        +float spot
+        +float strike
+        +float maturity
+        +float rate
+        +float volatility
+        +string option_type
+        +int steps
+        +int paths
+    }
+
+    class MCResult {
+        +float price
+        +float std_error
+        +float ci_lower
+        +float ci_upper
+        +int paths_used
+        +int steps_used
+        +string variance_reduction
+        +float elapsed_ms
+        +list convergence
+        +list sample_paths
+    }
+
+    class MonteCarloEngine {
+        +price_european(inputs) MCResult
+        +price_with_antithetic(inputs) MCResult
+        +price_with_control_variate(inputs) MCResult
+        +generate_paths(inputs) ndarray
+        +compute_convergence(payoffs) list
+    }
+
+    class BlackScholesEngine {
+        +price(S, K, T, r, sigma, type) float
+        +delta() float
+        +gamma() float
+        +vega() float
+        +theta() float
+        +rho() float
+    }
+
+    class GreeksEngine {
+        +compute_all_greeks(inputs) GreeksResponse
+        +finite_difference_greeks(inputs) dict
+    }
+
+    class MLService {
+        +predict_iv(features) float
+        +detect_regime(features) string
+        +estimate_mispricing(features) float
+        +get_feature_importance() dict
+    }
+
+    class DLService {
+        +LSTMModel lstm_model
+        +TransformerModel tf_model
+        +forecast(inputs) DLForecastResponse
+        +train(request) TrainResult
+        +compute_residual(mc, dl) float
+    }
+
+    class LSTMModel {
+        +LSTM lstm_layer
+        +Linear fc_layer
+        +forward(x) Tensor
+    }
+
+    class TransformerModel {
+        +TransformerEncoder encoder
+        +Linear fc_layer
+        +forward(x) Tensor
+    }
+
+    class AuthService {
+        +hash_password(pwd) string
+        +verify_password(pwd, hash) bool
+        +create_access_token(user) string
+        +create_refresh_token(user) string
+        +get_current_user(token) User
+    }
+
+    class ExplainabilityService {
+        +shap_explain(model, data) dict
+        +rag_query(question) string
+        +generate_explanation(result) string
+    }
+
+    class VolSurfaceEngine {
+        +generate_surface(params) ndarray
+        +train_transformer(data) Model
+        +interpolate(strike, expiry) float
+    }
+
+    class PortfolioRiskEngine {
+        +compute_var(portfolio) float
+        +stress_test(portfolio, scenarios) dict
+        +position_greeks(positions) dict
+    }
+
+    class MarketDataService {
+        +get_stock_data(ticker) dict
+        +get_options_chain(ticker) dict
+        +get_vix() float
+        +get_treasury_rates() dict
+    }
+
+    PricingInputs --> MonteCarloEngine : feeds
+    PricingInputs --> BlackScholesEngine : feeds
+    MonteCarloEngine --> MCResult : produces
+    BlackScholesEngine --> GreeksEngine : computes
+    MonteCarloEngine --> GreeksEngine : computes
+    DLService *-- LSTMModel : contains
+    DLService *-- TransformerModel : contains
+    DLService --> MonteCarloEngine : residual learning
+    MLService --> ExplainabilityService : SHAP input
+    DLService --> ExplainabilityService : SHAP input
+    MarketDataService --> MLService : provides features
+    MarketDataService --> DLService : provides features
+    VolSurfaceEngine --> TransformerModel : uses

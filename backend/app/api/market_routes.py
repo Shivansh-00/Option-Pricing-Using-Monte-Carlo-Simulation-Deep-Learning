@@ -83,7 +83,7 @@ async def get_snapshot(
     """Full market snapshot: quote + chain + VIX."""
     from ..market_data import fetch_snapshot
     try:
-        snap = fetch_snapshot(symbol)
+        snap = await asyncio.to_thread(fetch_snapshot, symbol)
         return asdict(snap)
     except Exception as e:
         logger.error("Snapshot error: %s", e, exc_info=True)

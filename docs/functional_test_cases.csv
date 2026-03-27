@@ -1,0 +1,72 @@
+Feature,Test Case,Steps to execute test case,Expected Output,Actual Output,Status,More Information
+Authentication,Valid User Login,"1. Open login page.
+2. Enter valid username/email.
+3. Enter valid password.
+4. Click Login.","User is authenticated and redirected to dashboard.
+JWT/session is created.",TBD after execution,Not Executed,"Verify no error toast is shown.
+Verify protected APIs become accessible."
+Authentication,Invalid User Login,"1. Open login page.
+2. Enter invalid password.
+3. Click Login.","Login is denied with clear validation message.
+User remains on login page.",TBD after execution,Not Executed,"Check that no token is issued.
+Check retry does not crash UI."
+Authentication,User Registration,"1. Open registration page.
+2. Enter new user details.
+3. Submit form.","New account is created successfully.
+User can log in using new credentials.",TBD after execution,Not Executed,"Verify duplicate email/username handling.
+Verify password policy messages."
+Pricing Engine,Black-Scholes Pricing API,"1. Authenticate user.
+2. Call pricing endpoint with valid European option inputs.
+3. Submit request.","HTTP 200 response with numeric option price.
+Response schema matches contract.",TBD after execution,Not Executed,"Validate positive price for valid market inputs.
+Check response includes key fields."
+Pricing Engine,Monte Carlo Pricing API,"1. Authenticate user.
+2. Provide spot, strike, rate, maturity, volatility, steps, paths.
+3. Trigger Monte Carlo pricing.","HTTP 200 response with MC price and diagnostics.
+Convergence/CI fields are returned.",TBD after execution,Not Executed,"Verify runtime is acceptable for default paths.
+Verify output is deterministic enough with seed (if configured)."
+Risk Analytics,Greeks Calculation,"1. Authenticate user.
+2. Submit option parameters to Greeks endpoint.
+3. View Delta/Gamma/Vega/Theta/Rho.","All requested Greeks are returned as numeric values.
+No missing/NaN fields for valid inputs.",TBD after execution,Not Executed,"Cross-check signs/magnitude using baseline sample.
+Verify edge-case input handling."
+Market Data,Fetch Market Data,"1. Authenticate user.
+2. Request stock/options/VIX/rates data endpoint.
+3. Inspect payload.","Latest available market payload is returned.
+System handles external-source errors gracefully.",TBD after execution,Not Executed,"Check fallback behavior when upstream data is unavailable.
+Verify response timestamps."
+Machine Learning,ML Prediction (IV/Regime),"1. Authenticate user.
+2. Submit valid feature payload to ML endpoint.
+3. Request prediction.","Model prediction is returned with expected fields.
+Response time is within acceptable limit.",TBD after execution,Not Executed,"Validate schema and model metadata.
+Check confidence/probability fields if available."
+Deep Learning,DL Forecast Endpoint,"1. Authenticate user.
+2. Send sequence/time-window input.
+3. Trigger LSTM/Transformer forecast.","Forecast response is returned with numeric outputs.
+No shape or type mismatch errors.",TBD after execution,Not Executed,"Verify handling of short/invalid sequences.
+Compare with known reference output."
+Explainability,SHAP/RAG Explanation,"1. Authenticate user.
+2. Request explanation for pricing/prediction result.
+3. Inspect explanation payload.","System returns explainability output without server error.
+Explanation references relevant factors/knowledge context.",TBD after execution,Not Executed,"Ensure explanation text is non-empty and coherent.
+Validate response latency under normal load."
+Dashboard & Charts,Dashboard Rendering and Comparison Charts,"1. Login to dashboard.
+2. Run pricing workflow.
+3. Open comparison and path charts.","Charts render correctly without JS errors.
+BS/MC/DL comparison values are displayed.",TBD after execution,Not Executed,"Check browser console for errors.
+Verify chart updates when inputs change."
+WebSocket / Real-time,Live Update Stream,"1. Login.
+2. Open page that subscribes to live updates.
+3. Trigger backend event/update.","Client receives and renders websocket updates.
+Connection reconnects gracefully after interruption.",TBD after execution,Not Executed,"Validate heartbeat/reconnect behavior.
+Ensure no duplicate event rendering."
+Security & Access,Protected Endpoint Without Token,"1. Open API client.
+2. Call protected endpoint without auth header.
+3. Inspect response.","Request is rejected with 401/403.
+No sensitive data is leaked.",TBD after execution,Not Executed,"Repeat with malformed token.
+Verify audit/log entry if enabled."
+Performance,Monte Carlo Response Time Baseline,"1. Authenticate user.
+2. Run MC pricing with baseline params (e.g., 20k paths).
+3. Measure end-to-end latency.","Response completes within agreed SLA threshold.
+No timeout under normal environment.",TBD after execution,Not Executed,"Record latency trend across runs.
+Use same hardware profile for fair comparison."

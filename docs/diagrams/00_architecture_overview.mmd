@@ -1,0 +1,28 @@
+---
+title: "Architecture Overview — Monolithic Modular"
+---
+flowchart TB
+    subgraph SERVER["FastAPI Monolithic Server (uvicorn :8000)"]
+        direction TB
+        subgraph ROW1[" "]
+            direction LR
+            A["🔐 Auth Module"]
+            B["💰 Pricing Engine"]
+            C["🤖 ML Service"]
+        end
+        subgraph ROW2[" "]
+            direction LR
+            D["🧠 DL Service"]
+            E["📊 Greeks Engine"]
+            F["💡 Explainability"]
+        end
+        subgraph ROW3[" "]
+            direction LR
+            G["🌊 Vol Surface"]
+            H["📋 Portfolio Risk"]
+            I["🌐 Market Data"]
+        end
+        DB[("SQLite DB")]
+        Models[("Model Files .pt")]
+    end
+    FE["🖥️ Frontend (HTML/JS)\nServed by FastAPI"] -->|"HTTP / WebSocket"| SERVER

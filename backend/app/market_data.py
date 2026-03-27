@@ -267,7 +267,11 @@ class SyntheticMarketGenerator:
         calls, puts = [], []
 
         for expiry_str in expiries[:2]:  # 2 nearest expiries
-            days_to_exp = max(1, 30)  # simplified
+            try:
+                expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d")
+                days_to_exp = max(1, (expiry_date - datetime.now()).days)
+            except (ValueError, TypeError):
+                days_to_exp = 30
             T = days_to_exp / 365.0
             atm_vol = self._current_vol
 

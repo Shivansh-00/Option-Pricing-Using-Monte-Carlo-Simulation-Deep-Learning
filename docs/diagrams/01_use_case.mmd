@@ -1,0 +1,62 @@
+---
+title: "Use Case Diagram — OptionQuant Platform"
+---
+flowchart LR
+    User(("👤 Trader / Analyst"))
+    Admin(("👨‍💻 Quant Developer"))
+    Market(("🌐 Market Data API"))
+
+    subgraph OptionQuant["🏛️ OptionQuant Platform"]
+        direction TB
+        subgraph Auth["🔐 Authentication"]
+            UC1["Register"]
+            UC2["Login / Logout"]
+        end
+        subgraph Pricing["💰 Option Pricing"]
+            UC3["Black-Scholes Pricing"]
+            UC4["Monte Carlo Simulation"]
+            UC5["View Greeks"]
+            UC6["Jump Diffusion Pricing"]
+            UC7["View MC Paths & Convergence"]
+        end
+        subgraph AI["🤖 AI / ML / DL"]
+            UC8["ML Predictions — IV, Regime"]
+            UC9["DL Forecasts — LSTM, Transformer"]
+            UC10["Train DL Models"]
+            UC11["GPU Monte Carlo Benchmark"]
+        end
+        subgraph Analytics["📊 Analytics & Insights"]
+            UC12["Vol Surface Generation"]
+            UC13["Portfolio Risk Analysis"]
+            UC14["Arbitrage Detection"]
+            UC15["AI Explanation — SHAP + RAG"]
+        end
+        subgraph Realtime["⚡ Real-Time"]
+            UC16["WebSocket Live Updates"]
+            UC17["Comparison Charts"]
+        end
+    end
+
+    User --> UC1
+    User --> UC2
+    User --> UC3
+    User --> UC4
+    User --> UC5
+    User --> UC6
+    User --> UC7
+    User --> UC8
+    User --> UC9
+    User --> UC12
+    User --> UC13
+    User --> UC14
+    User --> UC15
+    User --> UC16
+    User --> UC17
+
+    Admin --> UC10
+    Admin --> UC11
+    Admin --> UC3
+    Admin --> UC9
+
+    Market -.->|"Stock Data, VIX, Rates"| UC4
+    Market -.->|"Options Chains"| UC8

@@ -370,7 +370,32 @@ class VolSurfaceTransformer:
         n = moneyness.shape[0]
         lr = cfg.learning_rate
         best_loss = float("inf")
+        self._train_history = []  # Clear history for fresh training run
         t0 = time.time()
+
+        # Evaluation grid for smoothness/calendar arbitrage regularization
+        n_k_grid, n_t_grid = 5, 3
+        eval_m = np.linspace(0.8, 1.2, n_k_grid)
+        eval_t = np.linspace(0.1, 1.5, n_t_grid)
+        eval_mm, eval_tt = np.meshgrid(eval_m, eval_t)
+        eval_m_flat = eval_mm.ravel()                         # (15,)
+        eval_t_flat = eval_tt.ravel()                         # (15,)
+        n_eval = len(eval_m_flat)
+        eval_r_flat = np.zeros((1,), dtype=int)               # batch=1, regime=0
+        eval_h_flat = np.full((1, n_eval, 4), 0.2)            # (batch=1, n_pts=15, 4)
+
+        def _compute_reg_losses():
+            """Compute smoothness and calendar arb losses on eval grid."""
+            iv_grid = self._forward(
+                eval_m_flat.reshape(1, -1),
+                eval_t_flat.reshape(1, -1),
+                eval_r_flat,
+                eval_h_flat,
+            )
+            iv_surface = iv_grid.reshape(n_t_grid, n_k_grid)
+            sl = self._smoothness_loss(iv_surface.T)
+            cl = self._calendar_arb_loss(iv_surface.T, eval_t)
+            return sl, cl
 
         for epoch in range(cfg.epochs):
             idx = self.rng.choice(n, min(cfg.batch_size, n), replace=False)
@@ -383,6 +408,8 @@ class VolSurfaceTransformer:
             # Forward
             iv_pred = self._forward(m_b, t_b, r_b, h_b)
             data_loss = float(np.mean((iv_pred - iv_b) ** 2))
+            smooth_loss, calendar_loss = _compute_reg_losses()
+            total_loss = data_loss + cfg.lambda_smooth * smooth_loss + cfg.lambda_calendar * calendar_loss
 
             # SPSA update
             pert = 1e-3
@@ -392,23 +419,32 @@ class VolSurfaceTransformer:
                                    block.self_attn.W_V, block.self_attn.W_O,
                                    block.ff.W1, block.ff.W2])
 
+            def _total_loss():
+                dl = float(np.mean((self._forward(m_b, t_b, r_b, h_b) - iv_b) ** 2))
+                sl, cl = _compute_reg_losses()
+                return dl + cfg.lambda_smooth * sl + cfg.lambda_calendar * cl
+
             for param in all_params:
                 dp = self.rng.choice([-1.0, 1.0], size=param.shape)
                 param += pert * dp
-                l_plus = float(np.mean((self._forward(m_b, t_b, r_b, h_b) - iv_b) ** 2))
+                l_plus = _total_loss()
                 param -= 2 * pert * dp
-                l_minus = float(np.mean((self._forward(m_b, t_b, r_b, h_b) - iv_b) ** 2))
+                l_minus = _total_loss()
                 param += pert * dp
                 grad = (l_plus - l_minus) / (2 * pert * dp)
                 param -= lr * np.clip(grad, -1, 1)
 
-            total_loss = data_loss
             if total_loss < best_loss:
                 best_loss = total_loss
 
             if epoch % 50 == 0:
-                logger.info(f"VolTransformer epoch {epoch}: loss={total_loss:.6f}")
-                self._train_history.append({"epoch": epoch, "loss": total_loss})
+                logger.info(f"VolTransformer epoch {epoch}: total={total_loss:.6f} "
+                            f"data={data_loss:.6f} smooth={smooth_loss:.6f} calendar={calendar_loss:.6f}")
+                self._train_history.append({
+                    "epoch": epoch, "loss": total_loss,
+                    "data_loss": data_loss, "smooth_loss": smooth_loss,
+                    "calendar_loss": calendar_loss,
+                })
 
             if epoch > 0 and epoch % 200 == 0:
                 lr *= 0.5
@@ -417,6 +453,8 @@ class VolSurfaceTransformer:
         return {
             "epochs": cfg.epochs,
             "best_loss": best_loss,
+            "final_smooth_loss": smooth_loss,
+            "final_calendar_loss": calendar_loss,
             "training_time_s": round(elapsed, 2),
             "history": self._train_history
         }

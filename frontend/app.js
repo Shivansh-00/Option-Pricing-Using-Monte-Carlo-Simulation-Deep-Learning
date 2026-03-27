@@ -7,7 +7,7 @@
 let _authReady = Promise.resolve();
 let _tokenRefreshTimer = null;
 
-const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:8000' : '';
+const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:8001' : '';
 function apiUrl(path) {
   return `${API_BASE}${path}`;
 }
@@ -988,31 +988,81 @@ async function dlForecast() {
   }
 }
 
-// ── 14a. DL Training ──────────────────────────────────────────
+// ── 14a. DL Training (async background with progress polling) ──
 $('dlTrainBtn').addEventListener('click', dlTrain);
+let _dlTrainPollTimer = null;
+
 async function dlTrain() {
   $('dlTrainBtn').disabled = true;
   const statusCard = $('dlTrainStatus');
   statusCard.style.display = '';
-  $('dlTrainInfo').innerHTML = '<div style="display:flex;align-items:center;gap:0.6rem"><div class="spinner" style="width:18px;height:18px;border:2px solid rgba(99,102,241,.3);border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite"></div><span style="color:var(--text-secondary);font-size:0.85rem">Training LSTM & Transformer models…</span></div>';
+  $('dlTrainInfo').innerHTML = '<div style="display:flex;align-items:center;gap:0.6rem"><div class="spinner" style="width:18px;height:18px;border:2px solid rgba(99,102,241,.3);border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite"></div><span style="color:var(--text-secondary);font-size:0.85rem">Starting training…</span></div>';
 
   try {
-    const d = await api('/api/v1/dl/train', { n_days: 500, spot: 100.0, volatility: 0.2, rate: 0.05, seed: 42 }, { timeout: 120000 });
-    if (!d) return;
-    $('dlTrainInfo').innerHTML = `
-      <div class="metrics-row" style="margin:0">
-        <div class="metric-card"><div class="metric-label">Status</div><div class="metric-value highlight">✅ Trained</div></div>
-        <div class="metric-card"><div class="metric-label">LSTM RMSE</div><div class="metric-value">${d.lstm_rmse != null ? fmt(d.lstm_rmse, 6) : '—'}</div></div>
-        <div class="metric-card"><div class="metric-label">Transformer</div><div class="metric-value">${d.transformer_accuracy != null ? (d.transformer_accuracy * 100).toFixed(0) + '%' : '—'}</div></div>
-        <div class="metric-card"><div class="metric-label">Duration</div><div class="metric-value">${d.total_time_ms != null ? fmt(d.total_time_ms, 0) + 'ms' : d.lstm_elapsed_ms != null ? fmt(d.lstm_elapsed_ms, 0) + 'ms' : '—'}</div></div>
-      </div>`;
-    toast('success', 'DL Training Complete', 'Models trained successfully');
+    const startResp = await api('/api/v1/dl/train', { n_days: 500, spot: 100.0, volatility: 0.2, rate: 0.05, seed: 42 }, { timeout: 15000 });
+    if (!startResp) { $('dlTrainBtn').disabled = false; return; }
+
+    // Start polling for progress
+    _dlTrainPollTimer = setInterval(() => _pollTrainingStatus(), 1500);
+    _pollTrainingStatus(); // immediate first poll
   } catch (err) {
-    $('dlTrainInfo').innerHTML = `<div style="color:#ff5c7c;padding:0.5rem">❌ Training failed: ${escapeHtml(err.message)}</div>`;
+    $('dlTrainInfo').innerHTML = `<div style="color:#ff5c7c;padding:0.5rem">❌ Training failed to start: ${escapeHtml(err.message)}</div>`;
     toast('error', 'DL Training Failed', err.message);
-  } finally {
     $('dlTrainBtn').disabled = false;
   }
+}
+
+async function _pollTrainingStatus() {
+  try {
+    const d = await apiGet('/api/v1/dl/training-status', { timeout: 10000 });
+    if (!d) return;
+
+    if (d.status === 'training' || d.status === 'queued') {
+      const pct = d.progress != null ? d.progress.toFixed(0) : '0';
+      const lastTrain = d.train_loss && d.train_loss.length ? fmt(d.train_loss[d.train_loss.length - 1], 6) : '—';
+      const lastVal = d.val_loss && d.val_loss.length ? fmt(d.val_loss[d.val_loss.length - 1], 6) : '—';
+      $('dlTrainInfo').innerHTML = `
+        <div style="margin-bottom:0.5rem">
+          <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-secondary);margin-bottom:4px">
+            <span>Epoch ${d.current_epoch || 0}/${d.total_epochs || 50}</span>
+            <span>${pct}%</span>
+          </div>
+          <div style="width:100%;height:8px;background:rgba(99,102,241,.15);border-radius:4px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#6366f1,#818cf8);border-radius:4px;transition:width .3s"></div>
+          </div>
+        </div>
+        <div class="metrics-row" style="margin:0">
+          <div class="metric-card"><div class="metric-label">Status</div><div class="metric-value">⏳ Training</div></div>
+          <div class="metric-card"><div class="metric-label">Train Loss</div><div class="metric-value">${lastTrain}</div></div>
+          <div class="metric-card"><div class="metric-label">Val Loss</div><div class="metric-value">${lastVal}</div></div>
+          <div class="metric-card"><div class="metric-label">Elapsed</div><div class="metric-value">${d.elapsed_seconds != null ? d.elapsed_seconds.toFixed(1) + 's' : '—'}</div></div>
+        </div>`;
+    } else if (d.status === 'completed' && d.result) {
+      _stopTrainPoll();
+      const r = d.result;
+      $('dlTrainInfo').innerHTML = `
+        <div class="metrics-row" style="margin:0">
+          <div class="metric-card"><div class="metric-label">Status</div><div class="metric-value highlight">✅ Trained</div></div>
+          <div class="metric-card"><div class="metric-label">LSTM RMSE</div><div class="metric-value">${r.lstm_rmse != null ? fmt(r.lstm_rmse, 6) : '—'}</div></div>
+          <div class="metric-card"><div class="metric-label">Transformer</div><div class="metric-value">${r.transformer_accuracy != null ? (r.transformer_accuracy * 100).toFixed(0) + '%' : '—'}</div></div>
+          <div class="metric-card"><div class="metric-label">Duration</div><div class="metric-value">${r.total_time_ms != null ? fmt(r.total_time_ms, 0) + 'ms' : '—'}</div></div>
+        </div>`;
+      toast('success', 'DL Training Complete', 'Models trained successfully');
+      $('dlTrainBtn').disabled = false;
+    } else if (d.status === 'failed') {
+      _stopTrainPoll();
+      $('dlTrainInfo').innerHTML = `<div style="color:#ff5c7c;padding:0.5rem">❌ Training failed: ${escapeHtml(d.error || 'Unknown error')}</div>`;
+      toast('error', 'DL Training Failed', d.error || 'Unknown error');
+      $('dlTrainBtn').disabled = false;
+    }
+  } catch (err) {
+    // Polling error — don't stop, just log
+    console.warn('Training poll error:', err.message);
+  }
+}
+
+function _stopTrainPoll() {
+  if (_dlTrainPollTimer) { clearInterval(_dlTrainPollTimer); _dlTrainPollTimer = null; }
 }
 
 // ── 14b. DL Status ─────────────────────────────────────────────
@@ -1785,8 +1835,8 @@ $('mispScanBtn')?.addEventListener('click', async () => {
     const metrics = $('mispScanMetrics');
     metrics.innerHTML = `
       <div class="metric-card"><div class="metric-label">Contracts</div><div class="metric-value">${d.total_contracts || 0}</div></div>
-      <div class="metric-card"><div class="metric-label">Mispriced</div><div class="metric-value highlight">${d.significant_count || 0}</div></div>
-      <div class="metric-card"><div class="metric-label">Arbitrage</div><div class="metric-value" style="color:var(--danger)">${d.arbitrage_count || 0}</div></div>
+      <div class="metric-card"><div class="metric-label">Mispriced</div><div class="metric-value highlight">${d.significant_signals || 0}</div></div>
+      <div class="metric-card"><div class="metric-label">Arbitrage</div><div class="metric-value" style="color:var(--danger)">${d.arbitrage_opportunities || 0}</div></div>
       <div class="metric-card"><div class="metric-label">Time (ms)</div><div class="metric-value">${fmt(d.scan_time_ms, 0)}</div></div>
     `;
 
@@ -1807,7 +1857,7 @@ $('mispScanBtn')?.addEventListener('click', async () => {
       tbody.appendChild(tr);
     });
 
-    toast('success', 'Scan Complete', `${d.significant_count || 0} mispriced out of ${d.total_contracts || 0}`);
+    toast('success', 'Scan Complete', `${d.significant_signals || 0} mispriced out of ${d.total_contracts || 0}`);
   } catch (err) {
     toast('error', 'Scan Failed', err.message);
   } finally {
@@ -1849,8 +1899,9 @@ $('regimeDetectBtn')?.addEventListener('click', async () => {
     labels.forEach(l => html += `<div class="tm-header">${l}</div>`);
     labels.forEach(from => {
       html += `<div class="tm-label">${from}</div>`;
+      const row = tp[from] || {};
       labels.forEach(to => {
-        const v = tp[to] !== undefined ? tp[to] : (from === to ? 0.7 : 0.1);
+        const v = row[to] !== undefined ? row[to] : (from === to ? 0.7 : 0.1);
         const isHigh = v > 0.3;
         html += `<div class="tm-cell${isHigh ? ' high' : ''}">${(v * 100).toFixed(0)}%</div>`;
       });

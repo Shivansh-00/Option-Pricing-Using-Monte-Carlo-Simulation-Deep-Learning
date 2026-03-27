@@ -274,6 +274,7 @@ async def run_market_stream(
     gen = get_generator(symbol)
     detector = get_regime_detector()
     prev_regime = "unknown"
+    prev_price = None
     tick = 0
 
     try:
@@ -294,11 +295,9 @@ async def run_market_stream(
                 "timestamp": snap.quote.timestamp,
             }
 
-            # Regime detection
-            if include_regime and tick > 1:
-                daily_return = 0.0
-                if snap.quote.price > 0:
-                    daily_return = float(np.random.default_rng(tick).normal(0, 0.01))
+            # Regime detection using actual price changes
+            if include_regime and tick > 1 and prev_price is not None and prev_price > 0:
+                daily_return = (snap.quote.price - prev_price) / prev_price
                 regime = detector.update(daily_return, snap.vix)
                 msg["regime"] = {
                     "label": regime.label,
@@ -318,10 +317,17 @@ async def run_market_stream(
             if include_mispricing and snap.chain.calls:
                 atm_call = min(snap.chain.calls,
                                key=lambda c: abs(c.strike - snap.quote.price))
+                # Parse expiry for accurate maturity
+                try:
+                    from datetime import datetime as _dt
+                    _exp = _dt.strptime(atm_call.expiry, "%Y-%m-%d")
+                    _mat = max(1, (_exp - _dt.now()).days) / 365.0
+                except (ValueError, TypeError, AttributeError):
+                    _mat = 30 / 365.0
                 sig = detect_mispricing(
                     spot=snap.quote.price,
                     strike=atm_call.strike,
-                    maturity=30 / 365.0,
+                    maturity=_mat,
                     rate=0.05,
                     volatility=atm_call.implied_vol,
                     option_type="call",
@@ -352,6 +358,7 @@ async def run_market_stream(
                         msg["alert"] = asdict(alert)
 
             await websocket.send_json(msg)
+            prev_price = snap.quote.price
             await asyncio.sleep(interval_ms / 1000.0)
 
     except WebSocketDisconnect:

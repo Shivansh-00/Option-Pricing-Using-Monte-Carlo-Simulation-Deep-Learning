@@ -20,6 +20,7 @@ import time
 import logging
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Tuple, Any
+from scipy.stats import norm
 
 logger = logging.getLogger(__name__)
 
@@ -76,14 +77,12 @@ class HedgingEnvironment:
     def _bs_delta(self, S: float, K: float, tau: float, sigma: float, r: float) -> float:
         if tau <= 0:
             return 1.0 if S > K else 0.0
-        from scipy.stats import norm
         d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * tau) / (sigma * math.sqrt(tau))
         return float(norm.cdf(d1))
 
     def _bs_price(self, S: float, K: float, tau: float, sigma: float, r: float) -> float:
         if tau <= 0:
             return max(S - K, 0)
-        from scipy.stats import norm
         d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * tau) / (sigma * math.sqrt(tau))
         d2 = d1 - sigma * math.sqrt(tau)
         return float(S * norm.cdf(d1) - K * math.exp(-r * tau) * norm.cdf(d2))
@@ -91,9 +90,18 @@ class HedgingEnvironment:
     def _bs_gamma(self, S: float, K: float, tau: float, sigma: float, r: float) -> float:
         if tau <= 0:
             return 0.0
-        from scipy.stats import norm
         d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * tau) / (sigma * math.sqrt(tau))
         return float(norm.pdf(d1) / (S * sigma * math.sqrt(tau)))
+
+    def _bs_theta(self, S: float, K: float, tau: float, sigma: float, r: float) -> float:
+        """Correct Black-Scholes theta for a call option."""
+        if tau <= 0:
+            return 0.0
+        d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * tau) / (sigma * math.sqrt(tau))
+        d2 = d1 - sigma * math.sqrt(tau)
+        term1 = -(S * sigma * norm.pdf(d1)) / (2 * math.sqrt(tau))
+        term2 = -r * K * math.exp(-r * tau) * norm.cdf(d2)
+        return float(term1 + term2)
 
     def _get_state(self) -> np.ndarray:
         tau = max((self.n_steps - self.step_idx) * self.cfg.dt, 1e-6)
@@ -101,7 +109,7 @@ class HedgingEnvironment:
 
         delta = self._bs_delta(self.S, self.cfg.K, tau, sigma, self.cfg.r)
         gamma = self._bs_gamma(self.S, self.cfg.K, tau, sigma, self.cfg.r)
-        theta = -self.S * sigma * math.exp(-0.5 * (math.log(self.S / self.cfg.K))**2) / (2 * math.sqrt(tau + 1e-8))
+        theta = self._bs_theta(self.S, self.cfg.K, tau, sigma, self.cfg.r)
 
         moneyness = self.S / self.cfg.K
         pnl_so_far = sum(self.pnl_history) if self.pnl_history else 0.0
@@ -158,12 +166,9 @@ class HedgingEnvironment:
 
         done = self.step_idx >= self.n_steps
 
-        # Reward: penalise P&L variance + transaction costs
-        if len(self.pnl_history) > 1:
-            pnl_var = np.var(self.pnl_history[-min(20, len(self.pnl_history)):])
-        else:
-            pnl_var = 0.0
-        reward = -pnl_var - 2.0 * tc / self.cfg.S0
+        # Reward: penalise squared hedging error + transaction costs
+        # Scale ×10 so SPSA gradient signal is not vanishingly small
+        reward = (-step_pnl ** 2 - 2.0 * tc / self.cfg.S0) * 10.0
 
         info = {
             "step_pnl": step_pnl,
@@ -189,7 +194,7 @@ class DQNAgent:
     """
 
     def __init__(self, state_dim: int = 8, n_actions: int = 11,
-                 hidden: int = 64, lr: float = 1e-3, gamma: float = 0.99,
+                 hidden: int = 64, lr: float = 5e-3, gamma: float = 0.99,
                  epsilon: float = 1.0, epsilon_decay: float = 0.995,
                  epsilon_min: float = 0.01, seed: int = 42):
         self.state_dim = state_dim
@@ -252,6 +257,10 @@ class DQNAgent:
     def train_step(self):
         if len(self.buffer) < self.batch_size:
             return
+        # Only train every 4 calls to reduce noise and speed up
+        self.train_steps += 1
+        if self.train_steps % 4 != 0:
+            return
 
         idx = self.rng.choice(len(self.buffer), self.batch_size, replace=False)
         batch = [self.buffer[i] for i in idx]
@@ -273,7 +282,8 @@ class DQNAgent:
         td_error = targets - q_pred
 
         # SPSA-style gradient update for Q-network
-        pert = 1e-3
+        pert = 5e-3
+        all_grads = []
         for W, b in [(self.W1, self.b1), (self.W2, self.b2), (self.W3, self.b3)]:
             dW = self.rng.choice([-1.0, 1.0], size=W.shape)
             db = self.rng.choice([-1.0, 1.0], size=b.shape)
@@ -294,14 +304,16 @@ class DQNAgent:
             grad_W = (loss_plus - loss_minus) / (2 * pert * dW)
             grad_b = (loss_plus - loss_minus) / (2 * pert * db)
 
+            all_grads.append((W, b, grad_W, grad_b))
+
+        for W, b, grad_W, grad_b in all_grads:
             W -= self.lr * np.clip(grad_W, -1, 1)
             b -= self.lr * np.clip(grad_b, -1, 1)
 
-        self.train_steps += 1
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-        # Target network update
-        if self.train_steps % 50 == 0:
+        # Target network update (every 20 effective updates)
+        if self.train_steps % 20 == 0:
             tau_soft = 0.1
             for Wm, Wt in [(self.W1, self.W1_t), (self.W2, self.W2_t), (self.W3, self.W3_t)]:
                 Wt[:] = tau_soft * Wm + (1 - tau_soft) * Wt
@@ -320,7 +332,7 @@ class PPOAgent:
     Critic estimates state value V(s).
     """
 
-    def __init__(self, state_dim: int = 8, hidden: int = 64, lr: float = 3e-4,
+    def __init__(self, state_dim: int = 8, hidden: int = 64, lr: float = 1e-3,
                  gamma: float = 0.99, gae_lambda: float = 0.95, clip_eps: float = 0.2,
                  entropy_coeff: float = 0.01, seed: int = 42):
         self.state_dim = state_dim
@@ -401,27 +413,28 @@ class PPOAgent:
         advantages = (advantages - adv_mean) / adv_std
 
         # SPSA update for actor and critic
-        pert = 1e-3
+        pert = 5e-3
         all_params = [
             (self.actor_W1, self.actor_b1), (self.actor_W2, self.actor_b2),
             (self.critic_W1, self.critic_b1), (self.critic_W2, self.critic_b2)
         ]
 
+        def _total_loss():
+            mean, log_std = self._actor_forward(states)
+            std = np.exp(log_std)
+            new_log_probs = -0.5 * ((actions - mean) / (std + 1e-8))**2 - log_std - 0.5 * math.log(2 * math.pi)
+            ratio = np.exp(new_log_probs - old_log_probs)
+            surr1 = ratio * advantages
+            surr2 = np.clip(ratio, 1 - self.clip_eps, 1 + self.clip_eps) * advantages
+            actor_loss = -np.mean(np.minimum(surr1, surr2))
+            v_pred = self._critic_forward(states)
+            critic_loss = np.mean((returns - v_pred) ** 2)
+            return actor_loss + 0.5 * critic_loss
+
+        all_grads = []
         for W, b in all_params:
             dW = self.rng.choice([-1.0, 1.0], size=W.shape)
             db = self.rng.choice([-1.0, 1.0], size=b.shape)
-
-            def _total_loss():
-                mean, log_std = self._actor_forward(states)
-                std = np.exp(log_std)
-                new_log_probs = -0.5 * ((actions - mean) / (std + 1e-8))**2 - log_std - 0.5 * math.log(2 * math.pi)
-                ratio = np.exp(new_log_probs - old_log_probs)
-                surr1 = ratio * advantages
-                surr2 = np.clip(ratio, 1 - self.clip_eps, 1 + self.clip_eps) * advantages
-                actor_loss = -np.mean(np.minimum(surr1, surr2))
-                v_pred = self._critic_forward(states)
-                critic_loss = np.mean((returns - v_pred) ** 2)
-                return actor_loss + 0.5 * critic_loss
 
             W += pert * dW
             b += pert * db
@@ -437,6 +450,9 @@ class PPOAgent:
             grad_W = (l_plus - l_minus) / (2 * pert * dW)
             grad_b = (l_plus - l_minus) / (2 * pert * db)
 
+            all_grads.append((W, b, grad_W, grad_b))
+
+        for W, b, grad_W, grad_b in all_grads:
             W -= self.lr * np.clip(grad_W, -1, 1)
             b -= self.lr * np.clip(grad_b, -1, 1)
 
@@ -475,10 +491,14 @@ class DynamicHedgingEngine:
         self._trained = False
         self._train_history: List[Dict] = []
 
-    def train(self, n_episodes: int = 200, env_config: Optional[HedgingEnvConfig] = None) -> Dict[str, Any]:
+    def train(self, n_episodes: int = 200, env_config: Optional[HedgingEnvConfig] = None,
+              progress_callback: Optional[Any] = None) -> Dict[str, Any]:
+        """Train the RL agent. Optional progress_callback(episode, n_episodes, avg_reward)."""
         cfg = env_config or HedgingEnvConfig()
+        self._train_history = []
         t0 = time.time()
         episode_rewards = []
+        log_interval = max(1, n_episodes // 20)  # ~20 data points
 
         for ep in range(n_episodes):
             env = HedgingEnvironment(cfg, seed=self.seed + ep)
@@ -507,17 +527,22 @@ class DynamicHedgingEngine:
 
             episode_rewards.append(total_reward)
 
-            if ep % 50 == 0:
-                avg = np.mean(episode_rewards[-50:])
-                logger.info(f"Hedging RL episode {ep}: avg_reward={avg:.4f}")
-                self._train_history.append({"episode": ep, "avg_reward": float(avg)})
+            if ep % log_interval == 0 or ep == n_episodes - 1:
+                avg = float(np.mean(episode_rewards[-max(log_interval, 10):]))
+                logger.info(f"Hedging RL episode {ep}/{n_episodes}: avg_reward={avg:.4f}")
+                self._train_history.append({"episode": ep, "avg_reward": avg})
+                if progress_callback:
+                    try:
+                        progress_callback(ep, n_episodes, avg)
+                    except Exception:
+                        pass
 
         self._trained = True
         elapsed = time.time() - t0
         return {
             "agent_type": self.agent_type,
             "episodes": n_episodes,
-            "final_avg_reward": float(np.mean(episode_rewards[-50:])),
+            "final_avg_reward": float(np.mean(episode_rewards[-max(log_interval, 10):])),
             "training_time_s": round(elapsed, 2),
             "history": self._train_history
         }
@@ -530,6 +555,12 @@ class DynamicHedgingEngine:
 
         # Also run BS-delta benchmark
         bs_pnls = []
+
+        # Save epsilon and use pure exploitation during backtest
+        saved_epsilon = None
+        if self.agent_type == "dqn":
+            saved_epsilon = self.agent.epsilon
+            self.agent.epsilon = 0.0
 
         for ep in range(n_episodes):
             env = HedgingEnvironment(cfg, seed=self.seed + 10000 + ep)
@@ -579,6 +610,10 @@ class DynamicHedgingEngine:
                 bs_action = min(max(bs_action, 0), 10)
                 _, _, done_bs, _ = env_bs.step(bs_action)
             bs_pnls.append(sum(env_bs.pnl_history))
+
+        # Restore epsilon after backtest
+        if saved_epsilon is not None:
+            self.agent.epsilon = saved_epsilon
 
         # Aggregate
         avg_pnl = float(np.mean([r.total_pnl for r in results]))

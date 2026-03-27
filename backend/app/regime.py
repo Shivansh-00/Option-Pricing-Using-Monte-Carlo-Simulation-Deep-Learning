@@ -140,8 +140,9 @@ class GaussianHMM:
                 bt1 = self._emission_probs(observations[t+1])
                 for i in range(self.n_states):
                     beta[t, i] = np.sum(self.trans[i] * bt1 * beta[t+1])
-                if scale[t+1] > 0:
-                    beta[t] /= scale[t+1]
+                beta_sum = beta[t].sum()
+                if beta_sum > 0:
+                    beta[t] /= beta_sum
 
             # Gamma and Xi
             gamma = alpha * beta
@@ -277,7 +278,11 @@ class RegimeDetector:
                 # Sanitize HMM parameters after fit (replace NaN/Inf)
                 self.hmm.trans = np.nan_to_num(self.hmm.trans, nan=0.0, posinf=1.0, neginf=0.0)
                 row_sums = self.hmm.trans.sum(axis=1, keepdims=True)
-                row_sums[row_sums == 0] = 1.0
+                # Replace degenerate (all-zero) rows with uniform distribution
+                for ri in range(self.hmm.trans.shape[0]):
+                    if row_sums[ri, 0] < 1e-300:
+                        self.hmm.trans[ri] = 1.0 / self.hmm.n_states
+                        row_sums[ri, 0] = 1.0
                 self.hmm.trans /= row_sums
                 self.hmm.means = np.nan_to_num(self.hmm.means, nan=0.0, posinf=0.01, neginf=-0.01)
                 self.hmm.variances = np.nan_to_num(self.hmm.variances, nan=1e-4, posinf=1e-2, neginf=1e-8)
@@ -305,13 +310,16 @@ class RegimeDetector:
             else:
                 break
 
-        # Transition probabilities from current state
+        # Full transition probability matrix (all states → all states)
         trans_probs = {}
-        for j in range(4):
-            v = float(self.hmm.trans[current_state, j])
-            if not math.isfinite(v):
-                v = 0.0
-            trans_probs[REGIME_LABELS[j]] = round(v, 4)
+        for i in range(4):
+            row = {}
+            for j in range(4):
+                v = float(self.hmm.trans[i, j])
+                if not math.isfinite(v):
+                    v = 0.0
+                row[REGIME_LABELS[j]] = round(v, 4)
+            trans_probs[REGIME_LABELS[i]] = row
 
         # Sanitize probability/confidence
         prob_val = float(current_probs[current_state])

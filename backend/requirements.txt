@@ -1,5 +1,6 @@
 fastapi==0.115.0
 uvicorn==0.30.6
+websockets>=13.0
 pydantic==2.9.2
 python-dotenv==1.0.1
 numpy==2.1.2
@@ -9,6 +10,7 @@ scipy>=1.11.0
 matplotlib==3.9.2
 PyPDF2==3.0.1
 PyJWT==2.9.0
+bcrypt>=4.0.0
 httpx==0.28.1
 prometheus-client==0.21.0
 

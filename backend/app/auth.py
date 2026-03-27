@@ -2,13 +2,15 @@
 OptiQuant — JWT Authentication System
 ======================================
 Features:
-  • PBKDF2-HMAC-SHA256 password hashing (100k rounds, random salt)
+  • bcrypt password hashing (12 rounds, auto-salt)
+  • PBKDF2-HMAC-SHA256 fallback for legacy passwords
   • HS256 JWT access + refresh tokens with rotation
-  • SQLite persistent user store (WAL mode)
+  • SQLite persistent user store (WAL mode, indexed)
   • Token blacklist (logout / refresh rotation)
   • Rate-limit tracking per IP
   • Password strength validation
   • get_current_user FastAPI dependency for route protection
+  • updated_at auto-trigger on row changes
 """
 from __future__ import annotations
 
@@ -27,6 +29,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Generator
 
+import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -44,27 +47,41 @@ RATE_LIMIT_WINDOW = 300  # 5 minutes
 RATE_LIMIT_MAX = 20      # max attempts per window
 MIN_PASSWORD_LENGTH = 8
 
-# Cross-platform default DB path
-_default_db = os.path.join(os.environ.get("TEMP", os.environ.get("TMP", "/tmp")), "optiquant_users.db") if platform.system() == "Windows" else "/tmp/optiquant_users.db"
-DB_PATH = Path(os.getenv("AUTH_DB_PATH", _default_db))
+# Persistent DB path — stored in backend/data/ (not temp dir)
+_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DB_PATH = Path(os.getenv("AUTH_DB_PATH", str(_DATA_DIR / "optiquant_auth.db")))
 
 # ---------------------------------------------------------------------------
 # Password hashing — PBKDF2-HMAC-SHA256 (no C deps needed)
 # ---------------------------------------------------------------------------
 
 def _hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
-    return f"{salt}${dk.hex()}"
+    """Hash password using bcrypt (12 rounds, auto-salt)."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
 
 
 def _verify_password(password: str, stored_hash: str) -> bool:
+    """Verify password against stored hash. Supports bcrypt and legacy PBKDF2."""
     try:
+        # bcrypt hashes start with $2b$ or $2a$
+        if stored_hash.startswith(("$2b$", "$2a$")):
+            return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
+        # Legacy PBKDF2-HMAC-SHA256 fallback
         salt, dk_hex = stored_hash.split("$", 1)
         dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
         return secrets.compare_digest(dk.hex(), dk_hex)
     except Exception:
         return False
+
+
+def _upgrade_password_hash(user_id: int, password: str) -> None:
+    """Re-hash a legacy PBKDF2 password to bcrypt on successful login."""
+    new_hash = _hash_password(password)
+    with _get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET password = ?, updated_at = datetime('now') WHERE id = ?",
+            (new_hash, user_id),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +107,7 @@ def validate_password_strength(password: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 def _init_db() -> None:
+    """Create tables, indexes, triggers, and run schema migrations."""
     for attempt in range(5):
         try:
             with _get_conn() as conn:
@@ -103,24 +121,52 @@ def _init_db() -> None:
                         role        TEXT    DEFAULT 'user',
                         is_active   INTEGER DEFAULT 1,
                         created_at  TEXT    DEFAULT (datetime('now')),
+                        updated_at  TEXT    DEFAULT (datetime('now')),
                         last_login  TEXT
                     );
+
+                    -- Explicit indexes for fast lookups
+                    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+                    CREATE INDEX IF NOT EXISTS idx_users_email    ON users(email);
+                    CREATE INDEX IF NOT EXISTS idx_users_active   ON users(is_active);
+
+                    -- Auto-update updated_at on any row change
+                    CREATE TRIGGER IF NOT EXISTS trg_users_updated_at
+                    AFTER UPDATE ON users
+                    FOR EACH ROW
+                    BEGIN
+                        UPDATE users SET updated_at = datetime('now')
+                        WHERE id = OLD.id AND updated_at = OLD.updated_at;
+                    END;
+
                     CREATE TABLE IF NOT EXISTS token_blacklist (
                         jti         TEXT    PRIMARY KEY,
                         expires_at  TEXT    NOT NULL
                     );
+
                     CREATE TABLE IF NOT EXISTS rate_limits (
                         ip          TEXT    PRIMARY KEY,
                         attempts    INTEGER DEFAULT 0,
                         window_start REAL   NOT NULL
                     );
                 """)
+                # Schema migration: add updated_at to existing DBs
+                _migrate_schema(conn)
             return
         except sqlite3.OperationalError as exc:
             if "locked" in str(exc).lower() and attempt < 4:
                 time.sleep(0.5 * (attempt + 1))
                 continue
             raise
+
+
+def _migrate_schema(conn: sqlite3.Connection) -> None:
+    """Add missing columns to existing databases (idempotent)."""
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if "updated_at" not in columns:
+        conn.execute("ALTER TABLE users ADD COLUMN updated_at TEXT DEFAULT (datetime('now'))")
+        conn.execute("UPDATE users SET updated_at = created_at WHERE updated_at IS NULL")
+        logger.info("Migrated: added updated_at column to users table")
 
 
 @contextmanager
@@ -153,6 +199,7 @@ class UserRecord:
     role: str
     is_active: bool
     created_at: str
+    updated_at: str
     last_login: str | None
 
 
@@ -325,6 +372,10 @@ def login(username_or_email: str, password: str, ip: str = "0.0.0.0") -> TokenPa
             status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled."
         )
 
+    # Transparently upgrade legacy PBKDF2 hashes to bcrypt on login
+    if not row["password"].startswith(("$2b$", "$2a$")):
+        _upgrade_password_hash(row["id"], password)
+
     with _get_conn() as conn:
         conn.execute(
             "UPDATE users SET last_login = datetime('now') WHERE id = ?",
@@ -387,6 +438,7 @@ def _row_to_user(row: sqlite3.Row) -> UserRecord:
         role=row["role"],
         is_active=bool(row["is_active"]),
         created_at=row["created_at"],
+        updated_at=row["updated_at"] or row["created_at"],
         last_login=row["last_login"],
     )
 

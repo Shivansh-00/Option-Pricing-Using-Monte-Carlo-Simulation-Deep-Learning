@@ -1,0 +1,31 @@
+---
+title: "DFD Level 2 — Pricing Engine Detail"
+---
+flowchart TB
+    Input["📥 Pricing Parameters\nSpot, Strike, T, r, sigma, type"]
+    Input --> Validate{"✅ Validate\nInputs"}
+
+    Validate -->|"Invalid"| Error["❌ 422\nValidation Error"]
+    Validate -->|"Valid"| BS["2.1 Black-Scholes\nAnalytical Pricing"]
+    Validate -->|"Valid"| MC["2.2 Monte Carlo\nSimulation"]
+
+    MC --> GBM["2.2.1 Standard\nGBM Paths"]
+    MC --> AV["2.2.2 Antithetic\nVariates"]
+    MC --> CV["2.2.3 Control\nVariate"]
+    MC --> Heston["2.2.4 Heston\nStochastic Vol"]
+
+    GBM --> Payoff["2.3 Payoff\nComputation\nmax(S-K, 0)"]
+    AV --> Payoff
+    CV --> Payoff
+    Heston --> Payoff
+
+    Payoff --> Stats["2.4 Statistics\nMean, CI, Std Error"]
+    BS --> Greeks["2.5 Greeks\nDelta Gamma Vega\nTheta Rho"]
+    Stats --> Greeks
+
+    Stats --> Conv["2.6 Convergence\nAnalysis"]
+    Stats --> Paths["2.7 Sample Path\nExtraction"]
+
+    Greeks --> Response["📤 Pricing Response\nPrice + Greeks + Paths\n+ Convergence"]
+    Conv --> Response
+    Paths --> Response

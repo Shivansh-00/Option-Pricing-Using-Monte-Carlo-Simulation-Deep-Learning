@@ -1,0 +1,13 @@
+---
+title: "DFD Level 0 — Context Diagram"
+---
+flowchart LR
+    User["👤 User\n(Trader / Analyst)"]
+    Market["🌐 Market Data\nProvider"]
+
+    System["🏛️ OptionQuant\nPlatform"]
+
+    User -->|"Login Credentials\nPricing Parameters\nModel Queries"| System
+    System -->|"Option Prices\nGreeks & Risk\nForecasts\nAI Explanations"| User
+    Market -->|"Stock OHLCV\nVIX Index\nTreasury Rates\nOptions Chains"| System
+    System -->|"API Data\nRequests"| Market

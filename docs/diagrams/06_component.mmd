@@ -1,0 +1,87 @@
+---
+title: "Component Diagram — OptionQuant Platform"
+---
+flowchart LR
+    subgraph FE["🖥️ Frontend Layer"]
+        direction TB
+        UI["index.html\nDashboard"]
+        LoginUI["login.html\nAuth"]
+        AppJS["app.js\nController"]
+        Charts["charts/*\nMC, Greeks, Comparison"]
+        Styles["styles.css\npremium.css"]
+    end
+
+    subgraph API["🔌 FastAPI Application"]
+        direction TB
+        subgraph ROUTES["API Routes"]
+            direction LR
+            R1["auth"]
+            R2["pricing"]
+            R3["ml"]
+            R4["dl"]
+            R5["explain"]
+            R6["market"]
+            R7["quant"]
+            R8["ws"]
+        end
+    end
+
+    subgraph SERVICES["⚙️ Domain & Analytics Services"]
+        direction TB
+        subgraph CORE["Core Pricing Engines"]
+            direction LR
+            C1["pricing.py\nMC + BS"]
+            C2["greeks.py"]
+            C3["vol_engine.py"]
+            C4["jump_diffusion.py"]
+            C5["stochastic_vol.py"]
+            C6["gpu_monte_carlo.py"]
+            C7["variance_reduction.py"]
+        end
+
+        subgraph ML["ML / DL Models"]
+            direction LR
+            M1["ml.py"]
+            M2["dl.py"]
+            M3["train_dl.py"]
+            M4["regime.py"]
+            M5["mispricing.py"]
+            M6["uncertainty.py"]
+        end
+
+        subgraph XAI["Explainability & Risk"]
+            direction LR
+            X1["shap_explain.py"]
+            X2["rag/*"]
+            X3["portfolio_risk.py"]
+            X4["rl_hedging.py"]
+        end
+    end
+
+    subgraph PLATFORM["🔧 Platform Infrastructure"]
+        direction TB
+        P1["auth.py\nJWT + SQLite"]
+        P2["config.py"]
+        P3["schemas.py"]
+        P4["market_data.py"]
+        P5["websocket_manager.py"]
+        P6["prometheus_metrics.py"]
+    end
+
+    subgraph DATA["💾 Data Assets"]
+        direction TB
+        DB[("SQLite Users")]
+        MODELS[("Model Artifacts\nLSTM / Transformer")]
+        KB[("RAG Knowledge Base")]
+    end
+
+    FE ==>|"HTTP / WebSocket"| ROUTES
+    ROUTES ==> CORE
+    ROUTES ==> ML
+    ROUTES ==> XAI
+    ROUTES ==> PLATFORM
+    CORE ==> DB
+    ML ==> MODELS
+    XAI ==> KB
+    PLATFORM ==> DB
+    PLATFORM ==> MODELS

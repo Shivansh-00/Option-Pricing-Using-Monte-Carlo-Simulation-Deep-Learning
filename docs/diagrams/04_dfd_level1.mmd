@@ -1,0 +1,34 @@
+---
+title: "DFD Level 1 — Major Processes"
+---
+flowchart TB
+    User["👤 User"]
+    Market["🌐 Market Data"]
+
+    User -->|"credentials"| P1["1.0 Authentication\n(JWT)"]
+    P1 -->|"JWT Token"| User
+    P1 <-->|"read/write"| D1[("SQLite\nUser DB")]
+
+    User -->|"S, K, T, r, sigma"| P2["2.0 Pricing\nEngine"]
+    P2 -->|"Prices, Greeks\nMC Paths"| User
+
+    Market -->|"Stock, VIX\nRates Data"| P3["3.0 Data\nProcessing"]
+    P3 -->|"Cleaned\nFeatures"| P4["4.0 ML\nPrediction"]
+    P3 -->|"Feature\nSequences"| P5["5.0 DL\nForecasting"]
+
+    P4 -->|"IV, Regime\nMispricing"| User
+    P5 -->|"LSTM/TF\nForecasts"| User
+
+    P2 <-->|"MC Price\nResidual"| P5
+
+    P4 -->|"Model\n+ Data"| P6["6.0 Explainability\n(SHAP + RAG)"]
+    P5 -->|"Model\n+ Data"| P6
+    P6 -->|"AI\nExplanation"| User
+
+    P3 -->|"Vol Data"| P7["7.0 Vol Surface\nGeneration"]
+    P7 -->|"3D Surface"| User
+
+    P2 -->|"Prices"| P8["8.0 Portfolio\nRisk"]
+    P8 -->|"VaR, Stress\nTest Results"| User
+
+    D2[("Model Files\nlstm.pt\ntransformer.pt")] <-->|"Load/Save\nWeights"| P5

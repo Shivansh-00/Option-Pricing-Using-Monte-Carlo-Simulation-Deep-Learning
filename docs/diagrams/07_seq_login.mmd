@@ -1,0 +1,29 @@
+---
+title: "Sequence Diagram — User Login Flow"
+---
+sequenceDiagram
+    actor User as 👤 User
+    participant FE as 🖥️ Frontend (login.html)
+    participant API as 🔌 FastAPI Server
+    participant Auth as 🔐 Auth Module
+    participant DB as 💾 SQLite Database
+
+    User->>FE: Enter username & password
+    FE->>API: POST /api/v1/auth/login
+    API->>Auth: authenticate(username, password)
+    Auth->>DB: SELECT user WHERE username=?
+    DB-->>Auth: User record (salt$hash)
+    Auth->>Auth: PBKDF2 verify password
+
+    alt ✅ Password Valid
+        Auth->>Auth: Generate JWT access token (30min)
+        Auth->>Auth: Generate JWT refresh token (7d)
+        Auth-->>API: TokenPair {access, refresh}
+        API-->>FE: 200 OK + JSON tokens
+        FE->>FE: localStorage.setItem(token)
+        FE-->>User: Redirect to Dashboard ✅
+    else ❌ Password Invalid
+        Auth-->>API: AuthenticationError
+        API-->>FE: 401 Unauthorized
+        FE-->>User: Display error message ❌
+    end

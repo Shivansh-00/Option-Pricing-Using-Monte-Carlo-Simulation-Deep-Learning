@@ -20,6 +20,8 @@ import asyncio
 import logging
 import math
 import time
+import threading
+import uuid
 
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException
@@ -30,8 +32,9 @@ from ..quant_schemas import (
     PINNsTrainRequest, PINNsTrainResponse,
     PINNsPredictRequest, PINNsPredictResponse,
     PINNsGreeksRequest, PINNsGreeksResponse,
+    PINNsStatusResponse,
     # RL Hedging
-    HedgingTrainRequest, HedgingTrainResponse,
+    HedgingTrainRequest, HedgingTrainResponse, HedgingStatusResponse,
     HedgingBacktestRequest, HedgingBacktestResponse,
     HedgeSuggestRequest, HedgeSuggestResponse,
     # Vol Surface
@@ -67,6 +70,64 @@ router = APIRouter(prefix="/api/v1/quant", tags=["quant-intelligence"])
 #  PINNs — Physics-Informed Neural Networks
 # ═══════════════════════════════════════════════════════════════
 
+# ---------- Background training manager ----------
+
+class _PINNsTrainingJob:
+    """Holds state for a background PINNs training run."""
+    def __init__(self, job_id: str, epochs: int, n_samples: int):
+        self.job_id = job_id
+        self.status = "queued"
+        self.total_epochs = epochs
+        self.current_epoch = 0
+        self.current_loss = 0.0
+        self.n_samples = n_samples
+        self.result: dict = {}
+        self.error = ""
+        self.started_at = time.time()
+        self.finished_at: float | None = None
+
+    def to_dict(self) -> dict:
+        elapsed = (self.finished_at or time.time()) - self.started_at
+        progress = (self.current_epoch / max(self.total_epochs, 1)) * 100
+        return {
+            "job_id": self.job_id,
+            "status": self.status,
+            "progress": round(progress, 1),
+            "current_epoch": self.current_epoch,
+            "total_epochs": self.total_epochs,
+            "current_loss": round(self.current_loss, 8),
+            "elapsed_seconds": round(elapsed, 2),
+            "result": self.result,
+            "error": self.error,
+        }
+
+
+class _PINNsTrainingManager:
+    """Thread-safe manager for at-most-one PINNs background job."""
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._job: _PINNsTrainingJob | None = None
+        self._thread: threading.Thread | None = None
+
+    @property
+    def is_busy(self) -> bool:
+        with self._lock:
+            return (self._job is not None
+                    and self._job.status in ("queued", "training"))
+
+    def get_status(self) -> dict:
+        with self._lock:
+            if self._job is None:
+                return {"status": "idle", "job_id": "", "progress": 0.0,
+                        "current_epoch": 0, "total_epochs": 0,
+                        "current_loss": 0.0, "elapsed_seconds": 0.0,
+                        "result": {}, "error": ""}
+            return self._job.to_dict()
+
+
+_pinns_manager = _PINNsTrainingManager()
+
+
 @router.post("/pinns/train", response_model=PINNsTrainResponse)
 async def pinns_train(
     request: PINNsTrainRequest,
@@ -76,37 +137,50 @@ async def pinns_train(
     try:
         from ..pinns import get_pinns_pricer, PINNsOptionPricer
 
-        pricer = get_pinns_pricer()
+        # Fresh pricer each training run to avoid stale weights
+        pricer = get_pinns_pricer(reset=True)
+        pricer.config.epochs = request.epochs
 
-        # generate_training_data(n_samples, seed) -> Dict with S, K, tau, sigma, r, V_market
         train_data = await asyncio.to_thread(
             PINNsOptionPricer.generate_training_data,
             n_samples=request.n_samples,
         )
 
         start = time.perf_counter()
-        # train(train_data: Dict) -> Dict with epochs, best_loss, final_losses, training_time_s, params, history
         result = await asyncio.to_thread(pricer.train, train_data)
         elapsed = (time.perf_counter() - start) * 1000
 
         history = result.get("history", [])
         final_losses = result.get("final_losses", {})
-
-        # Extract last epoch from history list or use final_losses
         last_epoch = history[-1] if history else {}
 
         return PINNsTrainResponse(
             epochs_trained=int(result.get("epochs", request.epochs)),
-            final_loss=float(result.get("best_loss", last_epoch.get("total", 0))),
-            pde_loss=float(final_losses.get("pde", last_epoch.get("pde", 0))),
-            data_loss=float(final_losses.get("data", last_epoch.get("data", 0))),
-            arbitrage_loss=float(final_losses.get("arbitrage", last_epoch.get("arb", 0))),
+            final_loss=float(result.get("best_loss",
+                                        last_epoch.get("total_loss", 0))),
+            pde_loss=float(final_losses.get("pde_loss",
+                           last_epoch.get("pde_loss", 0))),
+            data_loss=float(final_losses.get("data_loss",
+                            last_epoch.get("data_loss", 0))),
+            arbitrage_loss=float(final_losses.get("arb_loss",
+                                 last_epoch.get("arb_loss", 0))),
             training_time_ms=round(elapsed, 2),
-            loss_history=[float(h.get("total", 0)) for h in history[-50:]],
+            loss_history=[float(h.get("total_loss", 0))
+                          for h in history[-50:]],
         )
     except Exception as e:
         logger.error("PINNs training error: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"PINNs training error: {e}")
+        raise HTTPException(status_code=500,
+                            detail=f"PINNs training error: {e}")
+
+
+@router.get("/pinns/status")
+async def pinns_status(
+    _user: UserRecord = Depends(get_current_user),
+) -> PINNsStatusResponse:
+    """Return current PINNs training status."""
+    d = _pinns_manager.get_status()
+    return PINNsStatusResponse(**d)
 
 
 @router.post("/pinns/predict", response_model=PINNsPredictResponse)
@@ -119,20 +193,22 @@ async def pinns_predict(
         from ..pinns import get_pinns_pricer
 
         pricer = get_pinns_pricer()
+        if not pricer._built:
+            raise HTTPException(
+                status_code=400,
+                detail="PINNs model not trained yet. Train first via POST /pinns/train.")
 
-        # predict(S, K, tau, sigma, r) -> np.ndarray
-        S_arr = np.array([request.spot])
-        K_arr = np.array([request.strike])
-        tau_arr = np.array([request.maturity])
-        sigma_arr = np.array([request.volatility])
-        r_arr = np.array([request.rate])
+        S_arr = np.array([request.spot]).reshape(-1, 1)
+        K_arr = np.array([request.strike]).reshape(-1, 1)
+        tau_arr = np.array([request.maturity]).reshape(-1, 1)
+        sigma_arr = np.array([request.volatility]).reshape(-1, 1)
+        r_arr = np.array([request.rate]).reshape(-1, 1)
 
         prices = await asyncio.to_thread(
             pricer.predict, S_arr, K_arr, tau_arr, sigma_arr, r_arr,
         )
         pinns_price = float(prices[0])
 
-        # compute_greeks for PDE residual info
         greeks = await asyncio.to_thread(
             pricer.compute_greeks,
             request.spot, request.strike, request.maturity,
@@ -149,17 +225,25 @@ async def pinns_predict(
         bs_price = pricing.black_scholes(inputs)
         deviation = abs(pinns_price - bs_price) / max(bs_price, 1e-8) * 100
 
+        pde_res = pricer._pde_residual(
+            S_arr, K_arr, tau_arr, sigma_arr, r_arr,
+        )
+        pde_residual = float(np.mean(pde_res ** 2))
+
         return PINNsPredictResponse(
             pinns_price=round(pinns_price, 6),
             bs_price=round(bs_price, 6),
             deviation_pct=round(deviation, 4),
-            pde_residual=0.0,
+            pde_residual=round(pde_residual, 8),
             greeks=greeks,
             metadata={"is_trained": pricer._built},
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("PINNs predict error: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"PINNs predict error: {e}")
+        raise HTTPException(status_code=500,
+                            detail=f"PINNs predict error: {e}")
 
 
 @router.post("/pinns/greeks", response_model=PINNsGreeksResponse)
@@ -172,7 +256,6 @@ async def pinns_greeks(
         from ..pinns import get_pinns_pricer
 
         pricer = get_pinns_pricer()
-        # compute_greeks(S, K, tau, sigma, r) -> Dict with price, delta, gamma, theta, vega, rho
         greeks = await asyncio.to_thread(
             pricer.compute_greeks,
             request.spot, request.strike, request.maturity,
@@ -186,23 +269,129 @@ async def pinns_greeks(
         )
     except Exception as e:
         logger.error("PINNs greeks error: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"PINNs greeks error: {e}")
+        raise HTTPException(status_code=500,
+                            detail=f"PINNs greeks error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════
-#  RL Dynamic Hedging
+#  RL Dynamic Hedging — Background Training Manager
 # ═══════════════════════════════════════════════════════════════
+
+class _RLTrainingJob:
+    """Holds state for a background RL training run."""
+    def __init__(self, job_id: str, agent_type: str, episodes: int):
+        self.job_id = job_id
+        self.agent_type = agent_type
+        self.status = "queued"           # queued → training → completed | failed
+        self.total_episodes = episodes
+        self.current_episode = 0
+        self.avg_reward = 0.0
+        self.reward_history: list[float] = []
+        self.result: dict = {}
+        self.error = ""
+        self.started_at = time.time()
+        self.finished_at: float | None = None
+
+    def to_dict(self) -> dict:
+        elapsed = (self.finished_at or time.time()) - self.started_at
+        progress = (self.current_episode / max(self.total_episodes, 1)) * 100
+        d = {
+            "job_id": self.job_id,
+            "status": self.status,
+            "progress": round(progress, 1),
+            "current_episode": self.current_episode,
+            "total_episodes": self.total_episodes,
+            "avg_reward": round(self.avg_reward, 6),
+            "reward_history": self.reward_history[-50:],
+            "elapsed_seconds": round(elapsed, 1),
+            "result": self.result,
+            "error": self.error,
+        }
+        return d
+
+
+class _RLTrainingManager:
+    """Thread-safe manager for RL background training."""
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._current: _RLTrainingJob | None = None
+        self._thread: threading.Thread | None = None
+
+    @property
+    def is_busy(self) -> bool:
+        with self._lock:
+            return (self._current is not None
+                    and self._current.status in ("queued", "training"))
+
+    def start(self, agent_type: str, episodes: int, env_config) -> _RLTrainingJob:
+        if self.is_busy:
+            raise HTTPException(status_code=409,
+                                detail="RL training already in progress. Poll /hedging/status.")
+        job = _RLTrainingJob(
+            job_id=uuid.uuid4().hex[:12],
+            agent_type=agent_type,
+            episodes=episodes,
+        )
+        with self._lock:
+            self._current = job
+        t = threading.Thread(target=self._run, args=(job, env_config), daemon=True)
+        self._thread = t
+        t.start()
+        return job
+
+    def get_status(self) -> dict:
+        with self._lock:
+            if self._current is None:
+                return {"job_id": "", "status": "idle", "progress": 0,
+                        "current_episode": 0, "total_episodes": 0,
+                        "avg_reward": 0, "reward_history": [],
+                        "elapsed_seconds": 0, "result": {}, "error": ""}
+            return self._current.to_dict()
+
+    def _run(self, job: _RLTrainingJob, env_config) -> None:
+        try:
+            from ..rl_hedging import get_hedging_engine
+            job.status = "training"
+            engine = get_hedging_engine(agent_type=job.agent_type)
+
+            def on_progress(ep, total, avg_r):
+                job.current_episode = ep + 1
+                job.avg_reward = avg_r
+                job.reward_history.append(round(avg_r, 6))
+
+            result = engine.train(
+                n_episodes=job.total_episodes,
+                env_config=env_config,
+                progress_callback=on_progress,
+            )
+            job.current_episode = job.total_episodes
+            job.result = {
+                "agent_type": result["agent_type"],
+                "episodes_trained": result["episodes"],
+                "final_reward": round(result["final_avg_reward"], 6),
+                "training_time_s": result["training_time_s"],
+            }
+            job.status = "completed"
+        except Exception as exc:
+            logger.error("RL training failed: %s", exc, exc_info=True)
+            job.status = "failed"
+            job.error = str(exc)
+        finally:
+            job.finished_at = time.time()
+
+
+_rl_manager = _RLTrainingManager()
+
 
 @router.post("/hedging/train", response_model=HedgingTrainResponse)
 async def hedging_train(
     request: HedgingTrainRequest,
     _user: UserRecord = Depends(get_current_user),
 ) -> HedgingTrainResponse:
-    """Train RL hedging agent (DQN or PPO)."""
+    """Train RL hedging agent synchronously and return results."""
     try:
         from ..rl_hedging import get_hedging_engine, HedgingEnvConfig
 
-        # HedgingEnvConfig fields: S0, K, r, sigma, T
         env_config = HedgingEnvConfig(
             S0=request.spot,
             K=request.strike,
@@ -213,26 +402,35 @@ async def hedging_train(
         engine = get_hedging_engine(agent_type=request.agent_type)
 
         start = time.perf_counter()
-        # train(n_episodes, env_config) -> Dict with agent_type, episodes, final_avg_reward, training_time_s, history
         result = await asyncio.to_thread(
             engine.train, n_episodes=request.episodes, env_config=env_config,
         )
         elapsed = (time.perf_counter() - start) * 1000
 
         history = result.get("history", [])
-        reward_list = [float(h.get("avg_reward", 0)) for h in history[-100:]] if history else []
+        reward_list = [float(h.get("avg_reward", 0)) for h in history] if history else []
+        last_100 = reward_list[-100:] if reward_list else []
 
         return HedgingTrainResponse(
             agent_type=request.agent_type,
             episodes_trained=int(result.get("episodes", request.episodes)),
             final_reward=float(result.get("final_avg_reward", 0)),
-            avg_reward_last_100=float(np.mean(reward_list[-100:])) if reward_list else 0.0,
+            avg_reward_last_100=float(np.mean(last_100)) if last_100 else 0.0,
             training_time_ms=round(elapsed, 2),
-            reward_history=reward_list,
+            reward_history=reward_list[-50:],
         )
     except Exception as e:
         logger.error("Hedging train error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Hedging train error: {e}")
+
+
+@router.get("/hedging/status", response_model=HedgingStatusResponse)
+async def hedging_status(
+    _user: UserRecord = Depends(get_current_user),
+) -> HedgingStatusResponse:
+    """Poll RL training status and progress."""
+    d = _rl_manager.get_status()
+    return HedgingStatusResponse(**d)
 
 
 @router.post("/hedging/backtest", response_model=HedgingBacktestResponse)
@@ -242,13 +440,20 @@ async def hedging_backtest(
 ) -> HedgingBacktestResponse:
     """Backtest RL hedging vs Black-Scholes delta hedging."""
     try:
-        from ..rl_hedging import get_hedging_engine
+        from ..rl_hedging import get_hedging_engine, HedgingEnvConfig
 
+        env_config = HedgingEnvConfig(
+            S0=request.spot,
+            K=request.strike,
+            T=request.maturity,
+            sigma=request.volatility,
+            r=request.rate,
+        )
         engine = get_hedging_engine(agent_type=request.agent_type)
 
         # backtest(n_episodes, env_config) -> Dict
         result = await asyncio.to_thread(
-            engine.backtest, n_episodes=request.n_scenarios,
+            engine.backtest, n_episodes=request.n_scenarios, env_config=env_config,
         )
 
         return HedgingBacktestResponse(
@@ -360,8 +565,8 @@ async def vol_surface_train(
         return VolSurfaceTrainResponse(
             epochs_trained=int(result.get("epochs", request.epochs)),
             final_loss=float(result.get("best_loss", loss_list[-1] if loss_list else 0)),
-            smoothness_loss=0.0,
-            arbitrage_loss=0.0,
+            smoothness_loss=float(result.get("final_smooth_loss", 0.0)),
+            arbitrage_loss=float(result.get("final_calendar_loss", 0.0)),
             training_time_ms=round(elapsed, 2),
             loss_history=loss_list,
         )

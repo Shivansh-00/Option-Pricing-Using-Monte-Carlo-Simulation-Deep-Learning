@@ -114,9 +114,10 @@ def _compute_shap_values(
 
     # Compute marginal contributions
     shap_vals = {}
+    n_background = min(100, len(background))  # use larger subset for better estimates
     for feat_name in features:
         marginals = []
-        for bg in background[:50]:  # use subset for speed
+        for bg in background[:n_background]:
             # With feature = actual value
             params_with = bg.copy()
             params_with[feat_name] = features[feat_name]["value"]

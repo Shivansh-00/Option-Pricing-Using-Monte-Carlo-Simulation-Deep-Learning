@@ -1,0 +1,19 @@
+---
+title: "CI/CD Pipeline Diagram"
+---
+flowchart LR
+    Dev["👨‍💻 Developer"]
+    Dev -->|"git push"| GH["📦 GitHub\nRepository"]
+    GH -->|"webhook\ntrigger"| CI["🔄 CI Pipeline\nGitHub Actions"]
+
+    subgraph Pipeline["CI/CD Pipeline"]
+        direction TB
+        CI --> Lint["🔍 Lint +\nType Check"]
+        Lint --> Test["🧪 Run Tests\n48 Endpoints"]
+        Test --> Build["🐳 Docker\nBuild & Push"]
+        Build --> Registry["📋 Container\nRegistry"]
+    end
+
+    Registry --> Deploy["🚀 K8s Deploy\nkubectl apply"]
+    Deploy --> Cluster["☁️ Production\nCluster"]
+    Cluster --> Monitor["📊 Prometheus\n+ Grafana"]

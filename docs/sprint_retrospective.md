@@ -1,0 +1,17 @@
+# Sprint Retrospective - Option Pricing Using Monte Carlo Simulation + Deep Learning
+
+| What went well | What went poorly | What ideas do you have | How should we take action |
+|---|---|---|---|
+| Core architecture is stable: FastAPI backend, quant engines, ML/DL modules, and dashboard integration are working together. | Scope increased during sprint (functional doc, architecture diagrams, and high-quality exports all in one cycle), causing context switching. | Add a scope-freeze checkpoint at mid-sprint to separate must-have deliverables from nice-to-have items. | Conduct a mid-sprint review and lock must-have scope; move extras to next sprint backlog. |
+| Endpoints for pricing and analytics were completed and validated through tests and quick runs. | Some generated diagram assets exceeded platform limits (image dimension > 8000 px), leading to request failures. | Add export guardrails (max width/height) to the diagram generation process. | Standardize Mermaid export profile (safe scale and dimensions) and validate image sizes before sharing. |
+| Team moved quickly on documentation: architecture explanation, class/use-case/DFD/component/sequence/deployment diagrams were produced. | Visual consistency issues appeared across some diagrams (font size, spacing, readability), requiring rework. | Define one shared diagram style config and layout conventions before rendering all files. | Keep one central `mermaid-config.json`; run one preview pass on 2-3 diagrams before full batch render. |
+| Authentication flow and role-based access assumptions are clearly documented for user/admin operations. | Authorization rules are documented, but not yet fully enforced in all advanced workflows (training/benchmark/admin-only controls). | Introduce a role-guard checklist for every protected endpoint and admin feature. | Add endpoint-level permission tests and fail CI if protected routes are accessible by non-admin roles. |
+| The platform demonstrates strong technical breadth: BS, Monte Carlo, Greeks, DL forecasting, SHAP/RAG explainability. | Model and feature behavior under edge-case market scenarios needs deeper regression coverage. | Build a reproducible stress-test suite with synthetic shocks (vol spikes, gap moves, sparse chain data). | Add scheduled stress tests and track metrics drift in monitoring dashboards per sprint. |
+| Collaboration and turnaround were fast for iterative feedback ("try again" loops were handled rapidly). | Repeated reruns consumed time due to manual command retries and terminal state interruptions. | Automate repeatable tasks (render, verify, publish) with one script. | Create a single script/Make target for end-to-end diagram build and verification to reduce manual overhead. |
+
+## Next Sprint Focus (Recommended)
+- Stabilize authorization matrix implementation with endpoint-level enforcement.
+- Add automated image/export validation in docs pipeline.
+- Expand regression tests for pricing accuracy and stress scenarios.
+- Improve user-facing functional documentation with acceptance criteria per feature.
+- Package quant + AI outputs into a consistent dashboard narrative for demo readiness.

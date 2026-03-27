@@ -1,0 +1,27 @@
+---
+title: "Deployment Diagram — Local Development"
+---
+flowchart TB
+    subgraph DEV["💻 LOCAL DEVELOPMENT — localhost"]
+        Browser["🌐 Chrome Browser\nhttp://localhost:8000"]
+
+        subgraph Uvicorn["Python Process — uvicorn"]
+            FastAPI["FastAPI App\nPort 8000"]
+            Static["Static File Server\n(HTML/CSS/JS)"]
+        end
+
+        subgraph LocalStore["Local File System"]
+            SQLite[("SQLite DB\noptiquant_users.db")]
+            PTFiles[("Model Weights\nlstm_model.pt\ntransformer_model.pt")]
+            RAGFiles[("RAG Knowledge Base\nFinancial Documents")]
+        end
+
+        Browser -->|"HTTP Requests\nWebSocket"| FastAPI
+        Browser -->|"Static Assets"| Static
+        FastAPI --> SQLite
+        FastAPI --> PTFiles
+        FastAPI --> RAGFiles
+    end
+
+    ExtAPI["🌐 External APIs\nYahoo Finance\nTreasury Rates"]
+    FastAPI <-->|"Market Data\nHTTP Calls"| ExtAPI

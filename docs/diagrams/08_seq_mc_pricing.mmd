@@ -1,0 +1,46 @@
+---
+title: "Sequence Diagram — Monte Carlo Option Pricing"
+---
+sequenceDiagram
+    actor User as 👤 Trader
+    participant FE as 🖥️ Dashboard
+    participant API as 🔌 FastAPI
+    participant MC as 🎲 Monte Carlo Engine
+    participant BS as 📐 Black-Scholes Engine
+    participant GK as 📊 Greeks Engine
+
+    User->>FE: Set S=100, K=105, T=1, r=5%, sigma=20%
+    FE->>API: POST /api/v1/pricing/mc/detailed
+    Note over API: Verify JWT Token ✅
+
+    rect rgb(230, 240, 255)
+        Note over MC: Monte Carlo Simulation Phase
+        API->>MC: price_european(inputs)
+        MC->>MC: Generate 20,000 GBM paths
+        MC->>MC: Apply antithetic variates
+        MC->>MC: Compute payoffs max(S_T - K, 0)
+        MC->>MC: Discount e^(-rT) x mean(payoffs)
+        MC->>MC: Calculate 95% CI & std error
+        MC->>MC: Extract convergence curve
+        MC->>MC: Sample 50 display paths
+        MC-->>API: MCResult
+    end
+
+    rect rgb(255, 240, 230)
+        Note over BS: Analytical Pricing Phase
+        API->>BS: price(S, K, T, r, sigma)
+        BS-->>API: BS price = 8.02
+    end
+
+    rect rgb(230, 255, 230)
+        Note over GK: Risk Sensitivities Phase
+        API->>GK: compute_all_greeks(inputs)
+        GK-->>API: Delta=0.54 Gamma=0.02 Vega=0.38 Theta=-0.01 Rho=0.45
+    end
+
+    API-->>FE: Complete response JSON
+    FE->>FE: Render MC path visualization
+    FE->>FE: Render convergence chart
+    FE->>FE: Display BS vs MC comparison
+    FE->>FE: Show Greeks dashboard
+    FE-->>User: Interactive pricing view
