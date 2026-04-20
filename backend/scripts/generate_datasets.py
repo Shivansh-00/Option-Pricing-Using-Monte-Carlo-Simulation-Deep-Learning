@@ -16,13 +16,11 @@ from __future__ import annotations
 
 import csv
 import math
-import os
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import norm  # type: ignore
 
 # ---------------------------------------------------------------------------
 # Config
@@ -295,7 +293,6 @@ def write_indicators(dates, data, path: Path):
 
     # ATR-14
     for i in range(1, n):
-        tr = max(highs[i] - lows[i], abs(highs[i] - spots[i - 1]), abs(lows[i] - spots[i - 1]))
         if i >= 14:
             window_tr = []
             for j in range(i - 13, i + 1):

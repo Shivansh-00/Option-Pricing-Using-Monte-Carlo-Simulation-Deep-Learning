@@ -154,7 +154,7 @@ def _simulate_batch_stratified(
     steps: int, size: int, rng: np.random.Generator
 ) -> np.ndarray:
     """Stratified sampling: divide [0,1] into strata for first step."""
-    from scipy.stats import norm as sp_norm  # lazy import
+    from scipy.stats import norm as sp_norm  # type: ignore
 
     # Stratify the first time step, random for rest
     strata = np.arange(size) / size

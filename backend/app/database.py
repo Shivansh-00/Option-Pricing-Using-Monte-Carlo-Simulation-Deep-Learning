@@ -22,7 +22,7 @@ from contextlib import contextmanager
 from typing import Any, Generator
 from urllib.parse import urlparse
 
-import requests as _requests
+import requests as _requests  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ def init_pool(minconn: int = 1, maxconn: int = 10) -> bool:
     pg_port = parsed.port or 5432
     if _port_open(pg_host, pg_port):
         try:
-            import psycopg2.pool  # noqa: local import — not needed if HTTP mode
+            import psycopg2.pool  # type: ignore[import-untyped]  # noqa: local import — not needed if HTTP mode
             sep = "&" if "?" in url else "?"
             tcp_url = url if "connect_timeout" in url else f"{url}{sep}connect_timeout=10"
             _pool = psycopg2.pool.ThreadedConnectionPool(minconn, maxconn, tcp_url)
@@ -306,7 +306,7 @@ def get_conn() -> Generator:
 def get_cursor(cursor_factory=None) -> Generator:
     """Return a dict-cursor inside a managed connection."""
     if _MODE == "pool":
-        import psycopg2.extras
+        import psycopg2.extras  # type: ignore[import-untyped]
         factory = cursor_factory or psycopg2.extras.RealDictCursor
         with _tcp_conn() as conn:
             cur = conn.cursor(cursor_factory=factory)

@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import time
+from typing import Any
 from pathlib import Path
 
 # Force UTF-8 output on Windows
@@ -55,7 +56,7 @@ def train_vol_engine() -> dict:
         n_cv_folds=3,
     )
 
-    saved = engine.save(MODEL_DIR)
+    engine.save(MODEL_DIR)
     print(f"\n  Best model: {result.best_model}")
     print(f"  Best test RMSE: {result.best_test_rmse:.6f}")
     print(f"  Best test R²:   {result.best_test_r2:.4f}")
@@ -63,16 +64,17 @@ def train_vol_engine() -> dict:
     print(f"  Train/Val/Test: {result.n_train}/{result.n_val}/{result.n_test}")
     print(f"  Time: {result.total_time_ms:.0f} ms")
 
-    summary = {
+    models: dict[str, Any] = {}
+    summary: dict[str, Any] = {
         "best_model": result.best_model,
         "best_test_rmse": result.best_test_rmse,
         "best_test_r2": result.best_test_r2,
         "n_models": len(result.comparisons),
         "time_ms": result.total_time_ms,
-        "models": {},
+        "models": models,
     }
     for c in result.comparisons:
-        summary["models"][c.model_name] = {
+        models[c.model_name] = {
             "test_rmse": c.test_metrics.rmse,
             "test_r2": c.test_metrics.r_squared,
             "test_mae": c.test_metrics.mae,
@@ -169,7 +171,7 @@ def train_pinns() -> dict:
 
     # Spot-check pricing
     greeks = pricer.compute_greeks(S=450.0, K=450.0, tau=0.25, sigma=0.18, r=0.05)
-    print(f"\n  Spot-check (ATM, S=K=450, τ=0.25, σ=0.18):")
+    print("\n  Spot-check (ATM, S=K=450, τ=0.25, σ=0.18):")
     print(f"    Price={greeks['price']:.4f}  Delta={greeks['delta']:.4f}  Gamma={greeks['gamma']:.6f}")
 
     return {

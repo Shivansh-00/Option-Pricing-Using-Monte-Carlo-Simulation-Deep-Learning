@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-import time
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -81,7 +80,7 @@ async def pinns_price(
         raise HTTPException(status_code=503, detail="PINNs model not trained yet")
 
     try:
-        price = await asyncio.to_thread(
+        price = await asyncio.to_thread(  # type: ignore[arg-type]
             pricer.predict,
             S=req.spot,
             K=req.strike,
@@ -123,7 +122,7 @@ async def pinns_price_greeks(
             sigma=req.volatility,
             r=req.rate,
         )
-        return PINNsGreeksResponse(**result)
+        return PINNsGreeksResponse(**result)  # type: ignore[arg-type]
     except Exception as e:
         logger.error("PINNs greeks error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"PINNs error: {e}")

@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from .. import dl, pricing
 from ..auth import UserRecord, get_current_user
+from ..prometheus_metrics import PROMETHEUS_AVAILABLE
 from ..schemas import (
     DLForecastRequest,
     DLForecastResponse,
@@ -195,6 +196,15 @@ class _TrainingManager:
 _training_mgr = _TrainingManager()
 
 
+def _record_dl_model(model_name: str, duration: float):
+    """Record DL model prediction metrics to Prometheus."""
+    if not PROMETHEUS_AVAILABLE:
+        return
+    from ..prometheus_metrics import MODEL_PREDICTIONS, MODEL_PREDICTION_DURATION
+    MODEL_PREDICTIONS.labels(model_name=model_name).inc()
+    MODEL_PREDICTION_DURATION.labels(model_name=model_name).observe(duration)
+
+
 @router.post("/forecast", response_model=DLForecastResponse)
 async def dl_forecast(
     request: DLForecastRequest,
@@ -209,6 +219,7 @@ async def dl_forecast(
     """
     try:
         predictor = dl.get_predictor()
+        t0 = time.perf_counter()
         forecast = await asyncio.to_thread(
             predictor.predict,
             spot=request.spot,
@@ -219,6 +230,7 @@ async def dl_forecast(
             option_type=request.option_type,
             news_text=request.news_text,
         )
+        _record_dl_model("dl-hybrid-lstm-transformer", time.perf_counter() - t0)
         return DLForecastResponse(
             model=forecast.model,
             forecast_price=forecast.forecast_price,

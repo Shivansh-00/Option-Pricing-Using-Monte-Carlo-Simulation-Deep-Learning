@@ -723,13 +723,21 @@ async def regime_calibrate(
             for i, p in enumerate(row):
                 probs[regime_names.get(i, f"REGIME_{i}")] = round(float(p), 4)
 
+        def _safe_float(v: float, default: float = 0.0) -> float:
+            """Replace NaN/Inf with a safe default for JSON serialization."""
+            try:
+                f = float(v)
+                return default if (f != f or f == float("inf") or f == float("-inf")) else f
+            except (TypeError, ValueError):
+                return default
+
         return RegimeCalibrateResponse(
             current_regime=regime_names.get(current, f"REGIME_{current}"),
-            regime_probabilities=probs,
+            regime_probabilities={k: round(_safe_float(v), 4) for k, v in probs.items()},
             regime_parameters=regime_params,
-            transition_matrix=[[round(float(x), 4) for x in row]
+            transition_matrix=[[round(_safe_float(x), 4) for x in row]
                                for row in transition_matrix],
-            log_likelihood=float(result.get("log_likelihood", 0)),
+            log_likelihood=_safe_float(result.get("log_likelihood", 0)),
             n_observations=len(request.returns),
         )
     except Exception as e:
@@ -1389,7 +1397,7 @@ async def quant_ecosystem_status(
     # Check GPU
     gpu_available = False
     try:
-        import torch
+        import torch  # type: ignore[import-not-found]
         gpu_available = torch.cuda.is_available()
     except ImportError:
         pass

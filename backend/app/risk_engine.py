@@ -264,7 +264,7 @@ _SQRT2 = math.sqrt(2.0)
 def _vectorized_bs(spots: np.ndarray, strike: float, maturity: float,
                    rate: float, vol: float, option_type: str) -> np.ndarray:
     """Black-Scholes on an array of spot prices (NumPy-vectorized)."""
-    from scipy.special import erf
+    from scipy.special import erf  # type: ignore
     sqrt_t = math.sqrt(maturity)
     d1 = (np.log(spots / strike) + (rate + 0.5 * vol**2) * maturity) / (vol * sqrt_t)
     d2 = d1 - vol * sqrt_t

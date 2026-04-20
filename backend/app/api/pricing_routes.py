@@ -12,12 +12,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from .. import pricing
 from ..auth import UserRecord, get_current_user
 from ..pricing_history import save_pricing_result
+from ..prometheus_metrics import (
+    PROMETHEUS_AVAILABLE,
+)
 from ..schemas import (
     GreeksResponse,
     MCComparisonResponse,
@@ -31,6 +35,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/pricing", tags=["pricing"])
 
 
+def _record_pricing(method: str, option_type: str, duration: float, paths: int = 0, variance_reduction: str = "none"):
+    """Record pricing metrics to Prometheus."""
+    if not PROMETHEUS_AVAILABLE:
+        return
+    from ..prometheus_metrics import PRICING_DURATION, PRICING_REQUESTS, MC_PATHS
+    PRICING_REQUESTS.labels(method=method, option_type=option_type).inc()
+    PRICING_DURATION.labels(method=method).observe(duration)
+    if paths > 0:
+        MC_PATHS.labels(variance_reduction=variance_reduction).observe(paths)
+
+
 @router.post("/bs", response_model=PricingResponse)
 async def pricing_bs(
     request: PricingRequest,
@@ -40,7 +55,9 @@ async def pricing_bs(
     """Black-Scholes closed-form option pricing."""
     try:
         inputs = pricing.PricingInputs(**request.model_dump())
+        t0 = time.perf_counter()
         price = await asyncio.to_thread(pricing.black_scholes, inputs)
+        _record_pricing("black-scholes", request.option_type, time.perf_counter() - t0)
         background_tasks.add_task(
             save_pricing_result,
             user_id=_user.id, model="black-scholes",
@@ -67,7 +84,9 @@ async def pricing_mc(
     """Standard Monte Carlo GBM pricing."""
     try:
         inputs = pricing.PricingInputs(**request.model_dump())
+        t0 = time.perf_counter()
         result = await asyncio.to_thread(pricing.monte_carlo_engine, inputs, 42)
+        _record_pricing("monte-carlo-gbm", request.option_type, time.perf_counter() - t0, paths=result.paths_used)
         background_tasks.add_task(
             save_pricing_result,
             user_id=_user.id, model="monte-carlo-gbm",
@@ -109,12 +128,19 @@ async def pricing_mc_detailed(
             volatility=request.volatility, option_type=request.option_type,
             steps=request.steps, paths=request.paths,
         )
+        t0 = time.perf_counter()
         result = await asyncio.to_thread(
             pricing.monte_carlo_engine,
             inputs,
             request.seed,
             request.method,
             request.return_paths,
+        )
+        _record_pricing(
+            f"mc-{request.method}", request.option_type,
+            time.perf_counter() - t0,
+            paths=result.paths_used,
+            variance_reduction=result.variance_reduction or "none",
         )
         return MCDetailedResponse(
             price=round(result.price, 8),
@@ -145,7 +171,9 @@ async def pricing_mc_compare(
     """Compare BS with multiple Monte Carlo methods."""
     try:
         inputs = pricing.PricingInputs(**request.model_dump())
+        t0 = time.perf_counter()
         result = await asyncio.to_thread(pricing.price_all_methods, inputs)
+        _record_pricing("compare-all", request.option_type, time.perf_counter() - t0)
         return MCComparisonResponse(**result)
     except Exception as e:
         logger.error("MC compare error: %s", e, exc_info=True)
@@ -160,7 +188,9 @@ async def pricing_greeks(
     """Analytical Black-Scholes Greeks."""
     try:
         inputs = pricing.PricingInputs(**request.model_dump())
+        t0 = time.perf_counter()
         greeks = await asyncio.to_thread(pricing.greeks_fd, inputs)
+        _record_pricing("greeks", request.option_type, time.perf_counter() - t0)
         return GreeksResponse(**greeks)
     except Exception as e:
         logger.error("Greeks error: %s", e, exc_info=True)

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import threading
 from dataclasses import asdict
 from fastapi import APIRouter, Depends, HTTPException
 
 from .. import ml
 from ..auth import UserRecord, get_current_user
+from ..prometheus_metrics import PROMETHEUS_AVAILABLE
 from ..schemas import (
     VolatilityRequest,
     VolatilityResponse,
@@ -29,12 +31,22 @@ _training_in_progress = False
 _training_error: str | None = None
 
 
+def _record_model(model_name: str, duration: float):
+    """Record model prediction metrics to Prometheus."""
+    if not PROMETHEUS_AVAILABLE:
+        return
+    from ..prometheus_metrics import MODEL_PREDICTIONS, MODEL_PREDICTION_DURATION
+    MODEL_PREDICTIONS.labels(model_name=model_name).inc()
+    MODEL_PREDICTION_DURATION.labels(model_name=model_name).observe(duration)
+
+
 @router.post("/iv-predict", response_model=VolatilityResponse)
 def ml_iv(
     request: VolatilityRequest,
     _user: UserRecord = Depends(get_current_user),
 ) -> VolatilityResponse:
     """Predict implied volatility — uses trained ML model if available, else analytical fallback."""
+    t0 = time.perf_counter()
     engine = get_engine()
     if engine.is_trained:
         result = engine.predict_single(
@@ -45,6 +57,7 @@ def ml_iv(
             vix=request.vix,
             skew=request.skew,
         )
+        _record_model(f"ml-{result['model_used']}", time.perf_counter() - t0)
         return VolatilityResponse(
             implied_vol=result["implied_vol"],
             regime=result["regime"],
@@ -54,6 +67,7 @@ def ml_iv(
         )
     # Fallback to original analytical
     iv, regime, drivers = ml.predict_iv(request)
+    _record_model("ml-analytical-fallback", time.perf_counter() - t0)
     return VolatilityResponse(implied_vol=iv, regime=regime, drivers=drivers)
 
 

@@ -23,8 +23,8 @@ import numpy as np
 import math
 import time
 import logging
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Tuple, Any
+from dataclasses import dataclass
+from typing import Optional, Dict, List, Any
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ class PortfolioRiskEngine:
                   opt_type: str = "call") -> float:
         if tau <= 0:
             return max(S - K, 0) if opt_type == "call" else max(K - S, 0)
-        from scipy.stats import norm
+        from scipy.stats import norm  # type: ignore
         d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * tau) / (sigma * math.sqrt(tau))
         d2 = d1 - sigma * math.sqrt(tau)
         if opt_type == "call":
@@ -115,7 +115,7 @@ class PortfolioRiskEngine:
                    opt_type: str = "call") -> Dict[str, float]:
         if tau <= 0:
             return {"delta": 0, "gamma": 0, "theta": 0, "vega": 0, "rho": 0}
-        from scipy.stats import norm
+        from scipy.stats import norm  # type: ignore
         d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * tau) / (sigma * math.sqrt(tau))
         d2 = d1 - sigma * math.sqrt(tau)
         nd1 = norm.pdf(d1)
@@ -180,7 +180,7 @@ class PortfolioRiskEngine:
     def portfolio_greeks(self, positions: Optional[List[OptionPosition]] = None) -> Dict[str, Any]:
         """Aggregate Greeks across all positions."""
         pos = positions or self.positions
-        agg = {"delta": 0, "gamma": 0, "theta": 0, "vega": 0, "rho": 0}
+        agg: dict[str, float] = {"delta": 0.0, "gamma": 0.0, "theta": 0.0, "vega": 0.0, "rho": 0.0}
         position_greeks = []
 
         for p in pos:
@@ -217,8 +217,6 @@ class PortfolioRiskEngine:
         if not pos:
             return {"error": "No positions in portfolio"}
 
-        t0 = time.time()
-
         if method == "parametric":
             return self._parametric_var(pos, confidence, horizon_days)
         elif method == "historical":
@@ -227,9 +225,9 @@ class PortfolioRiskEngine:
             return self._mc_var(pos, confidence, horizon_days, n_simulations)
 
     def _parametric_var(self, positions: List[OptionPosition], confidence: float,
-                        horizon: int) -> Dict[str, float]:
+                        horizon: int) -> Dict[str, Any]:
         """Delta-normal VaR."""
-        from scipy.stats import norm
+        from scipy.stats import norm  # type: ignore
         z = norm.ppf(confidence)
         total_var = 0.0
 
@@ -249,7 +247,7 @@ class PortfolioRiskEngine:
     def _mc_var(self, positions: List[OptionPosition], confidence: float,
                 horizon: int, n_sims: int) -> Dict[str, Any]:
         """Monte Carlo VaR with full repricing (vectorized)."""
-        from scipy.special import erf
+        from scipy.special import erf  # type: ignore
         _SQRT2 = math.sqrt(2.0)
 
         t0 = time.time()
@@ -378,7 +376,7 @@ class PortfolioRiskEngine:
             })
 
         # Sort by worst impact
-        results.sort(key=lambda x: x["pnl_impact"])
+        results.sort(key=lambda x: float(x["pnl_impact"]))  # type: ignore[arg-type]
 
         return {
             "current_value": round(current, 2),
@@ -391,7 +389,7 @@ class PortfolioRiskEngine:
     # ── Regime Scenario Analysis ──
     def regime_scenario_analysis(self) -> Dict[str, Any]:
         """Analyse portfolio P&L under different market regimes."""
-        regime_params = {
+        regime_params: dict[str, dict[str, Any]] = {
             "BULL": {"spot_change": 0.02, "vol_change": -0.02, "description": "Mild rally, vol decline"},
             "BEAR": {"spot_change": -0.05, "vol_change": 0.08, "description": "Moderate sell-off"},
             "CRISIS": {"spot_change": -0.15, "vol_change": 0.30, "description": "Severe stress"},
@@ -407,8 +405,8 @@ class PortfolioRiskEngine:
         for regime_name, params in regime_params.items():
             stressed = 0.0
             for p in pos:
-                new_S = p.spot * (1 + params["spot_change"])
-                new_vol = max(p.implied_vol + params["vol_change"], 0.01)
+                new_S = p.spot * (1 + float(params["spot_change"]))
+                new_vol = max(p.implied_vol + float(params["vol_change"]), 0.01)
                 price = self._bs_price(new_S, p.strike, p.tau, new_vol, p.r, p.option_type)
                 stressed += price * p.quantity * 100
 

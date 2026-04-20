@@ -268,8 +268,8 @@ button:focus-visible {
   background-image:
     radial-gradient(circle at 1px 1px, rgba(109,92,255,.03) 1px, transparent 0);
   background-size: 40px 40px;
-  mask-image: radial-gradient(ellipse 65% 55% at 50% 50%, black 20%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse 65% 55% at 50% 50%, black 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse 65% 55% at 50% 50%, black 20%, transparent 75%);
 }
 
 /* Mesh Gradient */
@@ -298,6 +298,61 @@ button:focus-visible {
   z-index: 1;
 }
 
+.metric-value.online {
+  color: var(--accent);
+  text-shadow: 0 0 18px var(--accent-glow);
+}
+
+.grafana-metrics-row {
+  margin-bottom: 1rem;
+}
+
+.grafana-embed-shell {
+  position: relative;
+  min-height: 76vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(62,168,255,.08), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(109,92,255,.1), transparent 40%),
+    var(--bg-input);
+  box-shadow: var(--shadow-card);
+}
+
+.grafana-frame {
+  width: 100%;
+  min-height: 76vh;
+  border: 0;
+  display: block;
+  background: #0b0f19;
+}
+
+.grafana-unavailable {
+  min-height: 76vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: var(--sp-4);
+  padding: var(--sp-8);
+}
+
+.grafana-unavailable-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.grafana-unavailable-copy {
+  max-width: 40rem;
+  color: var(--text-secondary);
+}
+
+.grafana-unavailable-actions {
+  display: flex;
+  justify-content: center;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    §5 — SIDEBAR
    ═══════════════════════════════════════════════════════════════ */
@@ -306,8 +361,8 @@ button:focus-visible {
   top: 0; left: 0; bottom: 0;
   width: var(--sidebar-w);
   background: var(--bg-sidebar);
-  backdrop-filter: blur(40px) saturate(1.4);
   -webkit-backdrop-filter: blur(40px) saturate(1.4);
+  backdrop-filter: blur(40px) saturate(1.4);
   border-right: 1px solid var(--border);
   z-index: var(--z-sidebar);
   display: flex;
@@ -445,8 +500,6 @@ button:focus-visible {
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--sp-3) var(--sp-3);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(109,92,255,.15) transparent;
   position: relative;
   z-index: 1;
 }
@@ -465,6 +518,7 @@ button:focus-visible {
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -482,6 +536,7 @@ button:focus-visible {
   overflow: hidden;
   transition: all var(--dur-fast) var(--ease-out);
   position: relative;
+  -webkit-user-select: none;
   user-select: none;
 }
 .nav-item .icon {
@@ -605,6 +660,7 @@ button:focus-visible {
   transition: all var(--dur-fast) var(--ease-out);
   white-space: nowrap;
   overflow: hidden;
+  -webkit-user-select: none;
   user-select: none;
   border: none;
   background: none;
@@ -641,6 +697,7 @@ button:focus-visible {
   color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-out);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 .status-pill:hover {
@@ -685,8 +742,8 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   background: var(--bg-topbar);
-  backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
   border-bottom: 1px solid var(--border-subtle);
   z-index: var(--z-topbar);
   animation: topbarSlide .5s var(--ease-out);
@@ -743,6 +800,7 @@ button:focus-visible {
   position: fixed;
   inset: 0;
   background: var(--bg-overlay);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   z-index: calc(var(--z-sidebar) - 1);
   opacity: 0;
@@ -802,8 +860,8 @@ button:focus-visible {
   border-radius: var(--radius-lg);
   padding: var(--sp-6);
   margin-bottom: var(--sp-5);
-  backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
   box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
@@ -933,6 +991,7 @@ button:focus-visible {
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-spring);
   white-space: nowrap;
+  -webkit-user-select: none;
   user-select: none;
   position: relative;
   overflow: hidden;
@@ -1017,6 +1076,7 @@ button:focus-visible {
   position: relative;
   overflow: hidden;
   transition: all var(--dur-normal) var(--ease-out);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
 
@@ -1219,7 +1279,11 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-  scrollbar-width: thin;
+}
+.chat-messages::-webkit-scrollbar { width: 3px; }
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(109,92,255,.15);
+  border-radius: 10px;
 }
 
 .chat-bubble {
@@ -1496,6 +1560,7 @@ button:focus-visible {
   border-radius: var(--radius);
   background: var(--bg-card);
   border: 1px solid var(--border);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
   backdrop-filter: blur(20px) saturate(1.3);
   box-shadow: var(--shadow-lg);
   min-width: 320px;
@@ -1568,6 +1633,7 @@ button:focus-visible {
   inset: 0;
   z-index: var(--z-loading);
   background: rgba(6,8,14,.7);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -1778,6 +1844,7 @@ button:focus-visible {
   overflow: hidden;
 }
 .risk-bar {
+  width: 0%;
   height: 100%;
   border-radius: 4px;
   background: var(--gradient-primary);
@@ -1860,6 +1927,7 @@ button:focus-visible {
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
 }
 .chk-label input[type="checkbox"] {
@@ -2252,3 +2320,91 @@ button:focus-visible {
 .card { contain: content; }
 .metric-card { contain: layout style; }
 .nav-item { contain: layout style; }
+
+/* ═══════════════════════════════════════════════════
+   Utility classes — replace every HTML inline style
+═══════════════════════════════════════════════════ */
+
+/* Visibility (JS toggled via classList.add/remove('hidden')) */
+.hidden { display: none !important; }
+
+/* Margin-top */
+.mt-05  { margin-top: 0.5rem; }
+.mt-06  { margin-top: 0.6rem; }
+.mt-075 { margin-top: 0.75rem; }
+.mt-08  { margin-top: 0.8rem; }
+.mt-1   { margin-top: 1rem; }
+.mt-12  { margin-top: 1.2rem; }
+
+/* Margin-bottom */
+.mb-1  { margin-bottom: 1rem; }
+.mb-12 { margin-bottom: 1.2rem; }
+
+/* Margin zero */
+.m-0 { margin: 0; }
+
+/* Layout */
+.overflow-x-auto { overflow-x: auto; }
+.col-span-2      { grid-column: span 2; }
+
+/* Typography */
+.text-bullish      { color: #00e5a0; }
+.text-bearish      { color: #ff5c7c; }
+.text-secondary    { color: var(--text-secondary); }
+.text-tertiary-lt  { color: var(--text-tertiary); font-weight: 400; }
+.text-secondary-sm { color: var(--text-secondary); font-size: 0.85rem; }
+.pre-wrap          { white-space: pre-wrap; }
+
+/* Small inline spinner */
+.spinner-sm {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Spinner row — flex wrapper for spinner + status text */
+.spinner-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Vol model checkbox group */
+.vol-model-checks {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+}
+
+/* Form textarea */
+.form-textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+/* Market data live-stream log */
+.mkt-stream-log {
+  margin-top: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+}
+
+/* Benchmark / misc annotation note */
+.btn-note {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}

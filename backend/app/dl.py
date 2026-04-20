@@ -26,7 +26,7 @@ import threading
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 
@@ -215,7 +215,7 @@ class FinancialLSTM:
         lr: float = 0.001,
         patience: int = 10,
         val_split: float = 0.2,
-        progress_callback: Optional[callable] = None,
+        progress_callback: Optional[Callable[..., Any]] = None,
     ) -> LSTMResult:
         """
         Train LSTM using SPSA (Simultaneous Perturbation Stochastic Approximation).
@@ -688,7 +688,7 @@ class HybridDLPredictor:
         epochs: int = 50,
         lr: float = 0.002,
         patience: int = 8,
-        progress_callback: Optional[callable] = None,
+        progress_callback: Optional[Callable[..., Any]] = None,
     ) -> LSTMResult:
         """Train LSTM on real spot price CSV data."""
         import csv
@@ -713,7 +713,7 @@ class HybridDLPredictor:
         rate: float = 0.05,
         n_days: int = 500,
         seed: int = 42,
-        progress_callback: Optional[callable] = None,
+        progress_callback: Optional[Callable[..., Any]] = None,
     ) -> LSTMResult:
         """Train LSTM on synthetic GBM price data."""
         rng = np.random.default_rng(seed)

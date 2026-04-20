@@ -18,11 +18,13 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response as StarletteResponse
 
 from .api import auth_routes, dl_routes, explain_routes, ml_routes, pricing_routes, market_routes, ws_routes, quant_routes, pricing_api
 from .api import pinns_routes
@@ -48,6 +50,7 @@ ROOT_DIR = Path(
     os.getenv("APP_ROOT_DIR", str(Path(__file__).resolve().parents[2]))
 )
 FRONTEND_DIR = (ROOT_DIR / settings.frontend_dir).resolve()
+GRAFANA_UPSTREAM = os.getenv("GRAFANA_UPSTREAM", "http://127.0.0.1:3000")
 
 
 def _load_pretrained_models(model_dir: Path) -> None:
@@ -298,6 +301,69 @@ def metrics():
     from starlette.responses import Response as StarletteResponse
     data, content_type = get_metrics_output()
     return StarletteResponse(content=data, media_type=content_type)
+
+
+async def _proxy_grafana_request(request: Request, path: str = ""):
+    """Proxy Grafana through the main app so it can be embedded in the UI.
+
+    Grafana is configured with GF_SERVER_SERVE_FROM_SUB_PATH=true and
+    GF_SERVER_ROOT_URL=.../grafana/, so on port 3000 all its routes are
+    under the /grafana/ prefix.  We must keep that prefix when forwarding.
+    Using follow_redirects=False prevents an infinite redirect loop where
+    Grafana redirects /d/... → /grafana/d/... which points back at us.
+    """
+    # Always keep the /grafana/ prefix so we hit the right path on port 3000
+    upstream_path = f"/grafana/{path}" if path else "/grafana/"
+    upstream_url = httpx.URL(f"{GRAFANA_UPSTREAM.rstrip('/')}{upstream_path}").copy_merge_params(request.query_params)
+
+    body = await request.body()
+    headers = {
+        key: value
+        for key, value in request.headers.items()
+        if key.lower() not in {"host", "content-length", "connection", "accept-encoding"}
+    }
+
+    try:
+        async with httpx.AsyncClient(follow_redirects=False, timeout=30.0) as client:
+            upstream = await client.request(
+                request.method,
+                upstream_url,
+                headers=headers,
+                content=body,
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("Grafana proxy unavailable: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "Grafana unavailable",
+                "message": "Start the monitoring stack to use the embedded Grafana view.",
+            },
+        )
+
+    response_headers = {
+        key: value
+        for key, value in upstream.headers.items()
+        if key.lower() not in {"content-length", "transfer-encoding", "connection", "x-frame-options", "content-security-policy"}
+    }
+    response_headers["Cache-Control"] = response_headers.get("Cache-Control", "no-store")
+
+    return StarletteResponse(
+        content=upstream.content,
+        status_code=upstream.status_code,
+        headers=response_headers,
+        media_type=upstream.headers.get("content-type"),
+    )
+
+
+@app.api_route("/grafana", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
+async def grafana_root_proxy(request: Request):
+    return await _proxy_grafana_request(request)
+
+
+@app.api_route("/grafana/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
+async def grafana_proxy(path: str, request: Request):
+    return await _proxy_grafana_request(request, path)
 
 
 # ── Static files (must be LAST so API routes match first) ─────────

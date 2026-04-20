@@ -25,7 +25,7 @@ import time
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple, Any
+from typing import Optional, Dict, List, Tuple, Any, Union
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +128,7 @@ class PINNsOptionPricer:
             b = np.zeros((1, dims[i + 1]), dtype=np.float64)
             self.layers.append(PINNLayer(W=W, b=b))
         self._built = True
-        total_params = sum(l.W.size + l.b.size for l in self.layers)
+        total_params = sum(layer.W.size + layer.b.size for layer in self.layers)
         logger.info(f"PINNs built: {len(self.layers)} layers, {total_params} params")
 
     # ---- forward ----
@@ -295,7 +295,7 @@ class PINNsOptionPricer:
         z_clip = np.clip(pre_acts[-1], -20, 20)
         d_z = d_out * (1.0 / (1.0 + np.exp(-z_clip)))
 
-        grads = [None] * len(self.layers)
+        grads: list[tuple[np.ndarray, np.ndarray] | None] = [None] * len(self.layers)
 
         # Output layer gradients
         h_prev = post_acts[-1]  # last hidden activation
@@ -347,8 +347,8 @@ class PINNsOptionPricer:
 
         # Adam optimiser state
         beta1, beta2, eps_adam = 0.9, 0.999, 1e-8
-        adam_m = [(np.zeros_like(l.W), np.zeros_like(l.b)) for l in self.layers]
-        adam_v = [(np.zeros_like(l.W), np.zeros_like(l.b)) for l in self.layers]
+        adam_m = [(np.zeros_like(layer.W), np.zeros_like(layer.b)) for layer in self.layers]
+        adam_v = [(np.zeros_like(layer.W), np.zeros_like(layer.b)) for layer in self.layers]
 
         for epoch in range(cfg.epochs):
             actual_epochs = epoch + 1
@@ -454,13 +454,14 @@ class PINNsOptionPricer:
             "best_loss": best_loss,
             "final_losses": self._train_history[-1] if self._train_history else {},
             "training_time_s": round(elapsed, 2),
-            "params": sum(l.W.size + l.b.size for l in self.layers),
+            "params": sum(layer.W.size + layer.b.size for layer in self.layers),
             "history": self._train_history,
         }
 
     # ---- Predict ----
-    def predict(self, S: np.ndarray, K: np.ndarray, tau: np.ndarray,
-                sigma: np.ndarray, r: np.ndarray) -> np.ndarray:
+    def predict(self, S: Union[float, np.ndarray], K: Union[float, np.ndarray],
+                tau: Union[float, np.ndarray], sigma: Union[float, np.ndarray],
+                r: Union[float, np.ndarray]) -> np.ndarray:
         """Predict option prices."""
         S = np.asarray(S, dtype=np.float64).reshape(-1, 1)
         K = np.asarray(K, dtype=np.float64).reshape(-1, 1)
@@ -506,7 +507,7 @@ class PINNsOptionPricer:
     @staticmethod
     def generate_training_data(n_samples: int = 5000, seed: int = 42) -> Dict[str, np.ndarray]:
         """Generate training data from Black-Scholes analytical prices."""
-        from scipy.stats import norm
+        from scipy.stats import norm  # type: ignore[import-untyped]
         rng = np.random.default_rng(seed)
 
         S = rng.uniform(50, 200, n_samples)
@@ -530,7 +531,7 @@ class PINNsOptionPricer:
         filepath = Path(filepath)
         state = {
             "config": self.config,
-            "layers": [(l.W.copy(), l.b.copy()) for l in self.layers],
+            "layers": [(layer.W.copy(), layer.b.copy()) for layer in self.layers],
             "built": self._built,
             "train_history": self._train_history,
         }
@@ -615,7 +616,7 @@ class PINNsOptionPricer:
         return {
             "built": self._built,
             "layers": len(self.layers) if self._built else 0,
-            "params": sum(l.W.size + l.b.size for l in self.layers) if self._built else 0,
+            "params": sum(layer.W.size + layer.b.size for layer in self.layers) if self._built else 0,
             "epochs_trained": len(self._train_history) * 100,
             "config": {
                 "hidden_layers": self.config.hidden_layers,

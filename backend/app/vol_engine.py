@@ -232,8 +232,8 @@ class VolatilityEngine:
             logger.info("Saved vol model %s → %s", name, fp)
 
         # Save metadata (feature names, last result summary)
-        meta = {
-            "feature_names": self._feature_names,
+        meta: dict[str, Any] = {
+            "feature_names": list(self._feature_names),
             "model_names": list(self._trained_models.keys()),
         }
         if self._last_result:

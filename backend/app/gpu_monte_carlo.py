@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 # ── Check for PyTorch/CUDA ──
 try:
-    import torch
+    import torch  # type: ignore[import-not-found]
     HAS_TORCH = True
     HAS_CUDA = torch.cuda.is_available()
     if HAS_CUDA:

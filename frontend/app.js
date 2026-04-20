@@ -191,6 +191,7 @@ function fmtPct(v) { return v == null ? '—' : (Number(v) * 100).toFixed(1) + '
 // ── 4. Navigation ──────────────────────────────────────────────
 const sections = {
   dashboard:      { title: 'Dashboard',           sub: 'System overview & quick actions' },
+  grafana:        { title: 'Grafana Monitoring',  sub: 'Embedded observability dashboards inside OptionQuant' },
   pricing:        { title: 'Option Pricing',       sub: 'Black-Scholes & Monte Carlo engines' },
   greeks:         { title: 'Greeks Analysis',       sub: 'Sensitivity surface visualisation' },
   'monte-carlo':  { title: 'Monte Carlo',           sub: 'GBM path simulation & convergence' },
@@ -235,6 +236,7 @@ function navigate(key) {
   const info = sections[key] || {};
   $('pageTitle').textContent   = info.title || '';
   $('pageSubtitle').textContent = info.sub || '';
+  if (key === 'grafana') ensureGrafanaLoaded();
   closeSidebar();
 }
 
@@ -373,6 +375,45 @@ $('healthBtn2').addEventListener('click', () => $('healthBtn').click());
 // Auto-check on load
 checkHealth();
 
+const GRAFANA_DASHBOARD_URL = '/grafana/d/optiquant-overview?orgId=1&kiosk=tv';
+let _grafanaInitialized = false;
+
+async function checkGrafana() {
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(apiUrl('/grafana/api/health'), { signal: ctrl.signal, credentials: 'same-origin' });
+    const data = await res.json();
+    const ok = res.ok && data.database === 'ok';
+    $('grafanaProxyStatus').textContent = ok ? '● Online' : '● Error';
+    $('grafanaProxyStatus').classList.toggle('online', ok);
+    $('grafanaUnavailable').hidden = ok;
+    $('grafanaFrame').classList.toggle('hidden', !ok);
+    return ok;
+  } catch {
+    $('grafanaProxyStatus').textContent = '● Offline';
+    $('grafanaProxyStatus').classList.remove('online');
+    $('grafanaUnavailable').hidden = false;
+    $('grafanaFrame').classList.add('hidden');
+    return false;
+  }
+}
+
+async function ensureGrafanaLoaded(forceReload = false) {
+  const available = await checkGrafana();
+  if (!available) return;
+  const frame = $('grafanaFrame');
+  if (!_grafanaInitialized || forceReload) {
+    frame.src = apiUrl(`${GRAFANA_DASHBOARD_URL}${forceReload ? `&ts=${Date.now()}` : ''}`);
+    _grafanaInitialized = true;
+  }
+}
+
+$('grafanaRefreshBtn')?.addEventListener('click', async () => {
+  await ensureGrafanaLoaded(true);
+  toast('info', 'Grafana Refresh', 'Reloaded embedded monitoring dashboard');
+});
+
 // ── 7. User Profile ───────────────────────────────────────────
 (async function loadProfile() {
   try {
@@ -387,6 +428,8 @@ checkHealth();
     $('userAvatar').textContent = 'U';
   }
 })();
+
+checkGrafana();
 
 // ── 8. Logout (direct fetch — not api()) ───────────────────────
 $('logoutBtn').addEventListener('click', async () => {
@@ -520,7 +563,7 @@ async function priceOption() {
     if (!bs && !mc && !greeks) { toast('error', 'Pricing Failed', 'All pricing engines failed'); return; }
 
     // Results
-    $('pricingResults').style.display = '';
+    $('pricingResults').classList.remove('hidden');
     $('bsPrice').textContent = bs ? fmt(bs.price) : '—';
     $('mcPrice').textContent = mc ? fmt(mc.price) : '—';
 
@@ -540,13 +583,13 @@ async function priceOption() {
     }
 
     if (bs) {
-      $('resultBadge').style.display = '';
+      $('resultBadge').classList.remove('hidden');
       $('resultBadge').textContent = `BS: $${fmt(bs.price, 2)}`;
     }
 
     // Greeks quick view
     if (greeks) {
-      $('greeksQuick').style.display = '';
+      $('greeksQuick').classList.remove('hidden');
       $('qDelta').textContent = fmt(greeks.delta);
       $('qGamma').textContent = fmt(greeks.gamma, 6);
       $('qTheta').textContent = fmt(greeks.theta);
@@ -566,9 +609,9 @@ async function priceOption() {
 $('resetBtn').addEventListener('click', () => {
   $('spot').value = 100; $('strike').value = 100; $('rate').value = 0.05;
   $('sigma').value = 0.2; $('maturity').value = 1; $('optType').value = 'call';
-  $('pricingResults').style.display = 'none';
-  $('greeksQuick').style.display = 'none';
-  $('resultBadge').style.display = 'none';
+  $('pricingResults').classList.add('hidden');
+  $('greeksQuick').classList.add('hidden');
+  $('resultBadge').classList.add('hidden');
 });
 
 // ── 12. Greeks Surface Plot ────────────────────────────────────
@@ -589,7 +632,7 @@ async function plotGreekSurface() {
     );
 
     const values = results.map(r => r ? r[greek] : null);
-    $('greekChartWrap').style.display = '';
+    $('greekChartWrap').classList.remove('hidden');
     const colors = { delta:'#6d5cff', gamma:'#00e5a0', theta:'#ff5c7c', vega:'#ffc044', rho:'#3ea8ff' };
     const rgb = { delta:[109,92,255], gamma:[0,229,160], theta:[255,92,124], vega:[255,192,68], rho:[62,168,255] };
     const c = colors[greek] || '#6d5cff';
@@ -770,7 +813,7 @@ function computePathStatistics(paths) {
 }
 
 function renderMonteCarloCharts(paths, convergence, params, pathStats = {}) {
-  $('mcChartsWrap').style.display = '';
+  $('mcChartsWrap').classList.remove('hidden');
 
   const maxPathLen = paths.reduce((m, p) => Math.max(m, Array.isArray(p) ? p.length : 0), 0);
   const labels = Array.from({ length: maxPathLen || 1 }, (_, i) => i);
@@ -914,7 +957,7 @@ async function dlForecast() {
     const d = await api('/api/v1/dl/forecast', body);
     if (!d) return;
 
-    $('dlResults').style.display = '';
+    $('dlResults').classList.remove('hidden');
     $('dlForecast').textContent = fmt(d.forecast_price);
 
     // Show LSTM prediction
@@ -944,7 +987,7 @@ async function dlForecast() {
     $('dlMC').textContent = bench.mc_price != null ? fmt(bench.mc_price) : (bench.mc != null ? fmt(bench.mc) : '—');
 
     // Comparison chart
-    $('compChartWrap').style.display = '';
+    $('compChartWrap').classList.remove('hidden');
     const bsVal = bench.bs_price != null ? bench.bs_price : bench.bs;
     const mcVal = bench.mc_price != null ? bench.mc_price : bench.mc;
     const chartData = [d.forecast_price, bsVal, mcVal].filter(v => v != null);
@@ -995,7 +1038,7 @@ let _dlTrainPollTimer = null;
 async function dlTrain() {
   $('dlTrainBtn').disabled = true;
   const statusCard = $('dlTrainStatus');
-  statusCard.style.display = '';
+  statusCard.classList.remove('hidden');
   $('dlTrainInfo').innerHTML = '<div style="display:flex;align-items:center;gap:0.6rem"><div class="spinner" style="width:18px;height:18px;border:2px solid rgba(99,102,241,.3);border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite"></div><span style="color:var(--text-secondary);font-size:0.85rem">Starting training…</span></div>';
 
   try {
@@ -1072,7 +1115,7 @@ async function dlStatus() {
     const d = await apiGet('/api/v1/dl/status');
     if (!d) return;
     const statusCard = $('dlTrainStatus');
-    statusCard.style.display = '';
+    statusCard.classList.remove('hidden');
     $('dlTrainInfo').innerHTML = `
       <div class="metrics-row" style="margin:0">
         <div class="metric-card"><div class="metric-label">LSTM</div><div class="metric-value">${d.lstm_trained ? '✅ Trained' : '⏳ Not Trained'}</div></div>
@@ -1139,7 +1182,7 @@ async function volTrain() {
   };
 
   // Show progress
-  $('volTrainProgress').style.display = '';
+  $('volTrainProgress').classList.remove('hidden');
   $('volTrainBtn').disabled = true;
   $('volTrainMsg').textContent = `Training ${checks.length} model(s)... this may take a minute.`;
 
@@ -1148,7 +1191,7 @@ async function volTrain() {
     if (!d) return;
 
     // ── Render Comparison Table ──
-    $('volComparisonCard').style.display = '';
+    $('volComparisonCard').classList.remove('hidden');
     const tbody = $('volCompBody');
     tbody.innerHTML = '';
     (d.comparisons || []).forEach(c => {
@@ -1195,7 +1238,7 @@ async function volTrain() {
 
     // ── Feature Importance Chart ──
     if (d.top_features && d.top_features.length > 0) {
-      $('volFeatureCard').style.display = '';
+      $('volFeatureCard').classList.remove('hidden');
       const labels = d.top_features.map(f => f.name);
       const values = d.top_features.map(f => f.importance);
       if (_volFeatureChart) _volFeatureChart.destroy();
@@ -1237,7 +1280,7 @@ async function volTrain() {
   } catch (err) {
     toast('error', 'Training Failed', err.message);
   } finally {
-    $('volTrainProgress').style.display = 'none';
+    $('volTrainProgress').classList.add('hidden');
     $('volTrainBtn').disabled = false;
   }
 }
@@ -1257,7 +1300,7 @@ async function mlPredict() {
   try {
     const d = await api('/api/v1/ml/iv-predict', body);
     if (!d) return;
-    $('mlResults').style.display = '';
+    $('mlResults').classList.remove('hidden');
     $('mlIV').textContent        = d.implied_vol != null ? fmtPct(d.implied_vol) : '—';
     $('mlRegime').textContent    = d.regime || '—';
     $('mlModelUsed').textContent  = d.model_used || 'analytical_fallback';
@@ -1355,7 +1398,7 @@ async function askRAG() {
 
   // Hide follow-ups while loading
   const fuContainer = $('followUps');
-  if (fuContainer) fuContainer.style.display = 'none';
+  if (fuContainer) fuContainer.classList.add('hidden');
 
   // Show typing indicator
   const typing = document.createElement('div');
@@ -1383,7 +1426,7 @@ async function askRAG() {
 
     // Confidence, badges & sources
     if (d.confidence != null || (d.sources && d.sources.length)) {
-      $('ragMeta').style.display = '';
+      $('ragMeta').classList.remove('hidden');
       if (d.confidence != null) {
         const pct = Math.round(d.confidence * 100);
         $('confFill').style.width = pct + '%';
@@ -1400,7 +1443,7 @@ async function askRAG() {
       if (ltBadge && d.latency_ms != null) ltBadge.textContent = `⏱ ${Math.round(d.latency_ms)}ms`;
       // Cache badge
       const cBadge = $('cacheBadge');
-      if (cBadge) cBadge.style.display = d.cached ? '' : 'none';
+      if (cBadge) cBadge.classList.toggle('hidden', !d.cached);
 
       const srcList = $('sourceList');
       srcList.innerHTML = '';
@@ -1427,7 +1470,7 @@ async function askRAG() {
           });
           fuChips.appendChild(chip);
         });
-        fuContainer.style.display = '';
+        fuContainer.classList.remove('hidden');
       }
     }
 
@@ -1554,7 +1597,7 @@ updateDashboardHealth();
 $('sentimentBtn').addEventListener('click', analyzeSentiment);
 $('sentimentClearBtn').addEventListener('click', () => {
   $('sentimentText').value = '';
-  $('sentimentResults').style.display = 'none';
+  $('sentimentResults').classList.add('hidden');
 });
 
 // Sentiment quick example chips
@@ -1574,7 +1617,7 @@ async function analyzeSentiment() {
     const d = await api('/api/v1/dl/market-sentiment', { text: text });
     if (!d) return;
 
-    $('sentimentResults').style.display = '';
+    $('sentimentResults').classList.remove('hidden');
 
     // Overall score (0-1 scale, 0.5 = neutral)
     const score = d.score != null ? d.score : 0.5;
@@ -1636,7 +1679,7 @@ async function calculateVaR() {
     const positionValue = (bs ? bs.price : 0) * contracts * 100;
     const pctLoss = positionValue > 0 ? (deltaVaR / positionValue) * 100 : 0;
 
-    $('varResults').style.display = '';
+    $('varResults').classList.remove('hidden');
     $('varDeltaNormal').textContent = '$' + deltaVaR.toFixed(2);
     $('varPosition').textContent = '$' + positionValue.toFixed(2);
     $('varPctLoss').textContent = pctLoss.toFixed(1) + '%';
@@ -1707,8 +1750,8 @@ $('mktFetchBtn')?.addEventListener('click', async () => {
         `;
         tbody.appendChild(tr);
       });
-      $('mktChainTable').style.display = '';
-      $('mktChainPlaceholder').style.display = 'none';
+      $('mktChainTable').classList.remove('hidden');
+      $('mktChainPlaceholder').classList.add('hidden');
     }
 
     toast('success', 'Market Data', `SPY: $${Number(snap.quote.price).toFixed(2)}, VIX: ${Number(snap.vix).toFixed(1)}`);
@@ -1733,7 +1776,7 @@ $('mktStreamBtn')?.addEventListener('click', () => {
 
   $('mktStreamBtn').disabled = true;
   $('mktStopStreamBtn').disabled = false;
-  $('mktStreamLog').style.display = '';
+  $('mktStreamLog').classList.remove('hidden');
   $('mktStreamStatus').textContent = 'Connecting…';
 
   _marketWs.onopen = () => {
@@ -1801,7 +1844,7 @@ $('mispDetectBtn')?.addEventListener('click', async () => {
   try {
     const d = await api('/api/v1/market/mispricing/detect', body);
     if (!d) return;
-    $('mispResults').style.display = '';
+    $('mispResults').classList.remove('hidden');
 
     $('mispDirection').textContent = d.direction;
     $('mispDirection').style.color = d.direction === 'overpriced' ? 'var(--danger, #ff5c7c)' : 'var(--success, #4ade80)';
@@ -1831,7 +1874,7 @@ $('mispScanBtn')?.addEventListener('click', async () => {
     }, { timeout: 60000 });
     if (!d) return;
 
-    $('mispScanResults').style.display = '';
+    $('mispScanResults').classList.remove('hidden');
     const metrics = $('mispScanMetrics');
     metrics.innerHTML = `
       <div class="metric-card"><div class="metric-label">Contracts</div><div class="metric-value">${d.total_contracts || 0}</div></div>
@@ -1880,7 +1923,7 @@ $('regimeDetectBtn')?.addEventListener('click', async () => {
     });
     if (!d) return;
 
-    $('regimeResults').style.display = '';
+    $('regimeResults').classList.remove('hidden');
     $('regimeLabel').textContent = (d.label || 'unknown').toUpperCase();
     $('regimeLabel').className = 'metric-value highlight regime-badge ' + (d.label || '');
     $('regimeDuration').textContent = `Duration: ${d.duration_days || 0} days`;
@@ -1934,7 +1977,7 @@ $('shapExplainBtn')?.addEventListener('click', async () => {
     const d = await api('/api/v1/market/explain/shap', body, { timeout: 30000 });
     if (!d) return;
 
-    $('shapResults').style.display = '';
+    $('shapResults').classList.remove('hidden');
     $('shapBase').textContent = '$' + fmt(d.base_price, 4);
     $('shapPredicted').textContent = '$' + fmt(d.predicted_price, 4);
     $('shapModel').textContent = d.model || 'BS';
@@ -2006,7 +2049,7 @@ $('benchRunBtn')?.addEventListener('click', async () => {
     const d = await api('/api/v1/market/benchmark', body, { timeout: 90000 });
     if (!d) return;
 
-    $('benchResults').style.display = '';
+    $('benchResults').classList.remove('hidden');
 
     // Summary
     $('benchSummary').innerHTML = `
@@ -2133,7 +2176,7 @@ $('pinnsTrainBtn')?.addEventListener('click', async () => {
     }, { timeout: 120000 });
     if (!d) return;
 
-    $('pinnsResults').style.display = '';
+    $('pinnsResults').classList.remove('hidden');
     $('pinnsMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Final Loss</div><div class="metric-value highlight">${fmt(d.final_loss, 6)}</div></div>
       <div class="metric-card"><div class="metric-label">PDE Loss</div><div class="metric-value">${fmt(d.pde_loss, 6)}</div></div>
@@ -2156,7 +2199,7 @@ $('pinnsPredictBtn')?.addEventListener('click', async () => {
       volatility: pf('pinnsVol', 0.2), option_type: $('pinnsType').value,
     });
     if (!d) return;
-    $('pinnsResults').style.display = '';
+    $('pinnsResults').classList.remove('hidden');
     $('pinnsMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">PINNs Price</div><div class="metric-value highlight">$${fmt(d.pinns_price, 4)}</div></div>
       <div class="metric-card"><div class="metric-label">BS Price</div><div class="metric-value">$${fmt(d.bs_price, 4)}</div></div>
@@ -2179,7 +2222,7 @@ $('pinnsGreeksBtn')?.addEventListener('click', async () => {
       volatility: pf('pinnsVol', 0.2),
     });
     if (!d) return;
-    $('pinnsResults').style.display = '';
+    $('pinnsResults').classList.remove('hidden');
     $('pinnsMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Delta (Δ)</div><div class="metric-value highlight">${fmt(d.delta, 6)}</div></div>
       <div class="metric-card"><div class="metric-label">Gamma (Γ)</div><div class="metric-value">${fmt(d.gamma, 6)}</div></div>
@@ -2207,7 +2250,7 @@ $('hedgeTrainBtn')?.addEventListener('click', async () => {
       rate: pf('hedgeRate', 0.05),
     }, { timeout: 300000 });
     if (!d) return;
-    $('hedgeResults').style.display = '';
+    $('hedgeResults').classList.remove('hidden');
     $('hedgeMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Agent</div><div class="metric-value highlight">${d.agent_type.toUpperCase()}</div></div>
       <div class="metric-card"><div class="metric-label">Episodes</div><div class="metric-value">${d.episodes_trained}</div></div>
@@ -2232,7 +2275,7 @@ $('hedgeBacktestBtn')?.addEventListener('click', async () => {
       rate: pf('hedgeRate', 0.05),
     }, { timeout: 180000 });
     if (!d) return;
-    $('hedgeResults').style.display = '';
+    $('hedgeResults').classList.remove('hidden');
     const improvClass = d.improvement_pct > 0 ? 'positive' : 'negative';
     $('hedgeMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">RL P&L Mean</div><div class="metric-value highlight">${fmt(d.rl_pnl_mean, 4)}</div></div>
@@ -2257,7 +2300,7 @@ $('hedgeSuggestBtn')?.addEventListener('click', async () => {
       current_pnl: 0, regime: 0,
     });
     if (!d) return;
-    $('hedgeResults').style.display = '';
+    $('hedgeResults').classList.remove('hidden');
     $('hedgeMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Recommended Ratio</div><div class="metric-value highlight">${fmt(d.recommended_ratio, 4)}</div></div>
       <div class="metric-card"><div class="metric-label">BS Delta</div><div class="metric-value">${fmt(d.bs_delta, 4)}</div></div>
@@ -2284,7 +2327,7 @@ $('vsTrainBtn')?.addEventListener('click', async () => {
       regime: parseInt($('vsRegime').value) || 0,
     }, { timeout: 120000 });
     if (!d) return;
-    $('vsResults').style.display = '';
+    $('vsResults').classList.remove('hidden');
     $('vsMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Final Loss</div><div class="metric-value highlight">${fmt(d.final_loss, 6)}</div></div>
       <div class="metric-card"><div class="metric-label">Smoothness</div><div class="metric-value">${fmt(d.smoothness_loss, 6)}</div></div>
@@ -2306,7 +2349,7 @@ $('vsPredictBtn')?.addEventListener('click', async () => {
       base_vol: pf('vsBaseVol', 0.2), regime: parseInt($('vsRegime').value) || 0,
     });
     if (!d) return;
-    $('vsResults').style.display = '';
+    $('vsResults').classList.remove('hidden');
     $('vsMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Regime</div><div class="metric-value highlight">${d.regime}</div></div>
       <div class="metric-card"><div class="metric-label">Strikes</div><div class="metric-value">${d.strikes.length}</div></div>
@@ -2384,7 +2427,7 @@ $('jdPriceBtn')?.addEventListener('click', async () => {
       volatility: pf('jdVol', 0.2), option_type: $('jdType').value,
     });
     if (!d) return;
-    $('jdResults').style.display = '';
+    $('jdResults').classList.remove('hidden');
     const premClass = d.jump_premium > 0 ? 'negative' : 'positive';
     $('jdMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">JD Price</div><div class="metric-value highlight">$${fmt(d.price, 4)}</div></div>
@@ -2409,7 +2452,7 @@ $('jdScenarioBtn')?.addEventListener('click', async () => {
       base_vol: pf('jdVol', 0.2), option_type: $('jdType').value,
     });
     if (!d) return;
-    $('jdResults').style.display = '';
+    $('jdResults').classList.remove('hidden');
     const scenarios = d.scenarios || {};
     let html = '';
     for (const [name, data] of Object.entries(scenarios)) {
@@ -2435,7 +2478,7 @@ $('arbScanBtn')?.addEventListener('click', async () => {
       regime: parseInt($('arbRegime').value) || 0,
     });
     if (!d) return;
-    $('arbResults').style.display = '';
+    $('arbResults').classList.remove('hidden');
     $('arbMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Total Signals</div><div class="metric-value highlight">${d.total_signals}</div></div>
       <div class="metric-card"><div class="metric-label">High Confidence</div><div class="metric-value positive">${d.high_confidence}</div></div>
@@ -2474,7 +2517,7 @@ $('uqQuantifyBtn')?.addEventListener('click', async () => {
       n_samples: parseInt($('uqSamples').value) || 100,
     });
     if (!d) return;
-    $('uqResults').style.display = '';
+    $('uqResults').classList.remove('hidden');
     const reliClass = d.reliability === 'high' ? 'positive' : d.reliability === 'low' ? 'negative' : '';
     $('uqMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Mean Price</div><div class="metric-value highlight">$${fmt(d.mean_price, 4)}</div></div>
@@ -2503,7 +2546,7 @@ $('gmcPriceBtn')?.addEventListener('click', async () => {
       variance_reduction: $('gmcVR').value,
     }, { timeout: 60000 });
     if (!d) return;
-    $('gmcResults').style.display = '';
+    $('gmcResults').classList.remove('hidden');
     $('gmcMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Price</div><div class="metric-value highlight">$${fmt(d.price, 4)}</div></div>
       <div class="metric-card"><div class="metric-label">Std Error</div><div class="metric-value">${fmt(d.std_error, 6)}</div></div>
@@ -2529,7 +2572,7 @@ $('gmcBenchBtn')?.addEventListener('click', async () => {
       path_counts: [10000, 50000, 100000, 500000],
     }, { timeout: 120000 });
     if (!d) return;
-    $('gmcResults').style.display = '';
+    $('gmcResults').classList.remove('hidden');
     let html = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Paths</th><th>Price</th><th>Time (ms)</th><th>Backend</th></tr></thead><tbody>';
     (d.results || []).forEach(r => {
       html += `<tr><td>${Number(r.n_paths || 0).toLocaleString()}</td><td>$${fmt(r.price, 4)}</td><td>${fmt(r.elapsed_ms, 1)}</td><td>${r.backend || 'numpy'}</td></tr>`;
@@ -2589,7 +2632,7 @@ $('pfRiskReportBtn')?.addEventListener('click', async () => {
       positions, confidence_level: 0.95, horizon_days: 1, current_regime: 0,
     }, { timeout: 60000 });
     if (!d) return;
-    $('pfResults').style.display = '';
+    $('pfResults').classList.remove('hidden');
     const ratingClass = d.risk_rating === 'LOW' ? 'positive' : d.risk_rating === 'CRITICAL' ? 'negative' : '';
     $('pfMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Portfolio Value</div><div class="metric-value highlight">$${fmt(d.total_value, 2)}</div></div>
@@ -2619,7 +2662,7 @@ $('pfStressBtn')?.addEventListener('click', async () => {
     const positions = getPortfolioPositions();
     const d = await api('/api/v1/quant/portfolio/stress-test', { positions }, { timeout: 60000 });
     if (!d) return;
-    $('pfResults').style.display = '';
+    $('pfResults').classList.remove('hidden');
     $('pfMetrics').innerHTML = `
       <div class="metric-card"><div class="metric-label">Scenarios Run</div><div class="metric-value highlight">${(d.results || []).length}</div></div>
       <div class="metric-card"><div class="metric-label">Worst Case</div><div class="metric-value negative">${d.worst_case_scenario}</div></div>

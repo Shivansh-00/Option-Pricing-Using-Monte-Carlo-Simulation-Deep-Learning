@@ -28,8 +28,8 @@ import numpy as np
 import math
 import time
 import logging
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Tuple, Any
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
 from enum import IntEnum
 
 logger = logging.getLogger(__name__)
@@ -106,7 +106,7 @@ class MertonJumpDiffusion:
             σ_n² = σ² + nσ_J²/T
             γ = μ_J + σ_J²/2
         """
-        from scipy.stats import norm
+        from scipy.stats import norm  # type: ignore
 
         k = math.exp(mu_j + 0.5 * sig_j**2) - 1
         lam_prime = lam * (1 + k)
@@ -188,7 +188,6 @@ class MertonJumpDiffusion:
 
         # Path statistics
         final_prices = S_paths
-        jumps_detected = np.abs(np.diff(np.log(np.array(all_paths[-10:])), axis=0)) > 3 * sigma * math.sqrt(dt)
 
         return {
             "price": round(price, 6),
@@ -312,9 +311,19 @@ class EnhancedHMM:
         self.A = self.A[order][:, order]
         self.pi = self.pi[order]
 
+        # Sanitize any NaN/Inf that can arise from degenerate EM
+        self.means = np.nan_to_num(self.means, nan=0.0)
+        self.stds  = np.nan_to_num(self.stds,  nan=0.01, posinf=1.0, neginf=0.01)
+        self.A     = np.nan_to_num(self.A,     nan=0.0)
+        # Re-normalise rows of transition matrix so they sum to 1
+        row_sums = self.A.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        self.A = self.A / row_sums
+        ll_safe = float(ll) if (ll == ll and ll != float("inf") and ll != float("-inf")) else 0.0
+
         return {
             "iterations": n_iter,
-            "log_likelihood": round(float(ll), 4),
+            "log_likelihood": round(ll_safe, 4),
             "training_time_s": round(elapsed, 2),
             "regime_params": {
                 MarketRegime(i).name: {
@@ -370,7 +379,7 @@ class EnhancedHMM:
         regime_counts = {MarketRegime(i).name: int(np.sum(path == i)) for i in range(self.n_states)}
 
         # Average regime duration
-        durations = {i: [] for i in range(self.n_states)}
+        durations: dict[int, list[int]] = {i: [] for i in range(self.n_states)}
         current_run = 1
         for t in range(1, len(path)):
             if path[t] == path[t-1]:
@@ -473,7 +482,7 @@ class RegimeAwarePricingEngine:
         )
 
         # Standard BS (no jumps) for comparison
-        from scipy.stats import norm
+        from scipy.stats import norm  # type: ignore
         d1 = (math.log(S / K) + (r + 0.5 * params.sigma**2) * T) / (params.sigma * math.sqrt(T))
         d2 = d1 - params.sigma * math.sqrt(T)
         if option_type == "call":

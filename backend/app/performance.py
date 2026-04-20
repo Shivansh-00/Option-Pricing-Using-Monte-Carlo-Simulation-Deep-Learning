@@ -82,7 +82,7 @@ def benchmark_path_scaling(
 ) -> list[BenchmarkResult]:
     """Benchmark MC performance across different path counts."""
     if path_counts is None:
-        path_counts = [1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000]
+        path_counts = [1000, 5000, 10000, 25000, 50000, 100000]
 
     inputs_base = PricingInputs(
         spot=spot, strike=strike, maturity=maturity,
@@ -301,7 +301,7 @@ def run_full_benchmark(
     # 4. Latency profiles
     latency = profile_latency(
         spot, strike, maturity, rate, volatility, option_type,
-        n_iterations=20,
+        n_iterations=10,
     )
 
     # 5. Heston benchmark

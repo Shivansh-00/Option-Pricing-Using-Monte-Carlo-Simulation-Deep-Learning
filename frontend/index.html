@@ -65,6 +65,9 @@
         <div class="nav-item active" data-section="dashboard" tabindex="0" role="button" title="Dashboard">
           <span class="icon"><i data-lucide="layout-dashboard"></i></span> <span class="nav-text">Dashboard</span>
         </div>
+        <div class="nav-item" data-section="grafana" tabindex="0" role="button" title="Grafana Monitoring">
+          <span class="icon"><i data-lucide="monitor-up"></i></span> <span class="nav-text">Grafana</span>
+        </div>
 
         <div class="nav-label"><span class="nav-label-text">Analytics</span></div>
         <div class="nav-item" data-section="pricing" tabindex="0" role="button" title="Option Pricing">
@@ -233,6 +236,7 @@
               <button class="btn btn-secondary dash-action-btn" data-goto="risk-analytics"><i data-lucide="shield-alert"></i> Risk Analysis</button>
               <button class="btn btn-accent dash-action-btn" data-goto="explainability"><i data-lucide="sparkles"></i> Ask AI</button>
               <button class="btn btn-primary dash-action-btn" data-goto="quant-dashboard"><i data-lucide="dna"></i> Quant Engine</button>
+              <button class="btn btn-secondary dash-action-btn" data-goto="grafana"><i data-lucide="monitor-up"></i> Grafana Live</button>
             </div>
           </div>
 
@@ -330,7 +334,7 @@
           </div>
 
           <!-- Version Info -->
-          <div class="card" style="margin-top:0.5rem">
+          <div class="card mt-05">
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="info"></i></span> System Info</div>
             </div>
@@ -357,7 +361,7 @@
           <div class="card">
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="ruler"></i></span> Parameters</div>
-              <span class="result-badge" id="resultBadge" style="display:none">—</span>
+              <span class="result-badge hidden" id="resultBadge">—</span>
             </div>
 
             <div class="form-grid">
@@ -397,7 +401,7 @@
           </div>
 
           <!-- Pricing Results -->
-          <div class="metrics-row" id="pricingResults" style="display:none">
+          <div class="metrics-row hidden" id="pricingResults">
             <div class="metric-card">
               <div class="metric-label">Black-Scholes</div>
               <div class="metric-value highlight" id="bsPrice">—</div>
@@ -421,7 +425,7 @@
           </div>
 
           <!-- Greeks Quick View -->
-          <div class="greeks-grid" id="greeksQuick" style="display:none">
+          <div class="greeks-grid hidden" id="greeksQuick">
             <div class="greek-card" data-greek="delta">
               <div class="greek-symbol">Δ</div>
               <div class="greek-name">Delta</div>
@@ -482,7 +486,7 @@
             </div>
           </div>
 
-          <div class="chart-container" style="display:none" id="greekChartWrap">
+          <div class="chart-container hidden" id="greekChartWrap">
             <canvas id="greekChart"></canvas>
           </div>
         </div>
@@ -511,7 +515,7 @@
             </div>
           </div>
 
-          <div class="charts-grid" id="mcChartsWrap" style="display:none">
+          <div class="charts-grid hidden" id="mcChartsWrap">
             <div class="chart-container">
               <div class="card-title mb-4"><span class="icon"><i data-lucide="trending-down"></i></span> Price Paths (GBM)</div>
               <canvas id="mcChart"></canvas>
@@ -563,10 +567,10 @@
                 </select>
               </div>
             </div>
-            <div class="field" style="margin-top:0.6rem">
-              <label for="dlNewsText">Market News <span style="color:var(--text-tertiary);font-weight:400">(optional — enhances prediction with sentiment)</span></label>
+            <div class="field mt-06">
+              <label for="dlNewsText">Market News <span class="text-tertiary-lt">(optional — enhances prediction with sentiment)</span></label>
               <textarea id="dlNewsText" rows="2" placeholder="Enter financial news for sentiment-adjusted pricing…"
-                style="width:100%;resize:vertical;font-family:inherit;font-size:0.9rem;padding:0.65rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)"></textarea>
+                class="form-textarea"></textarea>
             </div>
             <div class="btn-group">
               <button class="btn btn-primary" id="dlBtn"><i data-lucide="circle-dot"></i> Forecast</button>
@@ -575,7 +579,7 @@
             </div>
           </div>
 
-          <div class="dl-results" id="dlResults" style="display:none">
+          <div class="dl-results hidden" id="dlResults">
             <div class="metric-card">
               <div class="metric-label">DL Forecast</div>
               <div class="metric-value highlight" id="dlForecast">—</div>
@@ -609,14 +613,14 @@
           </div>
 
           <!-- DL Training Status -->
-          <div class="card" id="dlTrainStatus" style="display:none;margin-top:1rem">
+          <div class="card hidden mt-1" id="dlTrainStatus">
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="settings"></i></span> Training Progress</div>
             </div>
             <div id="dlTrainInfo"></div>
           </div>
 
-          <div class="chart-container" id="compChartWrap" style="display:none">
+          <div class="chart-container hidden" id="compChartWrap">
             <div class="card-title mb-4"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Model Comparison</div>
             <canvas id="compChart"></canvas>
           </div>
@@ -630,11 +634,11 @@
           </div>
 
           <!-- ── Engine Status Banner ── -->
-          <div class="card" id="volEngineStatus" style="margin-bottom:1.2rem">
+          <div class="card mb-12" id="volEngineStatus">
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="zap"></i></span> Engine Status</div>
             </div>
-            <div class="metrics-row" style="margin:0">
+            <div class="metrics-row m-0">
               <div class="metric-card">
                 <div class="metric-label">Status</div>
                 <div class="metric-value" id="engineStatusBadge">Not Trained</div>
@@ -681,9 +685,9 @@
                 <input type="number" id="volCVFolds" value="3" min="1" max="10" />
               </div>
             </div>
-            <div class="field" style="margin-top:0.6rem">
+            <div class="field mt-06">
               <label>Models to Train</label>
-              <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-top:0.3rem" id="volModelChecks">
+              <div class="vol-model-checks" id="volModelChecks">
                 <label class="chk-label"><input type="checkbox" value="ridge" checked /> Ridge</label>
                 <label class="chk-label"><input type="checkbox" value="lasso" checked /> Lasso</label>
                 <label class="chk-label"><input type="checkbox" value="random_forest" checked /> Random Forest</label>
@@ -693,24 +697,24 @@
                 <label class="chk-label"><input type="checkbox" value="temporal_cnn" /> CNN</label>
               </div>
             </div>
-            <div class="btn-group" style="margin-top:1rem">
+            <div class="btn-group mt-1">
               <button class="btn btn-primary" id="volTrainBtn"><i data-lucide="play"></i> Train Models</button>
               <button class="btn btn-secondary" id="volStatusBtn"><i data-lucide="bar-chart-2"></i> Refresh Status</button>
             </div>
-            <div id="volTrainProgress" style="display:none;margin-top:0.8rem;">
-              <div style="display:flex;align-items:center;gap:0.6rem">
-                <div class="spinner" style="width:18px;height:18px;border:2px solid rgba(99,102,241,.3);border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite"></div>
-                <span style="color:var(--text-secondary);font-size:0.85rem" id="volTrainMsg">Training in progress...</span>
+            <div id="volTrainProgress" class="hidden mt-08">
+              <div class="spinner-row">
+                <div class="spinner-sm"></div>
+                <span class="text-secondary-sm" id="volTrainMsg">Training in progress...</span>
               </div>
             </div>
           </div>
 
           <!-- ── Model Comparison Table ── -->
-          <div class="card" id="volComparisonCard" style="display:none;margin-top:1.2rem">
+          <div class="card hidden mt-12" id="volComparisonCard">
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Model Comparison</div>
             </div>
-            <div style="overflow-x:auto">
+            <div class="overflow-x-auto">
               <table class="vol-table" id="volCompTable">
                 <thead>
                   <tr>
@@ -730,11 +734,11 @@
               </table>
             </div>
             <!-- Baseline row -->
-            <div class="metrics-row" style="margin-top:0.8rem" id="volBaselineRow"></div>
+            <div class="metrics-row mt-08" id="volBaselineRow"></div>
           </div>
 
           <!-- ── Feature Importance Chart ── -->
-          <div class="card" id="volFeatureCard" style="display:none;margin-top:1.2rem">
+          <div class="card hidden mt-12" id="volFeatureCard">
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="trophy"></i></span> Top Feature Importance (Best Model)</div>
             </div>
@@ -744,7 +748,7 @@
           </div>
 
           <!-- ── IV Prediction (enhanced) ── -->
-          <div class="card" style="margin-top:1.2rem">
+          <div class="card mt-12">
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="wand-2"></i></span> Single-Point IV Prediction</div>
             </div>
@@ -779,7 +783,7 @@
             </div>
           </div>
 
-          <div class="metrics-row" id="mlResults" style="display:none;margin-top:1rem">
+          <div class="metrics-row hidden mt-1" id="mlResults">
             <div class="metric-card">
               <div class="metric-label">Implied Volatility</div>
               <div class="metric-value highlight" id="mlIV">—</div>
@@ -810,10 +814,10 @@
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="file-text"></i></span> Analyze Financial Text</div>
             </div>
-            <div class="field" style="margin-bottom:1rem">
+            <div class="field mb-1">
               <label for="sentimentText">Financial News / Market Commentary</label>
               <textarea id="sentimentText" rows="4" placeholder="Paste financial news, earnings reports, or market commentary here…&#10;&#10;Example: Federal Reserve signals potential rate cuts amid cooling inflation, boosting market sentiment across tech sector."
-                style="width:100%;resize:vertical;font-family:inherit;font-size:0.9rem;padding:0.75rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary)"></textarea>
+                class="form-textarea"></textarea>
             </div>
             <div class="btn-group">
               <button class="btn btn-primary" id="sentimentBtn"><i data-lucide="heart-pulse"></i> Analyze Sentiment</button>
@@ -822,7 +826,7 @@
           </div>
 
           <!-- Quick Examples -->
-          <div class="card" style="margin-top:1rem">
+          <div class="card mt-1">
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="zap"></i></span> Quick Examples</div>
             </div>
@@ -835,7 +839,7 @@
           </div>
 
           <!-- Sentiment Results -->
-          <div id="sentimentResults" style="display:none;margin-top:1rem">
+          <div id="sentimentResults" class="hidden mt-1">
             <div class="metrics-row">
               <div class="metric-card">
                 <div class="metric-label">Overall Sentiment</div>
@@ -849,18 +853,18 @@
               </div>
               <div class="metric-card">
                 <div class="metric-label">Bullish Score</div>
-                <div class="metric-value" id="sentBullish" style="color:#00e5a0">—</div>
+                <div class="metric-value text-bullish" id="sentBullish">—</div>
                 <div class="metric-sub">Positive signals</div>
               </div>
               <div class="metric-card">
                 <div class="metric-label">Bearish Score</div>
-                <div class="metric-value" id="sentBearish" style="color:#ff5c7c">—</div>
+                <div class="metric-value text-bearish" id="sentBearish">—</div>
                 <div class="metric-sub">Negative signals</div>
               </div>
             </div>
 
             <!-- Sentiment Gauge -->
-            <div class="card" style="margin-top:1rem">
+            <div class="card mt-1">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Sentiment Gauge</div>
               </div>
@@ -870,9 +874,9 @@
                   <div class="gauge-marker" id="sentGaugeMarker"></div>
                 </div>
                 <div class="gauge-labels">
-                  <span style="color:#ff5c7c">Very Bearish</span>
-                  <span style="color:var(--text-secondary)">Neutral</span>
-                  <span style="color:#00e5a0">Very Bullish</span>
+                  <span class="text-bearish">Very Bearish</span>
+                  <span class="text-secondary">Neutral</span>
+                  <span class="text-bullish">Very Bullish</span>
                 </div>
               </div>
             </div>
@@ -937,7 +941,7 @@
           </div>
 
           <!-- VaR Results -->
-          <div id="varResults" style="display:none;margin-top:1rem">
+          <div id="varResults" class="hidden mt-1">
             <div class="metrics-row">
               <div class="metric-card">
                 <div class="metric-label">Delta-Normal VaR</div>
@@ -951,7 +955,7 @@
               </div>
               <div class="metric-card">
                 <div class="metric-label">Max Loss %</div>
-                <div class="metric-value" id="varPctLoss" style="color:#ff5c7c">—</div>
+                <div class="metric-value text-bearish" id="varPctLoss">—</div>
                 <div class="metric-sub">Relative VaR</div>
               </div>
               <div class="metric-card">
@@ -962,29 +966,29 @@
             </div>
 
             <!-- Risk Decomposition -->
-            <div class="card" style="margin-top:1rem">
+            <div class="card mt-1">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Risk Decomposition</div>
               </div>
               <div class="risk-breakdown" id="riskBreakdown">
                 <div class="risk-item">
                   <span class="risk-label">Delta Risk</span>
-                  <div class="risk-bar-container"><div class="risk-bar" id="riskBarDelta" style="width:0%"></div></div>
+                  <div class="risk-bar-container"><div class="risk-bar" id="riskBarDelta"></div></div>
                   <span class="risk-value" id="riskValDelta">—</span>
                 </div>
                 <div class="risk-item">
                   <span class="risk-label">Gamma Risk</span>
-                  <div class="risk-bar-container"><div class="risk-bar risk-bar-gamma" id="riskBarGamma" style="width:0%"></div></div>
+                  <div class="risk-bar-container"><div class="risk-bar risk-bar-gamma" id="riskBarGamma"></div></div>
                   <span class="risk-value" id="riskValGamma">—</span>
                 </div>
                 <div class="risk-item">
                   <span class="risk-label">Vega Risk</span>
-                  <div class="risk-bar-container"><div class="risk-bar risk-bar-vega" id="riskBarVega" style="width:0%"></div></div>
+                  <div class="risk-bar-container"><div class="risk-bar risk-bar-vega" id="riskBarVega"></div></div>
                   <span class="risk-value" id="riskValVega">—</span>
                 </div>
                 <div class="risk-item">
                   <span class="risk-label">Theta Risk</span>
-                  <div class="risk-bar-container"><div class="risk-bar risk-bar-theta" id="riskBarTheta" style="width:0%"></div></div>
+                  <div class="risk-bar-container"><div class="risk-bar risk-bar-theta" id="riskBarTheta"></div></div>
                   <span class="risk-value" id="riskValTheta">—</span>
                 </div>
               </div>
@@ -1032,7 +1036,7 @@
             </div>
 
             <!-- Follow-up suggestions (dynamic) -->
-            <div class="follow-ups" id="followUps" style="display:none">
+            <div class="follow-ups hidden" id="followUps">
               <span class="follow-up-label">Suggested:</span>
               <div class="follow-up-chips" id="followUpChips"></div>
             </div>
@@ -1050,7 +1054,7 @@
             </div>
           </div>
 
-          <div class="rag-meta" id="ragMeta" style="display:none">
+          <div class="rag-meta hidden" id="ragMeta">
             <div class="rag-meta-top">
               <div class="confidence-section">
                 <div class="confidence-label">
@@ -1064,7 +1068,7 @@
               <div class="rag-meta-badges">
                 <span class="rag-badge" id="queryTypeBadge">—</span>
                 <span class="rag-badge" id="latencyBadge">—</span>
-                <span class="rag-badge rag-badge-cache" id="cacheBadge" style="display:none">⚡ cached</span>
+                <span class="rag-badge rag-badge-cache hidden" id="cacheBadge">⚡ cached</span>
               </div>
             </div>
             <div class="source-list" id="sourceList"></div>
@@ -1110,15 +1114,15 @@
               <button class="btn btn-secondary" id="mktStreamBtn"><i data-lucide="radio"></i> Start Stream</button>
               <button class="btn btn-secondary" id="mktStopStreamBtn" disabled><i data-lucide="square"></i> Stop Stream</button>
             </div>
-            <div class="result-block" id="mktStreamLog" style="margin-top:0.75rem;max-height:300px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.75rem;display:none"></div>
+            <div class="result-block mkt-stream-log hidden" id="mktStreamLog"></div>
           </div>
 
-          <div class="card" style="margin-top:0.75rem">
+          <div class="card mt-075">
             <div class="card-header">
               <div class="card-title"><span class="icon"><i data-lucide="clipboard-list"></i></span> Option Chain</div>
             </div>
-            <div id="mktChainContainer" style="overflow-x:auto">
-              <table class="data-table" id="mktChainTable" style="display:none">
+            <div id="mktChainContainer" class="overflow-x-auto">
+              <table class="data-table hidden" id="mktChainTable">
                 <thead>
                   <tr>
                     <th>Strike</th><th>Type</th><th>Bid</th><th>Ask</th>
@@ -1187,7 +1191,7 @@
             </div>
           </div>
 
-          <div id="mispResults" style="display:none;margin-top:1rem">
+          <div id="mispResults" class="hidden mt-1">
             <div class="metrics-row">
               <div class="metric-card">
                 <div class="metric-label">Direction</div>
@@ -1212,13 +1216,13 @@
             </div>
           </div>
 
-          <div id="mispScanResults" style="display:none;margin-top:1rem">
+          <div id="mispScanResults" class="hidden mt-1">
             <div class="card">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Scan Results</div>
               </div>
               <div class="metrics-row" id="mispScanMetrics"></div>
-              <div style="overflow-x:auto">
+              <div class="overflow-x-auto">
                 <table class="data-table" id="mispScanTable">
                   <thead>
                     <tr>
@@ -1245,7 +1249,7 @@
               <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Detect Current Regime</div>
             </div>
             <div class="form-grid">
-              <div class="field" style="grid-column: span 2">
+              <div class="field col-span-2">
                 <label for="regimeReturns">Recent Returns (comma-separated, ≥10 values)</label>
                 <input type="text" id="regimeReturns" placeholder="0.01, -0.02, 0.005, -0.008, ..." value="0.012,-0.008,0.015,-0.003,0.009,-0.012,0.007,0.001,-0.006,0.018,-0.009,0.011,-0.004,0.016,-0.007,0.003,-0.015,0.008,-0.002,0.014" />
               </div>
@@ -1259,7 +1263,7 @@
             </div>
           </div>
 
-          <div id="regimeResults" style="display:none;margin-top:1rem">
+          <div id="regimeResults" class="hidden mt-1">
             <div class="metrics-row">
               <div class="metric-card">
                 <div class="metric-label">Current Regime</div>
@@ -1283,7 +1287,7 @@
               </div>
             </div>
 
-            <div class="card" style="margin-top:0.75rem">
+            <div class="card mt-075">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="refresh-cw"></i></span> Transition Probabilities</div>
               </div>
@@ -1334,7 +1338,7 @@
             </div>
           </div>
 
-          <div id="shapResults" style="display:none;margin-top:1rem">
+          <div id="shapResults" class="hidden mt-1">
             <div class="metrics-row">
               <div class="metric-card">
                 <div class="metric-label">Base Price</div>
@@ -1348,28 +1352,28 @@
               </div>
             </div>
 
-            <div class="card" style="margin-top:0.75rem">
+            <div class="card mt-075">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Feature Attributions (SHAP)</div>
               </div>
               <div id="shapWaterfall"></div>
             </div>
 
-            <div class="card" style="margin-top:0.75rem">
+            <div class="card mt-075">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="file-text"></i></span> Narrative Explanation</div>
               </div>
-              <div id="shapNarrative" class="result-block" style="white-space:pre-wrap"></div>
+              <div id="shapNarrative" class="result-block pre-wrap"></div>
             </div>
 
-            <div class="card" style="margin-top:0.75rem">
+            <div class="card mt-075">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="trending-down"></i></span> Sensitivity: Volatility</div>
               </div>
               <div id="shapVolSens"></div>
             </div>
 
-            <div class="card" style="margin-top:0.75rem">
+            <div class="card mt-075">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="clock"></i></span> Time Decay Profile</div>
               </div>
@@ -1410,17 +1414,17 @@
             <div class="btn-group">
               <button class="btn btn-primary" id="benchRunBtn"><i data-lucide="zap"></i> Run Full Benchmark</button>
             </div>
-            <div class="btn-note" style="font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem">This may take 15-30 seconds</div>
+            <div class="btn-note">This may take 15-30 seconds</div>
           </div>
 
-          <div id="benchResults" style="display:none;margin-top:1rem">
+          <div id="benchResults" class="hidden mt-1">
             <div class="metrics-row" id="benchSummary"></div>
 
-            <div class="card" style="margin-top:0.75rem">
+            <div class="card mt-075">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="trending-up"></i></span> Path Scaling</div>
               </div>
-              <div style="overflow-x:auto">
+              <div class="overflow-x-auto">
                 <table class="data-table">
                   <thead><tr><th>Paths</th><th>Price</th><th>Std Error</th><th>Time (ms)</th><th>Throughput</th><th>BS Error</th></tr></thead>
                   <tbody id="benchPathBody"></tbody>
@@ -1428,11 +1432,11 @@
               </div>
             </div>
 
-            <div class="card" style="margin-top:0.75rem">
+            <div class="card mt-075">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="microscope"></i></span> Method Comparison</div>
               </div>
-              <div style="overflow-x:auto">
+              <div class="overflow-x-auto">
                 <table class="data-table">
                   <thead><tr><th>Method</th><th>Price</th><th>Std Error</th><th>Time (ms)</th><th>Throughput</th><th>BS Error</th></tr></thead>
                   <tbody id="benchMethodBody"></tbody>
@@ -1440,11 +1444,11 @@
               </div>
             </div>
 
-            <div class="card" style="margin-top:0.75rem">
+            <div class="card mt-075">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="timer"></i></span> Latency Profiles</div>
               </div>
-              <div style="overflow-x:auto">
+              <div class="overflow-x-auto">
                 <table class="data-table">
                   <thead><tr><th>Component</th><th>Mean (ms)</th><th>P50</th><th>P95</th><th>P99</th><th>Min</th><th>Max</th></tr></thead>
                   <tbody id="benchLatencyBody"></tbody>
@@ -1452,7 +1456,7 @@
               </div>
             </div>
 
-            <div class="card" style="margin-top:0.75rem">
+            <div class="card mt-075">
               <div class="card-header">
                 <div class="card-title"><span class="icon"><i data-lucide="lightbulb"></i></span> Recommendations</div>
               </div>
@@ -1479,11 +1483,11 @@
               <div class="metric-card"><div class="metric-label">Total Modules</div><div class="metric-value" id="quantTotal">9</div></div>
             </div>
           </div>
-          <div class="card" style="margin-top:0.75rem">
+          <div class="card mt-075">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="puzzle"></i></span> Module Details</div></div>
             <div id="quantModuleGrid" class="dash-capabilities"></div>
           </div>
-          <div class="card" style="margin-top:0.75rem">
+          <div class="card mt-075">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="zap"></i></span> Quick Launch</div></div>
             <div class="dash-actions">
               <button class="btn btn-primary dash-action-btn" data-goto="pinns"><i data-lucide="atom"></i> PINNs Pricing</button>
@@ -1520,10 +1524,10 @@
               <button class="btn btn-secondary" id="pinnsGreeksBtn"><i data-lucide="triangle"></i> Greeks</button>
             </div>
           </div>
-          <div class="card" style="margin-top:0.75rem;display:none" id="pinnsResults">
+          <div class="card hidden mt-075" id="pinnsResults">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> PINNs Results</div></div>
             <div class="metrics-row" id="pinnsMetrics"></div>
-            <div id="pinnsNarrative" class="result-block" style="margin-top:0.5rem"></div>
+            <div id="pinnsNarrative" class="result-block mt-05"></div>
           </div>
         </div>
 
@@ -1551,10 +1555,10 @@
               <button class="btn btn-accent" id="hedgeSuggestBtn"><i data-lucide="lightbulb"></i> Suggest Hedge</button>
             </div>
           </div>
-          <div class="card" style="margin-top:0.75rem;display:none" id="hedgeResults">
+          <div class="card hidden mt-075" id="hedgeResults">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="trending-up"></i></span> Hedging Results</div></div>
             <div class="metrics-row" id="hedgeMetrics"></div>
-            <div id="hedgeNarrative" class="result-block" style="margin-top:0.5rem"></div>
+            <div id="hedgeNarrative" class="result-block mt-05"></div>
           </div>
         </div>
 
@@ -1579,11 +1583,11 @@
               <button class="btn btn-secondary" id="vsPredictBtn"><i data-lucide="waves"></i> Predict Surface</button>
             </div>
           </div>
-          <div class="card" style="margin-top:0.75rem;display:none" id="vsResults">
+          <div class="card hidden mt-075" id="vsResults">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Vol Surface</div></div>
             <div class="metrics-row" id="vsMetrics"></div>
-            <div class="chart-container" style="margin-top:0.75rem"><canvas id="vsChart"></canvas></div>
-            <div id="vsNarrative" class="result-block" style="margin-top:0.5rem"></div>
+            <div class="chart-container mt-075"><canvas id="vsChart"></canvas></div>
+            <div id="vsNarrative" class="result-block mt-05"></div>
           </div>
         </div>
 
@@ -1608,10 +1612,10 @@
               <button class="btn btn-secondary" id="jdScenarioBtn"><i data-lucide="bar-chart-2"></i> Scenario Analysis</button>
             </div>
           </div>
-          <div class="card" style="margin-top:0.75rem;display:none" id="jdResults">
+          <div class="card hidden mt-075" id="jdResults">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Jump Diffusion Results</div></div>
             <div class="metrics-row" id="jdMetrics"></div>
-            <div id="jdNarrative" class="result-block" style="margin-top:0.5rem"></div>
+            <div id="jdNarrative" class="result-block mt-05"></div>
           </div>
         </div>
 
@@ -1633,10 +1637,10 @@
               <button class="btn btn-primary" id="arbScanBtn"><i data-lucide="target"></i> Full Scan</button>
             </div>
           </div>
-          <div class="card" style="margin-top:0.75rem;display:none" id="arbResults">
+          <div class="card hidden mt-075" id="arbResults">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Arbitrage Signals</div></div>
             <div class="metrics-row" id="arbMetrics"></div>
-            <div style="overflow-x:auto;margin-top:0.5rem">
+            <div class="overflow-x-auto mt-05">
               <table class="data-table">
                 <thead><tr><th>Type</th><th>Strength</th><th>Profit</th><th>Risk</th><th>Action</th></tr></thead>
                 <tbody id="arbSignalBody"></tbody>
@@ -1666,10 +1670,10 @@
               <button class="btn btn-primary" id="uqQuantifyBtn"><i data-lucide="gauge"></i> Quantify Uncertainty</button>
             </div>
           </div>
-          <div class="card" style="margin-top:0.75rem;display:none" id="uqResults">
+          <div class="card hidden mt-075" id="uqResults">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Uncertainty Analysis</div></div>
             <div class="metrics-row" id="uqMetrics"></div>
-            <div id="uqNarrative" class="result-block" style="margin-top:0.5rem"></div>
+            <div id="uqNarrative" class="result-block mt-05"></div>
           </div>
         </div>
 
@@ -1697,10 +1701,10 @@
               <button class="btn btn-secondary" id="gmcBenchBtn"><i data-lucide="zap"></i> Benchmark</button>
             </div>
           </div>
-          <div class="card" style="margin-top:0.75rem;display:none" id="gmcResults">
+          <div class="card hidden mt-075" id="gmcResults">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> GPU MC Results</div></div>
             <div class="metrics-row" id="gmcMetrics"></div>
-            <div id="gmcNarrative" class="result-block" style="margin-top:0.5rem"></div>
+            <div id="gmcNarrative" class="result-block mt-05"></div>
           </div>
         </div>
 
@@ -1717,29 +1721,81 @@
             </div>
             <div id="pfPositions">
               <div class="form-grid pf-position" data-idx="0">
-                <div class="field"><label>Spot ($)</label><input type="number" class="pfSpot" value="100" step="0.01" min="0.01" /></div>
-                <div class="field"><label>Strike ($)</label><input type="number" class="pfStrike" value="100" step="0.01" min="0.01" /></div>
-                <div class="field"><label>Maturity</label><input type="number" class="pfMaturity" value="1" step="0.01" min="0.01" /></div>
-                <div class="field"><label>Vol (σ)</label><input type="number" class="pfVol" value="0.2" step="0.01" min="0.01" /></div>
-                <div class="field"><label>Type</label><select class="pfType"><option value="call">Call</option><option value="put">Put</option></select></div>
-                <div class="field"><label>Quantity</label><input type="number" class="pfQty" value="10" step="1" /></div>
+                <div class="field"><label>Spot ($)</label><input type="number" class="pfSpot" title="Spot price" value="100" step="0.01" min="0.01" /></div>
+                <div class="field"><label>Strike ($)</label><input type="number" class="pfStrike" title="Strike price" value="100" step="0.01" min="0.01" /></div>
+                <div class="field"><label>Maturity</label><input type="number" class="pfMaturity" title="Time to maturity (years)" value="1" step="0.01" min="0.01" /></div>
+                <div class="field"><label>Vol (σ)</label><input type="number" class="pfVol" title="Volatility" value="0.2" step="0.01" min="0.01" /></div>
+                <div class="field"><label>Type</label><select class="pfType" title="Option type"><option value="call">Call</option><option value="put">Put</option></select></div>
+                <div class="field"><label>Quantity</label><input type="number" class="pfQty" title="Quantity" value="10" step="1" /></div>
               </div>
             </div>
-            <div class="btn-group" style="margin-top:0.75rem">
+            <div class="btn-group mt-075">
               <button class="btn btn-primary" id="pfRiskReportBtn"><i data-lucide="shield"></i> Full Risk Report</button>
               <button class="btn btn-secondary" id="pfStressBtn"><i data-lucide="alert-triangle"></i> Stress Test</button>
             </div>
           </div>
-          <div class="card" style="margin-top:0.75rem;display:none" id="pfResults">
+          <div class="card hidden mt-075" id="pfResults">
             <div class="card-header"><div class="card-title"><span class="icon"><i data-lucide="bar-chart-2"></i></span> Risk Report</div></div>
             <div class="metrics-row" id="pfMetrics"></div>
-            <div style="overflow-x:auto;margin-top:0.5rem">
+            <div class="overflow-x-auto mt-05">
               <table class="data-table">
                 <thead><tr><th>Scenario</th><th>P&L</th><th>P&L %</th><th>New Value</th></tr></thead>
                 <tbody id="pfStressBody"></tbody>
               </table>
             </div>
-            <div id="pfNarrative" class="result-block" style="margin-top:0.5rem"></div>
+            <div id="pfNarrative" class="result-block mt-05"></div>
+          </div>
+        </div>
+
+        <div class="section" id="sec-grafana">
+          <div class="section-header">
+            <div class="section-title"><i data-lucide="monitor-up"></i> Grafana Monitoring</div>
+            <div class="section-desc">Embedded observability dashboards proxied through the main OptionQuant app</div>
+          </div>
+
+          <div class="metrics-row grafana-metrics-row">
+            <div class="metric-card dash-card">
+              <div class="metric-label">Grafana Proxy</div>
+              <div class="metric-value highlight" id="grafanaProxyStatus">Checking…</div>
+              <div class="metric-sub">Served through /grafana</div>
+            </div>
+            <div class="metric-card dash-card">
+              <div class="metric-label">Dashboard Route</div>
+              <div class="metric-value" id="grafanaRouteLabel">/grafana/d/optiquant-overview</div>
+              <div class="metric-sub">Default overview dashboard</div>
+            </div>
+            <div class="metric-card dash-card">
+              <div class="metric-label">Monitoring Stack</div>
+              <div class="metric-value" id="grafanaStackLabel">Prometheus + Grafana</div>
+              <div class="metric-sub">Backed by project metrics endpoint</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="icon"><i data-lucide="panel-top-open"></i></span> Embedded Dashboard</div>
+              <div class="btn-group">
+                <button class="btn btn-secondary btn-sm" id="grafanaRefreshBtn"><i data-lucide="refresh-cw"></i> Refresh</button>
+                <a class="btn btn-primary btn-sm" href="/grafana/" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link"></i> Open Full Grafana</a>
+              </div>
+            </div>
+
+            <div class="grafana-embed-shell" id="grafanaEmbedShell">
+              <div class="grafana-unavailable" id="grafanaUnavailable" hidden>
+                <div class="grafana-unavailable-title">Grafana is not running yet</div>
+                <div class="grafana-unavailable-copy">Start the monitoring stack and this panel will load automatically inside the main project UI.</div>
+                <div class="grafana-unavailable-actions">
+                  <a class="btn btn-primary" href="/grafana/" target="_blank" rel="noopener noreferrer"><i data-lucide="activity"></i> Retry in New Tab</a>
+                </div>
+              </div>
+              <iframe
+                id="grafanaFrame"
+                class="grafana-frame"
+                title="Embedded Grafana Dashboard"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+              ></iframe>
+            </div>
           </div>
         </div>
       </div>

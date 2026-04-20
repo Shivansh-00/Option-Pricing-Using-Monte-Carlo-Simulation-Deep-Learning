@@ -28,7 +28,7 @@ import numpy as np
 import math
 import time
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, Dict, List, Tuple, Any
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class BayesianNN:
     Inference: Sample weights from posterior → get predictive distribution
     """
 
-    def __init__(self, hidden_layers: List[int] = None, lr: float = 1e-3,
+    def __init__(self, hidden_layers: Optional[List[int]] = None, lr: float = 1e-3,
                  n_samples: int = 10, kl_weight: float = 0.01, seed: int = 42):
         self.hidden = hidden_layers or [32, 32]
         self.lr = lr
@@ -232,7 +232,7 @@ class MCDropoutEstimator:
     to estimate epistemic uncertainty.
     """
 
-    def __init__(self, hidden: List[int] = None, dropout_rate: float = 0.1,
+    def __init__(self, hidden: Optional[List[int]] = None, dropout_rate: float = 0.1,
                  n_forward_passes: int = 50, seed: int = 42):
         self.hidden = hidden or [64, 32]
         self.dropout_rate = dropout_rate
@@ -325,11 +325,14 @@ class MCDropoutEstimator:
             for W, b in self.weights:
                 dW = self.rng.choice([-1.0, 1.0], size=W.shape)
                 db = self.rng.choice([-1.0, 1.0], size=b.shape)
-                W += pert * dW; b += pert * db
+                W += pert * dW
+                b += pert * db
                 l_p = float(np.mean((self._forward_with_dropout(Xb) - yb) ** 2))
-                W -= 2 * pert * dW; b -= 2 * pert * db
+                W -= 2 * pert * dW
+                b -= 2 * pert * db
                 l_m = float(np.mean((self._forward_with_dropout(Xb) - yb) ** 2))
-                W += pert * dW; b += pert * db
+                W += pert * dW
+                b += pert * db
                 W -= lr * np.clip((l_p - l_m) / (2 * pert * dW), -1, 1)
                 b -= lr * np.clip((l_p - l_m) / (2 * pert * db), -1, 1)
 
@@ -465,7 +468,7 @@ class UncertaintyQuantifier:
         Quick uncertainty estimate for a single option price using bootstrap.
         No training required — uses analytical Black-Scholes with parameter perturbation.
         """
-        from scipy.stats import norm
+        from scipy.stats import norm  # type: ignore
 
         prices = []
         for _ in range(n_bootstrap):
@@ -479,17 +482,17 @@ class UncertaintyQuantifier:
             p = s_pert * norm.cdf(d1) - K * math.exp(-r_pert * tau) * norm.cdf(d2)
             prices.append(max(p, 0))
 
-        prices = np.array(prices)
-        mean = float(prices.mean())
-        std = float(prices.std())
+        prices_arr: np.ndarray = np.array(prices)
+        mean = float(prices_arr.mean())
+        std = float(prices_arr.std())
         rel_unc = std / (abs(mean) + 1e-8)
         reliability, score = self._reliability_class(rel_unc)
 
         return {
             "price_mean": round(mean, 6),
             "price_std": round(std, 6),
-            "ci_95": [round(float(np.percentile(prices, 2.5)), 6),
-                      round(float(np.percentile(prices, 97.5)), 6)],
+            "ci_95": [round(float(np.percentile(prices_arr, 2.5)), 6),
+                      round(float(np.percentile(prices_arr, 97.5)), 6)],
             "relative_uncertainty": round(rel_unc, 4),
             "reliability": reliability,
             "reliability_score": round(score, 4),

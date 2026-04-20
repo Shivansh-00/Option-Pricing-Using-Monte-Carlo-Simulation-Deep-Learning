@@ -23,7 +23,37 @@ from typing import Optional, Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from .prometheus_metrics import PROMETHEUS_AVAILABLE
+
 logger = logging.getLogger(__name__)
+
+
+def _ws_connect(channel: str):
+    if not PROMETHEUS_AVAILABLE:
+        return
+    from .prometheus_metrics import WS_CONNECTIONS
+    WS_CONNECTIONS.labels(channel=channel).inc()
+
+
+def _ws_disconnect(channel: str):
+    if not PROMETHEUS_AVAILABLE:
+        return
+    from .prometheus_metrics import WS_CONNECTIONS
+    WS_CONNECTIONS.labels(channel=channel).dec()
+
+
+def _ws_message(direction: str, channel: str):
+    if not PROMETHEUS_AVAILABLE:
+        return
+    from .prometheus_metrics import WS_MESSAGES
+    WS_MESSAGES.labels(direction=direction, channel=channel).inc()
+
+
+def _ws_error(channel: str, error_type: str):
+    if not PROMETHEUS_AVAILABLE:
+        return
+    from .prometheus_metrics import WS_ERRORS
+    WS_ERRORS.labels(channel=channel, error_type=error_type).inc()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -76,6 +106,7 @@ class ConnectionManager:
         async with self._lock:
             self._connections[channel].append(websocket)
             self._stats["total_connections"] += 1
+        _ws_connect(channel)
         logger.info("WebSocket connected to channel: %s (total: %d)",
                      channel, len(self._connections[channel]))
 
@@ -84,6 +115,7 @@ class ConnectionManager:
             if websocket in self._connections[channel]:
                 self._connections[channel].remove(websocket)
                 self._stats["total_disconnections"] += 1
+        _ws_disconnect(channel)
         logger.info("WebSocket disconnected from channel: %s", channel)
 
     async def broadcast(self, message: dict, channel: str = "default"):
@@ -96,8 +128,10 @@ class ConnectionManager:
             try:
                 await ws.send_json(message)
                 self._stats["total_messages"] += 1
+                _ws_message("sent", channel)
             except Exception:
                 dead.append(ws)
+                _ws_error(channel, "send_failed")
 
         # Clean dead connections
         if dead:
