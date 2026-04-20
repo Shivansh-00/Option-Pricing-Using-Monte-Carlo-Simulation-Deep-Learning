@@ -25,7 +25,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
 from .api import auth_routes, dl_routes, explain_routes, ml_routes, pricing_routes, market_routes, ws_routes, quant_routes, pricing_api
+from .api import pinns_routes
 from .config import settings
+from .database import init_pool, init_db, close_pool
 from .prometheus_metrics import (
     PROMETHEUS_AVAILABLE,
     get_metrics_output,
@@ -48,16 +50,70 @@ ROOT_DIR = Path(
 FRONTEND_DIR = (ROOT_DIR / settings.frontend_dir).resolve()
 
 
+def _load_pretrained_models(model_dir: Path) -> None:
+    """Load pre-trained ML/DL/PINNs models from disk at startup."""
+    loaded = []
+
+    # 1. Volatility engine (sklearn ML models)
+    try:
+        from .vol_engine import get_engine
+        engine = get_engine()
+        if engine.load(model_dir):
+            loaded.append("vol_engine")
+    except Exception as e:
+        logger.warning("Could not load vol engine models: %s", e)
+
+    # 2. Hybrid DL predictor (LSTM)
+    try:
+        from .dl import get_predictor
+        predictor = get_predictor()
+        if predictor.load(model_dir):
+            loaded.append("dl_lstm")
+    except Exception as e:
+        logger.warning("Could not load DL models: %s", e)
+
+    # 3. PINNs
+    try:
+        pinns_path = model_dir / "pinns_model.pkl"
+        if pinns_path.exists():
+            from .pinns import PINNsOptionPricer
+            pricer = PINNsOptionPricer.load(pinns_path)
+            # Replace the singleton
+            from . import pinns as pinns_mod
+            pinns_mod._pinns_instance = pricer
+            loaded.append("pinns")
+    except Exception as e:
+        logger.warning("Could not load PINNs model: %s", e)
+
+    if loaded:
+        logger.info("Pre-trained models loaded: %s", ", ".join(loaded))
+    else:
+        logger.info("No pre-trained models found — models will train on first request")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Application startup/shutdown lifecycle."""
+    # Initialize Neon PostgreSQL connection pool and schema
+    if init_pool():
+        init_db()
+        logger.info("Neon PostgreSQL database connected and schema initialized")
+    else:
+        logger.warning("Running without database — auth and history features unavailable")
+
     model_dir = (ROOT_DIR / settings.model_dir).resolve()
     model_dir.mkdir(parents=True, exist_ok=True)
     kb_dir = Path(__file__).resolve().parent / "rag" / "knowledge_base"
     kb_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load pre-trained models if available
+    _load_pretrained_models(model_dir)
+
     logger.info("OptionQuant v%s started — %s mode", APP_VERSION, settings.environment)
     set_app_info(APP_VERSION, settings.environment)
     yield
+    # Shutdown: close database pool
+    close_pool()
     logger.info("OptionQuant v%s shutting down", APP_VERSION)
 
 
@@ -131,7 +187,7 @@ async def request_logger(request: Request, call_next):
         HTTP_REQUEST_DURATION.labels(
             method=request.method,
             endpoint=endpoint,
-        ).observe((time.perf_counter() - start + duration / 1000))
+        ).observe(time.perf_counter() - start)
 
     # Log non-static requests
     path = request.url.path
@@ -195,6 +251,7 @@ app.include_router(explain_routes.router)
 app.include_router(market_routes.router)
 app.include_router(ws_routes.router)
 app.include_router(quant_routes.router)
+app.include_router(pinns_routes.router)
 
 
 # ═══════════════════════════════════════════════════════════════

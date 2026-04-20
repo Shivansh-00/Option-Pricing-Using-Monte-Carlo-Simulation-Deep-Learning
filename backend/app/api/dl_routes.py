@@ -209,7 +209,8 @@ async def dl_forecast(
     """
     try:
         predictor = dl.get_predictor()
-        forecast = predictor.predict(
+        forecast = await asyncio.to_thread(
+            predictor.predict,
             spot=request.spot,
             strike=request.strike,
             maturity=request.maturity,
@@ -242,8 +243,8 @@ async def dl_forecast_legacy(
     """Legacy forecast endpoint (backward compatibility)."""
     try:
         inputs = pricing.PricingInputs(**request.model_dump())
-        mc_price = pricing.monte_carlo_gbm(inputs, seed=42)
-        bs_price = pricing.black_scholes(inputs)
+        mc_price = await asyncio.to_thread(pricing.monte_carlo_gbm, inputs, 42)
+        bs_price = await asyncio.to_thread(pricing.black_scholes, inputs)
         hybrid = dl.residual_learning(bs_price, mc_price)
         return {
             "model": hybrid.model,
@@ -372,7 +373,7 @@ async def market_sentiment(
     """
     try:
         predictor = dl.get_predictor()
-        result = predictor.transformer.analyze(request.text)
+        result = await asyncio.to_thread(predictor.transformer.analyze, request.text)
         return SentimentResponse(
             sentiment=result.sentiment,
             score=result.score,

@@ -489,9 +489,9 @@ def get_rag_health() -> dict:
         "llm": llm_stats,
         "evaluation": get_metrics_tracker().summary,
         "config": {
-            "gemini_model": settings.gemini_model,
-            "gemini_temperature": settings.gemini_temperature,
-            "gemini_max_tokens": settings.gemini_max_tokens,
+            "llm_model": settings.groq_model,
+            "llm_temperature": settings.groq_temperature,
+            "llm_max_tokens": settings.groq_max_tokens,
             "top_k": int(os.getenv("RAG_TOP_K", "6")),
             "min_score": float(os.getenv("RAG_MIN_SCORE", "0.01")),
             "chunk_size": int(os.getenv("RAG_CHUNK_SIZE", "600")),

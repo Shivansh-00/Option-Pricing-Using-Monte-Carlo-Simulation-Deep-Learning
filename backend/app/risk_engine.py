@@ -259,6 +259,23 @@ def bayesian_uncertainty(
 #  Value at Risk (VaR) & CVaR
 # ═══════════════════════════════════════════════════════════════
 
+_SQRT2 = math.sqrt(2.0)
+
+def _vectorized_bs(spots: np.ndarray, strike: float, maturity: float,
+                   rate: float, vol: float, option_type: str) -> np.ndarray:
+    """Black-Scholes on an array of spot prices (NumPy-vectorized)."""
+    from scipy.special import erf
+    sqrt_t = math.sqrt(maturity)
+    d1 = (np.log(spots / strike) + (rate + 0.5 * vol**2) * maturity) / (vol * sqrt_t)
+    d2 = d1 - vol * sqrt_t
+    nd1 = 0.5 * (1.0 + erf(d1 / _SQRT2))
+    nd2 = 0.5 * (1.0 + erf(d2 / _SQRT2))
+    disc = math.exp(-rate * maturity)
+    if option_type == "put":
+        return strike * disc * (1.0 - nd2) - spots * (1.0 - nd1)
+    return spots * nd1 - strike * disc * nd2
+
+
 def compute_var(
     spot: float,
     strike: float,
@@ -272,7 +289,7 @@ def compute_var(
     seed: int = 42,
 ) -> VaRResult:
     """
-    Compute VaR and CVaR via full revaluation Monte Carlo.
+    Compute VaR and CVaR via full revaluation Monte Carlo (vectorized).
     """
     rng = np.random.default_rng(seed)
     dt = horizon_days / 252.0
@@ -287,17 +304,11 @@ def compute_var(
     z = rng.standard_normal(n_sims)
     future_spots = spot * np.exp((rate - 0.5 * volatility**2) * dt + volatility * math.sqrt(dt) * z)
 
-    # Revalue option at each scenario
-    future_prices = []
-    for fs in future_spots:
-        future_inp = PricingInputs(
-            spot=float(fs), strike=strike,
-            maturity=max(0.001, maturity - dt),
-            rate=rate, volatility=volatility, option_type=option_type,
-        )
-        future_prices.append(black_scholes(future_inp))
+    # Vectorized BS revaluation
+    future_mat = max(0.001, maturity - dt)
+    future_prices = _vectorized_bs(future_spots, strike, future_mat, rate, volatility, option_type)
 
-    pnl = (np.array(future_prices) - current_price) * position_size
+    pnl = (future_prices - current_price) * position_size
     sorted_pnl = np.sort(pnl)
 
     var_95 = -float(np.percentile(sorted_pnl, 5))

@@ -2205,7 +2205,7 @@ $('hedgeTrainBtn')?.addEventListener('click', async () => {
       spot: pf('hedgeSpot', 100), strike: pf('hedgeStrike', 100),
       maturity: pf('hedgeMaturity', 0.25), volatility: pf('hedgeVol', 0.2),
       rate: pf('hedgeRate', 0.05),
-    }, { timeout: 120000 });
+    }, { timeout: 300000 });
     if (!d) return;
     $('hedgeResults').style.display = '';
     $('hedgeMetrics').innerHTML = `

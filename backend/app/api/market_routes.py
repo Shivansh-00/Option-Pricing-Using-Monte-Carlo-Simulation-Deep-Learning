@@ -53,7 +53,7 @@ async def get_quote(
     """Fetch latest market quote (simulated)."""
     from ..market_data import fetch_quote
     try:
-        q = fetch_quote(symbol)
+        q = await asyncio.to_thread(fetch_quote, symbol)
         return asdict(q)
     except Exception as e:
         logger.error("Quote fetch error: %s", e, exc_info=True)
@@ -68,7 +68,7 @@ async def get_chain(
     """Fetch full option chain."""
     from ..market_data import fetch_option_chain
     try:
-        chain = fetch_option_chain(symbol)
+        chain = await asyncio.to_thread(fetch_option_chain, symbol)
         return asdict(chain)
     except Exception as e:
         logger.error("Chain fetch error: %s", e, exc_info=True)

@@ -27,7 +27,8 @@ def compute_greeks(inputs: PricingInputs) -> Greeks:
 
     time_bump = 1e-4
     # Backward bump: theta = (price at shorter maturity - base) / bump  → negative for time decay
-    theta = (black_scholes(replace(inputs, maturity=inputs.maturity - time_bump)) - base) / time_bump
+    bumped_maturity = max(1e-6, inputs.maturity - time_bump)
+    theta = (black_scholes(replace(inputs, maturity=bumped_maturity)) - base) / time_bump
 
     rate_bump = 1e-4
     rho = (black_scholes(replace(inputs, rate=inputs.rate + rate_bump)) - base) / rate_bump

@@ -12,12 +12,16 @@ Supports:
   • Feature importance analysis
   • Regime‑aware evaluation
   • Caching of trained models
+  • Model persistence (save/load)
 """
 from __future__ import annotations
 
+import json
 import logging
+import pickle
 import time
 from dataclasses import dataclass, field, asdict
+from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
@@ -210,6 +214,233 @@ class VolatilityEngine:
     @property
     def last_result(self) -> VolEngineResult | None:
         return self._last_result
+
+    # ─── Persistence ──────────────────────────────────────────
+    def save(self, model_dir: str | Path) -> dict[str, str]:
+        """Save all trained models and metadata to disk.
+        Returns dict of model_name → filepath saved.
+        """
+        model_dir = Path(model_dir)
+        model_dir.mkdir(parents=True, exist_ok=True)
+        saved = {}
+
+        for name, model in self._trained_models.items():
+            fp = model_dir / f"vol_{name}.pkl"
+            with open(fp, "wb") as f:
+                pickle.dump(model, f, protocol=pickle.HIGHEST_PROTOCOL)
+            saved[name] = str(fp)
+            logger.info("Saved vol model %s → %s", name, fp)
+
+        # Save metadata (feature names, last result summary)
+        meta = {
+            "feature_names": self._feature_names,
+            "model_names": list(self._trained_models.keys()),
+        }
+        if self._last_result:
+            meta["best_model"] = self._last_result.best_model
+            meta["best_test_rmse"] = self._last_result.best_test_rmse
+            meta["best_test_r2"] = self._last_result.best_test_r2
+        meta_fp = model_dir / "vol_engine_meta.json"
+        with open(meta_fp, "w") as f:
+            json.dump(meta, f, indent=2)
+
+        return saved
+
+    def load(self, model_dir: str | Path) -> bool:
+        """Load pre-trained models from disk. Returns True if successful."""
+        model_dir = Path(model_dir)
+        meta_fp = model_dir / "vol_engine_meta.json"
+        if not meta_fp.exists():
+            logger.debug("No vol engine metadata at %s", meta_fp)
+            return False
+
+        with open(meta_fp) as f:
+            meta = json.load(f)
+
+        self._feature_names = meta.get("feature_names", [])
+        loaded = 0
+        for name in meta.get("model_names", []):
+            fp = model_dir / f"vol_{name}.pkl"
+            if fp.exists():
+                with open(fp, "rb") as f:
+                    self._trained_models[name] = pickle.load(f)
+                loaded += 1
+                logger.info("Loaded vol model %s from %s", name, fp)
+
+        logger.info("Loaded %d/%d vol models", loaded, len(meta.get("model_names", [])))
+        return loaded > 0
+
+    # ─── CSV-based training ─────────────────────────────────────
+    def train_from_csv(
+        self,
+        spot_csv: str | Path,
+        indicators_csv: str | Path | None = None,
+        model_names: list[str] | None = None,
+        target_name: str = "realized_vol",
+        forward_window: int = 20,
+        n_cv_folds: int = 3,
+    ) -> VolEngineResult:
+        """Train using real CSV data instead of synthetic data."""
+        import csv
+        t_start = time.perf_counter()
+
+        # Load spot prices CSV
+        logger.info("Loading CSV data from %s", spot_csv)
+        rows = []
+        with open(spot_csv, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                rows.append(row)
+
+        n = len(rows)
+        open_ = np.array([float(r["open"]) for r in rows])
+        high = np.array([float(r["high"]) for r in rows])
+        low = np.array([float(r["low"]) for r in rows])
+        close = np.array([float(r["close"]) for r in rows])
+        volume = np.array([float(r["volume"]) for r in rows])
+
+        # Load indicators for VIX and rate if available
+        vix = np.full(n, 20.0)
+        rate = np.full(n, 0.05)
+        if indicators_csv and Path(indicators_csv).exists():
+            ind_rows = []
+            with open(indicators_csv, newline="") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    ind_rows.append(row)
+            # Try to extract VIX proxy from RSI or use default
+            for i, row in enumerate(ind_rows[:n]):
+                if row.get("rsi_14") and row["rsi_14"].strip():
+                    vix[i] = float(row["rsi_14"])  # RSI as vol proxy
+
+        # Build features
+        logger.info("Building feature matrix from %d rows...", n)
+        X_full, feature_names = build_feature_matrix(
+            open_=open_, high=high, low=low, close=close,
+            volume=volume, vix=vix, rate=rate,
+        )
+        self._feature_names = feature_names
+
+        # Targets
+        rets_full = log_returns(close)
+        targets = build_targets(
+            rets_full, open_=open_, high=high,
+            low=low, close=close, forward_window=forward_window,
+        )
+        baselines = build_baselines(rets_full, forward_window)
+
+        # Align
+        n_x = X_full.shape[0]
+        y_all = targets[target_name]
+        offset = len(rets_full) - n_x
+        y_aligned = y_all[offset:offset + n_x]
+
+        valid = ~np.isnan(y_aligned)
+        X_valid = X_full[valid]
+        y_valid = y_aligned[valid]
+        n_valid = len(y_valid)
+
+        if n_valid < 50:
+            raise ValueError(f"Only {n_valid} usable samples after NaN removal.")
+
+        train_end = int(n_valid * 0.70)
+        val_end = int(n_valid * 0.85)
+        X_train, y_train = X_valid[:train_end], y_valid[:train_end]
+        X_val, y_val = X_valid[train_end:val_end], y_valid[train_end:val_end]
+        X_test, y_test = X_valid[val_end:], y_valid[val_end:]
+
+        # Baselines
+        baseline_test_metrics = {}
+        for bname, bpred in baselines.items():
+            bpred_aligned = bpred[offset:offset + n_x][valid][val_end:]
+            bm = compute_metrics(y_test, bpred_aligned[:len(y_test)])
+            baseline_test_metrics[bname] = bm.rmse
+
+        # Train
+        if model_names is None:
+            model_names = list(MODEL_REGISTRY.keys())
+
+        comparisons: list[ModelComparison] = []
+        for mname in model_names:
+            logger.info("Training model: %s on CSV data", mname)
+            try:
+                model = get_model(mname)
+                train_meta = model.fit(X_train, y_train, X_val, y_val)
+                train_time = train_meta.get("train_time_ms", 0)
+
+                t0 = time.perf_counter()
+                pred_train = model.predict(X_train)
+                pred_test = model.predict(X_test)
+                inf_time = (time.perf_counter() - t0) * 1000
+
+                train_metrics = compute_metrics(y_train, pred_train)
+                test_metrics = compute_metrics(y_test, pred_test)
+                fi = model.get_feature_importance(feature_names)
+
+                hist_rmse = baseline_test_metrics.get("historical_vol", test_metrics.rmse)
+                garch_rmse = baseline_test_metrics.get("garch11", test_metrics.rmse)
+                ewma_rmse = baseline_test_metrics.get("ewma", test_metrics.rmse)
+                imp_hist = ((hist_rmse - test_metrics.rmse) / hist_rmse * 100) if hist_rmse > 0 else 0
+                imp_garch = ((garch_rmse - test_metrics.rmse) / garch_rmse * 100) if garch_rmse > 0 else 0
+                imp_ewma = ((ewma_rmse - test_metrics.rmse) / ewma_rmse * 100) if ewma_rmse > 0 else 0
+
+                # Walk-forward CV
+                cv_metrics = None
+                if mname in ("ridge", "lasso", "random_forest", "gradient_boosting") and len(X_valid) >= 200:
+                    cv_rmses = []
+                    folds = walk_forward_splits(len(X_valid), n_folds=n_cv_folds)
+                    for fold in folds:
+                        cv_model = get_model(mname)
+                        cv_model.fit(
+                            X_valid[fold.train_start:fold.train_end],
+                            y_valid[fold.train_start:fold.train_end],
+                        )
+                        cv_pred = cv_model.predict(X_valid[fold.test_start:fold.test_end])
+                        cv_m = compute_metrics(y_valid[fold.test_start:fold.test_end], cv_pred)
+                        cv_rmses.append(cv_m.rmse)
+                    cv_metrics = VolMetrics(rmse=round(float(np.mean(cv_rmses)), 6), mae=0)
+
+                comparisons.append(ModelComparison(
+                    model_name=mname, target_name=target_name,
+                    train_metrics=train_metrics, test_metrics=test_metrics,
+                    cv_metrics=cv_metrics, train_time_ms=train_time,
+                    inference_time_ms=inf_time, feature_importance=fi,
+                    improvement_vs_historical=round(imp_hist, 2),
+                    improvement_vs_garch=round(imp_garch, 2),
+                    improvement_vs_ewma=round(imp_ewma, 2),
+                ))
+                self._trained_models[mname] = model
+            except Exception as e:
+                logger.error("Failed to train %s: %s", mname, e)
+                continue
+
+        if comparisons:
+            best = min(comparisons, key=lambda c: c.test_metrics.rmse)
+            best_model, best_rmse, best_r2 = best.model_name, best.test_metrics.rmse, best.test_metrics.r_squared
+        else:
+            best_model, best_rmse, best_r2 = "none", float('inf'), 0.0
+
+        top_fi = []
+        if comparisons:
+            fi_best = comparisons[0].feature_importance
+            for c in comparisons:
+                if c.model_name == best_model:
+                    fi_best = c.feature_importance
+                    break
+            sorted_fi = sorted(fi_best.items(), key=lambda x: x[1], reverse=True)[:10]
+            top_fi = [{"name": name, "importance": imp} for name, imp in sorted_fi]
+
+        total_time = (time.perf_counter() - t_start) * 1000
+        result = VolEngineResult(
+            comparisons=comparisons, best_model=best_model,
+            best_target=target_name, best_test_rmse=best_rmse,
+            best_test_r2=best_r2, baseline_rmse=baseline_test_metrics,
+            feature_names=feature_names, top_features=top_fi,
+            n_train=len(X_train), n_val=len(X_val), n_test=len(X_test),
+            total_time_ms=round(total_time, 1),
+        )
+        self._last_result = result
+        return result
 
     def train_and_evaluate(
         self,

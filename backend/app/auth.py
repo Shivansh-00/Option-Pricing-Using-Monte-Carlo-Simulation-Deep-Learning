@@ -5,7 +5,7 @@ Features:
   • bcrypt password hashing (12 rounds, auto-salt)
   • PBKDF2-HMAC-SHA256 fallback for legacy passwords
   • HS256 JWT access + refresh tokens with rotation
-  • SQLite persistent user store (WAL mode, indexed)
+  • Neon PostgreSQL persistent user store (connection-pooled)
   • Token blacklist (logout / refresh rotation)
   • Rate-limit tracking per IP
   • Password strength validation
@@ -18,21 +18,20 @@ import asyncio
 import hashlib
 import logging
 import os
-import platform
 import re
 import secrets
-import sqlite3
+import threading
 import time
-from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Generator
+from typing import Any
 
 import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from .database import get_cursor, is_available
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +46,37 @@ RATE_LIMIT_WINDOW = 300  # 5 minutes
 RATE_LIMIT_MAX = 20      # max attempts per window
 MIN_PASSWORD_LENGTH = 8
 
-# Persistent DB path — stored in backend/data/ (not temp dir)
-_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-DB_PATH = Path(os.getenv("AUTH_DB_PATH", str(_DATA_DIR / "optiquant_auth.db")))
+# ---------------------------------------------------------------------------
+# In-memory auth caches (avoid 2x Neon HTTP round-trips per request)
+# ---------------------------------------------------------------------------
+_AUTH_CACHE_TTL = 60  # seconds
+_blacklist_cache: dict[str, tuple[bool, float]] = {}
+_user_cache: dict[str, tuple[dict | None, float]] = {}
+_cache_lock = threading.Lock()
+
+
+def _is_blacklisted_cached(jti: str) -> bool:
+    now = time.time()
+    with _cache_lock:
+        entry = _blacklist_cache.get(jti)
+        if entry and now - entry[1] < _AUTH_CACHE_TTL:
+            return entry[0]
+    result = _is_blacklisted(jti)
+    with _cache_lock:
+        _blacklist_cache[jti] = (result, now)
+    return result
+
+
+def _fetch_user_row_cached(username: str):
+    now = time.time()
+    with _cache_lock:
+        entry = _user_cache.get(username)
+        if entry and now - entry[1] < _AUTH_CACHE_TTL:
+            return entry[0]
+    result = _fetch_user_row(username)
+    with _cache_lock:
+        _user_cache[username] = (result, now)
+    return result
 
 # ---------------------------------------------------------------------------
 # Password hashing — PBKDF2-HMAC-SHA256 (no C deps needed)
@@ -77,9 +104,9 @@ def _verify_password(password: str, stored_hash: str) -> bool:
 def _upgrade_password_hash(user_id: int, password: str) -> None:
     """Re-hash a legacy PBKDF2 password to bcrypt on successful login."""
     new_hash = _hash_password(password)
-    with _get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET password = ?, updated_at = datetime('now') WHERE id = ?",
+    with get_cursor() as cur:
+        cur.execute(
+            "UPDATE users SET password = %s WHERE id = %s",
             (new_hash, user_id),
         )
 
@@ -100,90 +127,6 @@ def validate_password_strength(password: str) -> str | None:
     if not re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>/?`~]", password):
         return "Must contain at least one special character (!@#$%...)."
     return None
-
-
-# ---------------------------------------------------------------------------
-# SQLite user store
-# ---------------------------------------------------------------------------
-
-def _init_db() -> None:
-    """Create tables, indexes, triggers, and run schema migrations."""
-    for attempt in range(5):
-        try:
-            with _get_conn() as conn:
-                conn.executescript("""
-                    CREATE TABLE IF NOT EXISTS users (
-                        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                        username    TEXT    UNIQUE NOT NULL,
-                        email       TEXT    UNIQUE NOT NULL,
-                        password    TEXT    NOT NULL,
-                        full_name   TEXT    DEFAULT '',
-                        role        TEXT    DEFAULT 'user',
-                        is_active   INTEGER DEFAULT 1,
-                        created_at  TEXT    DEFAULT (datetime('now')),
-                        updated_at  TEXT    DEFAULT (datetime('now')),
-                        last_login  TEXT
-                    );
-
-                    -- Explicit indexes for fast lookups
-                    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-                    CREATE INDEX IF NOT EXISTS idx_users_email    ON users(email);
-                    CREATE INDEX IF NOT EXISTS idx_users_active   ON users(is_active);
-
-                    -- Auto-update updated_at on any row change
-                    CREATE TRIGGER IF NOT EXISTS trg_users_updated_at
-                    AFTER UPDATE ON users
-                    FOR EACH ROW
-                    BEGIN
-                        UPDATE users SET updated_at = datetime('now')
-                        WHERE id = OLD.id AND updated_at = OLD.updated_at;
-                    END;
-
-                    CREATE TABLE IF NOT EXISTS token_blacklist (
-                        jti         TEXT    PRIMARY KEY,
-                        expires_at  TEXT    NOT NULL
-                    );
-
-                    CREATE TABLE IF NOT EXISTS rate_limits (
-                        ip          TEXT    PRIMARY KEY,
-                        attempts    INTEGER DEFAULT 0,
-                        window_start REAL   NOT NULL
-                    );
-                """)
-                # Schema migration: add updated_at to existing DBs
-                _migrate_schema(conn)
-            return
-        except sqlite3.OperationalError as exc:
-            if "locked" in str(exc).lower() and attempt < 4:
-                time.sleep(0.5 * (attempt + 1))
-                continue
-            raise
-
-
-def _migrate_schema(conn: sqlite3.Connection) -> None:
-    """Add missing columns to existing databases (idempotent)."""
-    columns = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
-    if "updated_at" not in columns:
-        conn.execute("ALTER TABLE users ADD COLUMN updated_at TEXT DEFAULT (datetime('now'))")
-        conn.execute("UPDATE users SET updated_at = created_at WHERE updated_at IS NULL")
-        logger.info("Migrated: added updated_at column to users table")
-
-
-@contextmanager
-def _get_conn() -> Generator[sqlite3.Connection, None, None]:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH), timeout=30)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA busy_timeout=30000;")
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -217,19 +160,20 @@ class TokenPair:
 
 def _check_rate_limit(ip: str) -> None:
     now = time.time()
-    with _get_conn() as conn:
-        row = conn.execute(
-            "SELECT attempts, window_start FROM rate_limits WHERE ip = ?", (ip,)
-        ).fetchone()
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT attempts, window_start FROM rate_limits WHERE ip = %s", (ip,)
+        )
+        row = cur.fetchone()
         if row is None:
-            conn.execute(
-                "INSERT INTO rate_limits (ip, attempts, window_start) VALUES (?, 1, ?)",
+            cur.execute(
+                "INSERT INTO rate_limits (ip, attempts, window_start) VALUES (%s, 1, %s)",
                 (ip, now),
             )
             return
         if now - row["window_start"] > RATE_LIMIT_WINDOW:
-            conn.execute(
-                "UPDATE rate_limits SET attempts = 1, window_start = ? WHERE ip = ?",
+            cur.execute(
+                "UPDATE rate_limits SET attempts = 1, window_start = %s WHERE ip = %s",
                 (now, ip),
             )
             return
@@ -239,8 +183,8 @@ def _check_rate_limit(ip: str) -> None:
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Too many attempts. Try again in {remaining}s.",
             )
-        conn.execute(
-            "UPDATE rate_limits SET attempts = attempts + 1 WHERE ip = ?", (ip,)
+        cur.execute(
+            "UPDATE rate_limits SET attempts = attempts + 1 WHERE ip = %s", (ip,)
         )
 
 
@@ -279,29 +223,34 @@ def _blacklist_token(token: str) -> None:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         jti = payload.get("jti", "")
-        exp = payload.get("exp", "")
-        with _get_conn() as conn:
-            conn.execute(
-                "INSERT OR IGNORE INTO token_blacklist (jti, expires_at) VALUES (?, ?)",
-                (jti, str(exp)),
+        exp = payload.get("exp", 0)
+        exp_dt = datetime.fromtimestamp(exp, tz=timezone.utc)
+        with get_cursor() as cur:
+            cur.execute(
+                "INSERT INTO token_blacklist (jti, expires_at) VALUES (%s, %s) "
+                "ON CONFLICT (jti) DO NOTHING",
+                (jti, exp_dt),
             )
+        # Invalidate cache entry so revocation takes effect immediately
+        with _cache_lock:
+            _blacklist_cache[jti] = (True, time.time())
     except jwt.PyJWTError:
         pass
 
 
 def _is_blacklisted(jti: str) -> bool:
-    with _get_conn() as conn:
-        row = conn.execute(
-            "SELECT 1 FROM token_blacklist WHERE jti = ?", (jti,)
-        ).fetchone()
-        return row is not None
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM token_blacklist WHERE jti = %s", (jti,)
+        )
+        return cur.fetchone() is not None
 
 
 def cleanup_blacklist() -> None:
-    now = int(datetime.now(timezone.utc).timestamp())
-    with _get_conn() as conn:
-        conn.execute(
-            "DELETE FROM token_blacklist WHERE CAST(expires_at AS INTEGER) < ?",
+    now = datetime.now(timezone.utc)
+    with get_cursor() as cur:
+        cur.execute(
+            "DELETE FROM token_blacklist WHERE expires_at < %s",
             (now,),
         )
 
@@ -310,9 +259,14 @@ def cleanup_blacklist() -> None:
 # Core: signup / login / refresh / logout / profile
 # ---------------------------------------------------------------------------
 
+def _require_db() -> None:
+    if not is_available():
+        raise HTTPException(503, "Database unavailable — please try again later.")
+
 def signup(
     username: str, email: str, password: str, full_name: str = ""
 ) -> TokenPair:
+    _require_db()
     username = username.strip().lower()
     email = email.strip().lower()
 
@@ -327,25 +281,28 @@ def signup(
         raise HTTPException(400, err)
 
     hashed = _hash_password(password)
-    with _get_conn() as conn:
-        try:
-            conn.execute(
-                "INSERT INTO users (username, email, password, full_name) "
-                "VALUES (?, ?, ?, ?)",
-                (username, email, hashed, full_name),
-            )
-        except sqlite3.IntegrityError:
-            existing = conn.execute(
-                "SELECT username, email FROM users WHERE username = ? OR email = ?",
-                (username, email),
-            ).fetchone()
-            if existing and existing["username"] == username:
+
+    # Check for existing user first (avoids transaction abort on conflict)
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT username, email FROM users WHERE username = %s OR email = %s",
+            (username, email),
+        )
+        existing = cur.fetchone()
+        if existing:
+            if existing["username"] == username:
                 raise HTTPException(409, "Username already taken.")
             raise HTTPException(409, "Email already registered.")
 
-        row = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
+        cur.execute(
+            "INSERT INTO users (username, email, password, full_name) "
+            "VALUES (%s, %s, %s, %s) RETURNING *",
+            (username, email, hashed, full_name),
+        )
+        row = cur.fetchone()
+
+    if row is None:
+        raise HTTPException(500, "Failed to create user.")
 
     user = _row_to_user(row)
     logger.info("New user registered: %s", username)
@@ -353,14 +310,16 @@ def signup(
 
 
 def login(username_or_email: str, password: str, ip: str = "0.0.0.0") -> TokenPair:
+    _require_db()
     _check_rate_limit(ip)
     identifier = username_or_email.strip().lower()
 
-    with _get_conn() as conn:
-        row = conn.execute(
-            "SELECT * FROM users WHERE username = ? OR email = ?",
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT * FROM users WHERE username = %s OR email = %s",
             (identifier, identifier),
-        ).fetchone()
+        )
+        row = cur.fetchone()
 
     if not row or not _verify_password(password, row["password"]):
         raise HTTPException(
@@ -376,9 +335,9 @@ def login(username_or_email: str, password: str, ip: str = "0.0.0.0") -> TokenPa
     if not row["password"].startswith(("$2b$", "$2a$")):
         _upgrade_password_hash(row["id"], password)
 
-    with _get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET last_login = datetime('now') WHERE id = ?",
+    with get_cursor() as cur:
+        cur.execute(
+            "UPDATE users SET last_login = NOW() WHERE id = %s",
             (row["id"],),
         )
 
@@ -388,6 +347,7 @@ def login(username_or_email: str, password: str, ip: str = "0.0.0.0") -> TokenPa
 
 
 def refresh_tokens(refresh_token: str) -> TokenPair:
+    _require_db()
     try:
         payload = jwt.decode(
             refresh_token, JWT_SECRET, algorithms=[JWT_ALGORITHM]
@@ -403,10 +363,11 @@ def refresh_tokens(refresh_token: str) -> TokenPair:
         raise HTTPException(401, "Token has been revoked.")
 
     username = payload.get("sub", "")
-    with _get_conn() as conn:
-        row = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT * FROM users WHERE username = %s", (username,)
+        )
+        row = cur.fetchone()
     if not row or not row["is_active"]:
         raise HTTPException(401, "User not found or disabled.")
 
@@ -416,20 +377,23 @@ def refresh_tokens(refresh_token: str) -> TokenPair:
 
 
 def logout(token: str) -> None:
+    _require_db()
     _blacklist_token(token)
 
 
 def get_user_profile(username: str) -> UserRecord:
-    with _get_conn() as conn:
-        row = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
+    _require_db()
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT * FROM users WHERE username = %s", (username,)
+        )
+        row = cur.fetchone()
     if not row:
         raise HTTPException(404, "User not found.")
     return _row_to_user(row)
 
 
-def _row_to_user(row: sqlite3.Row) -> UserRecord:
+def _row_to_user(row: dict[str, Any]) -> UserRecord:
     return UserRecord(
         id=row["id"],
         username=row["username"],
@@ -437,9 +401,9 @@ def _row_to_user(row: sqlite3.Row) -> UserRecord:
         full_name=row["full_name"],
         role=row["role"],
         is_active=bool(row["is_active"]),
-        created_at=row["created_at"],
-        updated_at=row["updated_at"] or row["created_at"],
-        last_login=row["last_login"],
+        created_at=str(row["created_at"]),
+        updated_at=str(row["updated_at"] or row["created_at"]),
+        last_login=str(row["last_login"]) if row["last_login"] else None,
     )
 
 
@@ -468,25 +432,24 @@ async def get_current_user(
 
     if payload.get("type") != "access":
         raise HTTPException(401, "Invalid token type.")
-    if _is_blacklisted(payload.get("jti", "")):
-        raise HTTPException(401, "Token has been revoked.")
 
     username = payload.get("sub", "")
-    row = await asyncio.to_thread(_fetch_user_row, username)
+    # Run both DB lookups concurrently (each is ~2s to Neon) with caching
+    blacklisted, row = await asyncio.gather(
+        asyncio.to_thread(_is_blacklisted_cached, payload.get("jti", "")),
+        asyncio.to_thread(_fetch_user_row_cached, username),
+    )
+    if blacklisted:
+        raise HTTPException(401, "Token has been revoked.")
     if not row or not row["is_active"]:
         raise HTTPException(401, "User not found or disabled.")
     return _row_to_user(row)
 
 
 def _fetch_user_row(username: str):
-    """Synchronous helper for SQLite lookup (called via to_thread)."""
-    with _get_conn() as conn:
-        return conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
-
-
-# ---------------------------------------------------------------------------
-# Init on import
-# ---------------------------------------------------------------------------
-_init_db()
+    """Synchronous helper for PostgreSQL lookup (called via to_thread)."""
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT * FROM users WHERE username = %s", (username,)
+        )
+        return cur.fetchone()

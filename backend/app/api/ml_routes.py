@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 from dataclasses import asdict
@@ -57,13 +58,14 @@ def ml_iv(
 
 
 @router.post("/vol/train", response_model=VolTrainResponse)
-def train_vol_engine(
+async def train_vol_engine(
     request: VolTrainRequest,
     _user: UserRecord = Depends(get_current_user),
 ):
     """
     Train the ML volatility engine.
     Runs the full pipeline: data → features → targets → models → evaluation.
+    Uses asyncio.to_thread to avoid blocking the event loop.
     """
     global _training_in_progress, _training_error
     with _training_lock:
@@ -71,9 +73,10 @@ def train_vol_engine(
             raise HTTPException(status_code=409, detail="Training already in progress")
         _training_in_progress = True
         _training_error = None
-    try:
+
+    def _do_train():
         engine = get_engine()
-        result = engine.train_and_evaluate(
+        return engine.train_and_evaluate(
             model_names=request.models,
             target_name=request.target,
             forward_window=request.forward_window,
@@ -81,6 +84,10 @@ def train_vol_engine(
             n_days=request.n_days,
             seed=request.seed,
         )
+
+    try:
+        result = await asyncio.to_thread(_do_train)
+
         # Convert dataclass result → Pydantic response
         comparisons = []
         for c in result.comparisons:
@@ -112,6 +119,8 @@ def train_vol_engine(
             n_test=result.n_test,
             total_time_ms=result.total_time_ms,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         _training_error = str(e)
         logger.error("Training failed: %s", e, exc_info=True)

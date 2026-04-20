@@ -203,6 +203,58 @@ class GPUMonteCarloEngine:
             paths.append(S_arr.copy())
         return np.array(paths).T  # shape: (n_paths, n_steps+1)
 
+    def _numpy_merton_paths(self, S: float, r: float, sigma: float, T: float,
+                            lam: float, mu_j: float, sig_j: float,
+                            n_paths: int, n_steps: int) -> np.ndarray:
+        """Merton jump diffusion paths — NumPy vectorized fallback."""
+        rng = np.random.default_rng(self.config.seed)
+        dt = T / n_steps
+        k = math.exp(mu_j + 0.5 * sig_j**2) - 1
+        drift = (r - 0.5 * sigma**2 - lam * k) * dt
+        vol = sigma * math.sqrt(dt)
+
+        log_S = np.zeros((n_paths, n_steps + 1))
+        for t in range(n_steps):
+            dW = rng.normal(0, 1, n_paths)
+            n_jumps = rng.poisson(lam * dt, n_paths).astype(np.float64)
+            jump_sizes = n_jumps * mu_j + np.sqrt(np.maximum(n_jumps, 0)) * sig_j * rng.normal(0, 1, n_paths)
+            log_S[:, t + 1] = log_S[:, t] + drift + vol * dW + jump_sizes
+
+        np.clip(log_S, -50.0, 50.0, out=log_S)
+        return S * np.exp(log_S)
+
+    def _numpy_regime_switching_paths(self, S: float, r: float, T: float,
+                                      n_paths: int, n_steps: int,
+                                      regimes: Optional[Dict] = None) -> np.ndarray:
+        """Regime-switching GBM — NumPy vectorized fallback."""
+        rng = np.random.default_rng(self.config.seed)
+        dt = T / n_steps
+        # Default 2 regimes: low-vol and high-vol
+        if regimes is None:
+            regimes = {
+                "sigmas": [0.15, 0.35],
+                "trans_prob": [[0.98, 0.02], [0.05, 0.95]],
+            }
+        sigmas = np.array(regimes["sigmas"])
+        trans = np.array(regimes["trans_prob"])
+        n_regimes = len(sigmas)
+
+        log_S = np.zeros((n_paths, n_steps + 1))
+        # Start all paths in regime 0
+        regime = np.zeros(n_paths, dtype=int)
+        for t in range(n_steps):
+            sigma_t = sigmas[regime]
+            dW = rng.normal(0, 1, n_paths)
+            log_S[:, t + 1] = log_S[:, t] + (r - 0.5 * sigma_t**2) * dt + sigma_t * math.sqrt(dt) * dW
+            # Transition
+            u = rng.uniform(0, 1, n_paths)
+            for k in range(n_regimes):
+                mask = regime == k
+                regime[mask & (u > trans[k, k])] = (k + 1) % n_regimes
+
+        np.clip(log_S, -50.0, 50.0, out=log_S)
+        return S * np.exp(log_S)
+
     # ═══════════════════════════════════════════════════════════════
     #  Variance Reduction Wrappers
     # ═══════════════════════════════════════════════════════════════
@@ -279,7 +331,11 @@ class GPUMonteCarloEngine:
                 paths = self._torch_merton_paths(S, r, sigma, T, mp["lam"],
                                                  mp["mu_j"], mp["sig_j"], n_p, n_s)
             else:
-                paths = self._numpy_gbm_paths(S, r, sigma, T, n_p, n_s)  # fallback
+                paths = self._numpy_merton_paths(S, r, sigma, T, mp["lam"],
+                                                 mp["mu_j"], mp["sig_j"], n_p, n_s)
+
+        elif mdl == MCModel.REGIME_SWITCHING:
+            paths = self._numpy_regime_switching_paths(S, r, T, n_p, n_s)
 
         else:
             paths = self._numpy_gbm_paths(S, r, sigma, T, n_p, n_s)

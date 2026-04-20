@@ -5,7 +5,7 @@ import sys
 import time
 import random
 
-BASE = "http://localhost:8000"
+BASE = "http://127.0.0.1:8000"
 
 def get_token():
     r = requests.post(f"{BASE}/api/v1/auth/login", json={"username": "testuser", "password": "Test1234!"})

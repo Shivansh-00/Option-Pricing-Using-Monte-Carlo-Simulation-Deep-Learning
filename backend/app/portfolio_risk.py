@@ -248,7 +248,10 @@ class PortfolioRiskEngine:
 
     def _mc_var(self, positions: List[OptionPosition], confidence: float,
                 horizon: int, n_sims: int) -> Dict[str, Any]:
-        """Monte Carlo VaR with full repricing."""
+        """Monte Carlo VaR with full repricing (vectorized)."""
+        from scipy.special import erf
+        _SQRT2 = math.sqrt(2.0)
+
         t0 = time.time()
         dt = horizon / 365.0
 
@@ -258,22 +261,25 @@ class PortfolioRiskEngine:
             for p in positions
         )
 
-        # Simulate future values
+        # Vectorized repricing per position
         future_values = np.zeros(n_sims)
-        for sim in range(n_sims):
-            sim_value = 0.0
-            for p in positions:
-                # Simulate spot price change
-                dW = self.rng.normal(0, math.sqrt(dt))
-                new_S = p.spot * math.exp((p.r - 0.5 * p.implied_vol**2) * dt + p.implied_vol * dW)
-                new_tau = max(p.tau - dt, 1e-6)
-                # Vol perturbation
-                new_vol = p.implied_vol * (1 + 0.1 * self.rng.normal())
-                new_vol = max(new_vol, 0.01)
-
-                new_price = self._bs_price(new_S, p.strike, new_tau, new_vol, p.r, p.option_type)
-                sim_value += new_price * p.quantity * 100
-            future_values[sim] = sim_value
+        for p in positions:
+            dW = self.rng.normal(0, math.sqrt(dt), n_sims)
+            new_S = p.spot * np.exp((p.r - 0.5 * p.implied_vol**2) * dt + p.implied_vol * dW)
+            new_tau = max(p.tau - dt, 1e-6)
+            vol_perturb = p.implied_vol * (1 + 0.1 * self.rng.normal(size=n_sims))
+            new_vol = np.clip(vol_perturb, 0.01, None)
+            sqrt_tau = math.sqrt(new_tau)
+            d1 = (np.log(new_S / p.strike) + (p.r + 0.5 * new_vol**2) * new_tau) / (new_vol * sqrt_tau)
+            d2 = d1 - new_vol * sqrt_tau
+            nd1 = 0.5 * (1.0 + erf(d1 / _SQRT2))
+            nd2 = 0.5 * (1.0 + erf(d2 / _SQRT2))
+            disc = math.exp(-p.r * new_tau)
+            if p.option_type == "put":
+                prices = p.strike * disc * (1.0 - nd2) - new_S * (1.0 - nd1)
+            else:
+                prices = new_S * nd1 - p.strike * disc * nd2
+            future_values += prices * p.quantity * 100
 
         pnl_dist = future_values - current_value
         var = float(-np.percentile(pnl_dist, (1 - confidence) * 100))

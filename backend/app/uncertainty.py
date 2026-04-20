@@ -104,6 +104,23 @@ class BayesianNN:
         W, b = self._sample_weights(self.layers[-1])
         return h @ W + b
 
+    def _forward_deterministic(self, X: np.ndarray, seed: int) -> np.ndarray:
+        """Forward pass with fixed random seed (same epsilon each call)."""
+        rng = np.random.default_rng(seed)
+        h = X
+        for i, layer in enumerate(self.layers[:-1]):
+            eps_W = rng.normal(0, 1, layer.W_mu.shape)
+            eps_b = rng.normal(0, 1, layer.b_mu.shape)
+            W = layer.W_mu + layer.W_sigma * eps_W
+            b = layer.b_mu + layer.b_sigma * eps_b
+            h = np.tanh(h @ W + b)
+        layer = self.layers[-1]
+        eps_W = rng.normal(0, 1, layer.W_mu.shape)
+        eps_b = rng.normal(0, 1, layer.b_mu.shape)
+        W = layer.W_mu + layer.W_sigma * eps_W
+        b = layer.b_mu + layer.b_sigma * eps_b
+        return h @ W + b
+
     def predict(self, X: np.ndarray, n_samples: Optional[int] = None) -> Dict[str, np.ndarray]:
         """
         Predictive distribution via weight sampling.
@@ -171,14 +188,15 @@ class BayesianNN:
 
             # SPSA update on variational parameters
             pert = 1e-3
+            eps_seed = int(self.rng.integers(0, 2**31))
             for layer in self.layers:
                 for param in [layer.W_mu, layer.W_rho, layer.b_mu, layer.b_rho]:
                     dp = self.rng.choice([-1.0, 1.0], size=param.shape)
                     param += pert * dp
-                    pred_p = self._forward_sample(Xb)
+                    pred_p = self._forward_deterministic(Xb, seed=eps_seed)
                     l_plus = float(np.mean((pred_p - yb) ** 2))
                     param -= 2 * pert * dp
-                    pred_m = self._forward_sample(Xb)
+                    pred_m = self._forward_deterministic(Xb, seed=eps_seed)
                     l_minus = float(np.mean((pred_m - yb) ** 2))
                     param += pert * dp
                     grad = (l_plus - l_minus) / (2 * pert * dp)

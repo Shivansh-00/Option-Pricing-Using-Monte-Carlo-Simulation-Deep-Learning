@@ -411,7 +411,7 @@ class VolSurfaceTransformer:
             smooth_loss, calendar_loss = _compute_reg_losses()
             total_loss = data_loss + cfg.lambda_smooth * smooth_loss + cfg.lambda_calendar * calendar_loss
 
-            # SPSA update
+            # SPSA update — simultaneous perturbation of all parameters
             pert = 1e-3
             all_params = [self.W_input, self.b_input, self.W_out, self.b_out, self.regime_embed]
             for block in self.blocks:
@@ -424,15 +424,24 @@ class VolSurfaceTransformer:
                 sl, cl = _compute_reg_losses()
                 return dl + cfg.lambda_smooth * sl + cfg.lambda_calendar * cl
 
-            for param in all_params:
-                dp = self.rng.choice([-1.0, 1.0], size=param.shape)
-                param += pert * dp
-                l_plus = _total_loss()
-                param -= 2 * pert * dp
-                l_minus = _total_loss()
-                param += pert * dp
+            # Generate random perturbation directions for all params at once
+            deltas = [self.rng.choice([-1.0, 1.0], size=p.shape) for p in all_params]
+
+            # Perturb all params + direction
+            for p, dp in zip(all_params, deltas):
+                p += pert * dp
+            l_plus = _total_loss()
+
+            # Perturb all params - direction (net -2*pert*dp from original)
+            for p, dp in zip(all_params, deltas):
+                p -= 2 * pert * dp
+            l_minus = _total_loss()
+
+            # Restore to original and apply gradient
+            for p, dp in zip(all_params, deltas):
+                p += pert * dp              # back to original
                 grad = (l_plus - l_minus) / (2 * pert * dp)
-                param -= lr * np.clip(grad, -1, 1)
+                p -= lr * np.clip(grad, -1, 1)
 
             if total_loss < best_loss:
                 best_loss = total_loss

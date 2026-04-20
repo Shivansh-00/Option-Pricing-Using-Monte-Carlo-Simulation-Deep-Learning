@@ -489,15 +489,17 @@ async def hedging_suggest(
         # Compute BS delta for state
         moneyness = request.spot / request.strike if request.strike > 0 else 1.0
         try:
-            from ..greeks import calculate_greeks
-            greeks_result = calculate_greeks(
+            from ..greeks import compute_greeks
+            from ..pricing import PricingInputs
+            _greeks_input = PricingInputs(
                 spot=request.spot, strike=request.strike,
                 maturity=request.maturity, rate=request.rate,
                 volatility=request.volatility, option_type="call",
             )
-            bs_delta = float(greeks_result.get("delta", 0.5))
-            gamma = float(greeks_result.get("gamma", 0.0))
-            theta = float(greeks_result.get("theta", 0.0))
+            greeks_result = await asyncio.to_thread(compute_greeks, _greeks_input)
+            bs_delta = float(greeks_result.delta)
+            gamma = float(greeks_result.gamma)
+            theta = float(greeks_result.theta)
         except Exception:
             bs_delta = 0.5
             gamma = 0.0

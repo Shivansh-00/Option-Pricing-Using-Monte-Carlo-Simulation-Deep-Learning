@@ -2,7 +2,7 @@
 Enterprise LLM Client
 ======================
 Production-grade LLM integration with:
-- Google Gemini REST API (primary)
+- Groq API (OpenAI-compatible, primary)
 - Retry with exponential backoff
 - Rate limiting (token bucket)
 - Circuit breaker pattern
@@ -27,10 +27,7 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────
 
-_GEMINI_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "{model}:generateContent?key={key}"
-)
+_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # Approximate chars-per-token ratio for English text
 _CHARS_PER_TOKEN = 4
@@ -42,14 +39,16 @@ _CHARS_PER_TOKEN = 4
 class TokenBudget:
     """Estimate and manage token budgets for LLM calls."""
 
-    def __init__(self, max_output_tokens: int = 512) -> None:
+    def __init__(self, max_output_tokens: int = 1024) -> None:
         self.max_output = max_output_tokens
-        # Gemini model context windows
+        # Groq model context windows
         self._model_limits: dict[str, int] = {
-            "gemini-2.0-flash": 1_048_576,
-            "gemini-1.5-flash": 1_048_576,
-            "gemini-1.5-pro": 2_097_152,
-            "gemini-pro": 32_768,
+            "llama-3.3-70b-versatile": 128_000,
+            "llama-3.1-8b-instant": 128_000,
+            "llama3-70b-8192": 8_192,
+            "llama3-8b-8192": 8_192,
+            "mixtral-8x7b-32768": 32_768,
+            "gemma2-9b-it": 8_192,
         }
 
     def estimate_tokens(self, text: str) -> int:
@@ -224,7 +223,7 @@ class CircuitBreaker:
 
 class LLMClient:
     """
-    Enterprise LLM client for Gemini API.
+    Enterprise LLM client for Groq API (OpenAI-compatible).
 
     Features:
     - Retry with exponential backoff
@@ -243,10 +242,10 @@ class LLMClient:
         max_retries: int = 3,
         timeout: float = 30.0,
     ) -> None:
-        self._api_key = api_key or settings.gemini_api_key
-        self._model = model or settings.gemini_model
-        self._temperature = temperature if temperature is not None else settings.gemini_temperature
-        self._max_tokens = max_tokens or settings.gemini_max_tokens
+        self._api_key = api_key or settings.groq_api_key
+        self._model = model or settings.groq_model
+        self._temperature = temperature if temperature is not None else settings.groq_temperature
+        self._max_tokens = max_tokens or settings.groq_max_tokens
         self._max_retries = max_retries
         self._timeout = timeout
 
@@ -274,7 +273,7 @@ class LLMClient:
         max_tokens: int | None = None,
     ) -> str:
         """
-        Generate a response from the LLM.
+        Generate a response from the LLM via Groq API.
 
         Parameters
         ----------
@@ -299,7 +298,7 @@ class LLMClient:
         """
         if not self._api_key:
             raise LLMError(
-                "GEMINI_API_KEY not set. Configure via environment variable.",
+                "GROQ_API_KEY not set. Configure via environment variable.",
                 error_type="config",
             )
 
@@ -330,14 +329,18 @@ class LLMClient:
         temp = temperature if temperature is not None else self._temperature
         max_tok = max_tokens or self._max_tokens
 
-        url = _GEMINI_URL.format(model=self._model, key=self._api_key)
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
         payload = {
-            "system_instruction": {"parts": [{"text": system_prompt}]},
-            "contents": [{"parts": [{"text": user_prompt}]}],
-            "generationConfig": {
-                "temperature": temp,
-                "maxOutputTokens": max_tok,
-            },
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": temp,
+            "max_tokens": max_tok,
         }
 
         t0 = time.time()
@@ -346,7 +349,9 @@ class LLMClient:
         with httpx.Client(timeout=self._timeout) as client:
             for attempt in range(self._max_retries):
                 try:
-                    resp = client.post(url, json=payload)
+                    resp = client.post(
+                        _GROQ_URL, json=payload, headers=headers,
+                    )
 
                     if resp.status_code == 429:
                         delay = min(
@@ -372,18 +377,17 @@ class LLMClient:
                     resp.raise_for_status()
                     data = resp.json()
 
-                    # Extract response text
+                    # Extract response text (OpenAI-compatible format)
                     text = (
-                        data.get("candidates", [{}])[0]
-                        .get("content", {})
-                        .get("parts", [{}])[0]
-                        .get("text", "")
+                        data.get("choices", [{}])[0]
+                        .get("message", {})
+                        .get("content", "")
                         .strip()
                     )
 
                     if not text:
                         raise LLMError(
-                            "Empty response from Gemini API",
+                            "Empty response from Groq API",
                             error_type="empty_response",
                         )
 
@@ -406,7 +410,7 @@ class LLMClient:
                         # Non-retryable
                         self._circuit_breaker.record_failure()
                         raise LLMError(
-                            f"Gemini API error {exc.response.status_code}: "
+                            f"Groq API error {exc.response.status_code}: "
                             f"{exc.response.text[:200]}",
                             error_type="api_error",
                         ) from exc
@@ -429,7 +433,7 @@ class LLMClient:
         self._total_errors += 1
         self._circuit_breaker.record_failure()
         raise LLMError(
-            f"Gemini API exhausted all {self._max_retries} retries. "
+            f"Groq API exhausted all {self._max_retries} retries. "
             f"Last error: {last_error}",
             error_type="exhausted",
         )

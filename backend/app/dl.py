@@ -357,6 +357,31 @@ class FinancialLSTM:
         offset += size
         self.b_out[:] = flat[offset : offset + self.b_out.size]
 
+    def save(self, filepath: str | Path) -> None:
+        """Save LSTM weights and scaling params to .npz file."""
+        filepath = Path(filepath)
+        np.savez(
+            filepath,
+            params=self._flatten_params(),
+            x_min=np.array([self._x_min]),
+            x_max=np.array([self._x_max]),
+            config=np.array([self.input_dim, self.hidden_dim, self.n_layers]),
+            trained=np.array([1 if self.trained else 0]),
+        )
+
+    @classmethod
+    def load(cls, filepath: str | Path) -> "FinancialLSTM":
+        """Load LSTM weights from .npz file."""
+        filepath = Path(filepath)
+        data = np.load(filepath)
+        cfg = data["config"]
+        lstm = cls(input_dim=int(cfg[0]), hidden_dim=int(cfg[1]), n_layers=int(cfg[2]))
+        lstm._set_params(data["params"])
+        lstm._x_min = float(data["x_min"][0])
+        lstm._x_max = float(data["x_max"][0])
+        lstm.trained = bool(data["trained"][0])
+        return lstm
+
 
 # ═══════════════════════════════════════════════════════════════
 #  Transformer Sentiment Analyzer
@@ -640,6 +665,46 @@ class HybridDLPredictor:
     @property
     def last_result(self) -> Optional[LSTMResult]:
         return self._last_result
+
+    def save(self, model_dir: str | Path) -> None:
+        """Save hybrid predictor's LSTM weights to model_dir."""
+        model_dir = Path(model_dir)
+        model_dir.mkdir(parents=True, exist_ok=True)
+        self.lstm.save(model_dir / "hybrid_lstm.npz")
+
+    def load(self, model_dir: str | Path) -> bool:
+        """Load LSTM weights. Returns True if successful."""
+        fp = Path(model_dir) / "hybrid_lstm.npz"
+        if not fp.exists():
+            return False
+        self.lstm = FinancialLSTM.load(fp)
+        self._trained = self.lstm.trained
+        return True
+
+    def train_on_csv(
+        self,
+        spot_csv: str | Path,
+        lookback: int = 30,
+        epochs: int = 50,
+        lr: float = 0.002,
+        patience: int = 8,
+        progress_callback: Optional[callable] = None,
+    ) -> LSTMResult:
+        """Train LSTM on real spot price CSV data."""
+        import csv
+        rows = []
+        with open(spot_csv, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                rows.append(float(row["close"]))
+        prices = np.array(rows)
+        result = self.lstm.train(
+            prices, lookback=lookback, epochs=epochs, lr=lr,
+            patience=patience, progress_callback=progress_callback,
+        )
+        self._trained = True
+        self._last_result = result
+        return result
 
     def train_on_synthetic(
         self,

@@ -30,6 +30,10 @@ class Settings:
     host: str = os.getenv("HOST", "0.0.0.0")
     port: int = int(os.getenv("PORT", "8000"))
     log_level: str = os.getenv("LOG_LEVEL", "info")
+
+    # --- Neon PostgreSQL Database ---
+    database_url: str = os.getenv("DATABASE_URL", "")
+
     cors_origins: list[str] = field(
         default_factory=lambda: _parse_csv(
             os.getenv("CORS_ORIGINS"),
@@ -51,13 +55,16 @@ class Settings:
         )
     )
     frontend_dir: str = os.getenv("FRONTEND_DIR", "frontend")
-    model_dir: str = os.getenv("MODEL_DIR", "models")
+    model_dir: str = os.getenv("MODEL_DIR", "backend/models")
 
-    # --- Google Gemini LLM for RAG ---
-    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-    gemini_max_tokens: int = int(os.getenv("GEMINI_MAX_TOKENS", "512"))
-    gemini_temperature: float = float(os.getenv("GEMINI_TEMPERATURE", "0.4"))
+    # --- Groq LLM for RAG ---
+    groq_api_key: str = os.getenv(
+        "GROQ_API_KEY",
+        "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",
+    )
+    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    groq_max_tokens: int = int(os.getenv("GROQ_MAX_TOKENS", "1024"))
+    groq_temperature: float = float(os.getenv("GROQ_TEMPERATURE", "0.4"))
 
     # --- RAG Pipeline ---
     rag_top_k: int = int(os.getenv("RAG_TOP_K", "6"))

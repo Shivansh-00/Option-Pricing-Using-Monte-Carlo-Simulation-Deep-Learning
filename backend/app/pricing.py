@@ -257,6 +257,7 @@ def monte_carlo_engine(
 
     # Batched simulation
     all_payoffs = []
+    all_terminal = []
     convergence = []
     sample_paths_data = []
     simulated = 0
@@ -266,11 +267,13 @@ def monte_carlo_engine(
         terminal_prices = simulate_fn(
             inputs.spot, drift, diffusion, steps, size, rng
         )
+        all_terminal.append(terminal_prices)
         payoffs = _compute_payoffs(terminal_prices, inputs.strike, inputs.option_type)
         all_payoffs.append(payoffs)
         simulated += size
 
     payoffs_arr = np.concatenate(all_payoffs)
+    terminal_arr = np.concatenate(all_terminal)
     payoffs_arr = np.maximum(payoffs_arr.astype(np.float64, copy=False), 0.0)
     mc_price = discount * float(np.mean(payoffs_arr))
 
@@ -281,21 +284,15 @@ def monte_carlo_engine(
         sample_counts = np.unique(np.linspace(1, paths, n_points, dtype=int))
         convergence = [discount * float(cumsum[n - 1] / n) for n in sample_counts]
 
-    # Control variate adjustment
+    # Control variate adjustment — reuse original simulated terminal prices
     if method == "control_variate":
         bs_price = black_scholes(inputs)
-        # Use BS analytical mean as control variate
         analytical_mean = inputs.spot * math.exp(inputs.rate * inputs.maturity)
-        terminal_mean = float(np.mean(
-            np.concatenate([
-                _simulate_batch_standard(
-                    inputs.spot, drift, diffusion, steps, min(5000, paths), rng
-                )
-            ])
-        ))
-        # Optimal beta via correlation: higher when control is more informative
-        beta = max(0.3, min(1.0, 1.0 - abs(terminal_mean - analytical_mean) / analytical_mean))
-        mc_price = mc_price + beta * (bs_price - mc_price)
+        # Optimal beta = -Cov(payoff, S_T) / Var(S_T)
+        cov = np.cov(payoffs_arr, terminal_arr)[0, 1]
+        var_s = np.var(terminal_arr)
+        beta = cov / (var_s + 1e-10)
+        mc_price = discount * float(np.mean(payoffs_arr - beta * (terminal_arr - analytical_mean)))
 
     # Statistics
     std_err = discount * float(np.std(payoffs_arr)) / math.sqrt(paths)

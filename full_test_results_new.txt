@@ -3,87 +3,91 @@ COMPREHENSIVE API ENDPOINT TEST
 ======================================================================
 
 --- Health & Readiness ---
-  [OK] Health -> 200 (6ms)
-  [OK] Readiness -> 200 (6ms)
+  [OK] Health -> 200 (154ms)
+  [OK] Readiness -> 200 (203ms)
 
 --- Authentication ---
-  [OK] Auth Me -> 200 (12ms)
+  [OK] Auth Me -> 200 (2240ms)
 
 --- Option Pricing ---
-  [OK] Black-Scholes -> 200 (26ms)
-  [OK] Monte Carlo -> 200 (32ms)
-  [OK] MC Detailed -> 200 (41ms)
-  [OK] MC Compare -> 200 (320ms)
-  [OK] Greeks -> 200 (20ms)
+  [OK] Black-Scholes -> 200 (355ms)
+  [OK] Monte Carlo -> 200 (809ms)
+  [OK] MC Detailed -> 200 (2066ms)
+  [OK] MC Compare -> 200 (282ms)
+  [OK] Greeks -> 200 (5ms)
 
 --- ML Volatility ---
-  [OK] IV Predict -> 200 (32ms)
-  [OK] Vol Train -> 200 (19006ms)
-  [OK] Vol Status -> 200 (36ms)
+  [OK] IV Predict -> 200 (114ms)
+  [OK] Vol Train -> 200 (83540ms)
+  [OK] Vol Status -> 200 (4764ms)
 
 --- Deep Learning ---
-  [OK] DL Forecast -> 200 (174ms)
-  [OK] DL Train -> 200 (33274ms)
-  [OK] Market Sentiment -> 200 (26ms)
+  [OK] DL Forecast -> 200 (1791ms)
+  [OK] DL Train -> 200 (258ms)
+  [OK] Market Sentiment -> 200 (674ms)
 
 --- PINNs ---
-  [OK] PINNs Train -> 200 (60812ms)
-  [OK] PINNs Predict -> 200 (16ms)
-  [OK] PINNs Greeks -> 200 (33ms)
+  [OK] PINNs Train -> 200 (55759ms)
+  [OK] PINNs Predict -> 200 (17317ms)
+  [OK] PINNs Greeks -> 200 (706ms)
 
 --- RL Hedging ---
-  [OK] Hedging Train -> 200 (9141ms)
-  [OK] Hedging Backtest -> 200 (11227ms)
-  [OK] Hedging Suggest -> 200 (25ms)
+  [TIMEOUT] Hedging Train -> timeout after 300s
+  [OK] Hedging Backtest -> 200 (210049ms)
+  [OK] Hedging Suggest -> 200 (10667ms)
 
 --- Vol Surface ---
-  [OK] Vol Surface Train -> 200 (3633ms)
-  [OK] Vol Surface Predict -> 200 (44ms)
+  [OK] Vol Surface Train -> 200 (46908ms)
+  [OK] Vol Surface Predict -> 200 (48ms)
 
 --- Jump Diffusion ---
-  [OK] Jump Diffusion Price -> 200 (602ms)
-  [OK] Regime Calibrate -> 200 (1017ms)
-  [OK] Scenario Analysis -> 200 (1179ms)
+  [OK] Jump Diffusion Price -> 200 (3330ms)
+  [OK] Regime Calibrate -> 200 (847ms)
+  [OK] Scenario Analysis -> 200 (9578ms)
 
 --- Arbitrage ---
-  [OK] Arbitrage Scan -> 200 (63ms)
-  [OK] Put-Call Parity -> 200 (30ms)
+  [OK] Arbitrage Scan -> 200 (10452ms)
+  [OK] Put-Call Parity -> 200 (444ms)
 
 --- Uncertainty ---
-  [OK] Uncertainty Quantify -> 200 (69ms)
-  [OK] Uncertainty Train -> 200 (273ms)
+  [OK] Uncertainty Quantify -> 200 (2193ms)
+  [OK] Uncertainty Train -> 200 (4807ms)
 
 --- GPU Monte Carlo ---
-  [OK] GPU MC Price -> 200 (1976ms)
-  [OK] GPU MC Benchmark -> 200 (29128ms)
+  [OK] GPU MC Price -> 200 (14511ms)
+  [OK] GPU MC Benchmark -> 200 (244056ms)
 
 --- Portfolio Risk ---
-  [OK] Portfolio Risk Report -> 200 (7190ms)
-  [OK] Portfolio Stress Test -> 200 (95ms)
+  [OK] Portfolio Risk Report -> 200 (5852ms)
+  [OK] Portfolio Stress Test -> 200 (198ms)
 
 --- Explainer ---
-  [OK] Explain Decision -> 200 (640ms)
+  [OK] Explain Decision -> 200 (384ms)
 
 --- Ecosystem Status ---
-  [OK] Quant Status -> 200 (41ms)
+  [OK] Quant Status -> 200 (115ms)
 
 --- Market Intelligence ---
-  [OK] Market Quote -> 200 (1297ms)
-  [OK] Market Chain -> 200 (21ms)
-  [OK] Market Snapshot -> 200 (31ms)
-  [OK] Market Health -> 200 (16ms)
-  [OK] Mispricing Detect -> 200 (326ms)
-  [OK] Regime Detect -> 200 (3473ms)
-  [OK] Confidence -> 200 (692ms)
-  [OK] VaR -> 200 (186ms)
-  [OK] Reliability -> 200 (82ms)
-  [OK] SHAP Explain -> 200 (119ms)
-  [OK] Benchmark -> 200 (10726ms)
+  [OK] Market Quote -> 200 (323ms)
+  [OK] Market Chain -> 200 (283ms)
+  [OK] Market Snapshot -> 200 (247ms)
+  [OK] Market Health -> 200 (57ms)
+  [OK] Mispricing Detect -> 200 (146ms)
+  [OK] Regime Detect -> 200 (44216ms)
+  [OK] Confidence -> 200 (5750ms)
+  [OK] VaR -> 200 (217ms)
+  [OK] Reliability -> 200 (735ms)
+  [OK] SHAP Explain -> 200 (298ms)
+  [TIMEOUT] Benchmark -> timeout after 120s
 
 --- AI Explainer ---
-  [OK] AI Explain -> 200 (14834ms)
-  [OK] RAG Health -> 200 (73ms)
+  [OK] AI Explain -> 200 (108930ms)
+  [OK] RAG Health -> 200 (3393ms)
 
 ======================================================================
-RESULTS: 48 passed, 0 failed, 48 total
+RESULTS: 46 passed, 2 failed, 48 total
 ======================================================================
+
+FAILED ENDPOINTS:
+  [0] Hedging Train: TIMEOUT
+  [0] Benchmark: TIMEOUT

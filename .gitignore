@@ -9,6 +9,7 @@ build/
 
 # Virtual environment
 .venv/
+.venv-1/
 venv/
 env/
 
@@ -44,4 +45,27 @@ test_pinns_debug.py
 test_single.py
 test_remaining.py
 validate_modules.py
+groq_test_output.txt
+test_groq.py
+sidebar_out.txt
+sidebar_results.txt
+diagnose_timeouts.py
+quick_diag.py
+verify_fixes.py
+verify_ml.py
+verify_ml_output.txt
+verify_output.txt
+test_sidebar.py
+test_async_fix.py
+test_failing_components.py
+test_response_shapes.py
+test_all_four.py
+test_all_four_output.txt
+test_four_features.py
+e2e_full_test.py
+_token.txt
+backend/training_log.txt
+backend/training_log2.txt
+backend/training_log_final.txt
+backend/pinns_train_log.txt
 

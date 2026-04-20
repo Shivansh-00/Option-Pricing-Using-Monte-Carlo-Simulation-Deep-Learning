@@ -16,6 +16,6 @@ python -m pip install --upgrade pip >nul
 pip install -r backend\requirements.txt
 
 echo [4/4] Starting backend and opening Chrome...
-start "" chrome http://localhost:8000/login.html
+start "" chrome http://127.0.0.1:8000/login.html
 cd backend
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

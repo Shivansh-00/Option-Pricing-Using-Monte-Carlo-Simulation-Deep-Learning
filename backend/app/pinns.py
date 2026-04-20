@@ -20,9 +20,11 @@ Mathematical Foundation:
 from __future__ import annotations
 import numpy as np
 import math
+import pickle
 import time
 import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional, Dict, List, Tuple, Any
 
 logger = logging.getLogger(__name__)
@@ -47,6 +49,14 @@ def _softplus_grad(x: np.ndarray) -> np.ndarray:
 
 def _gelu(x: np.ndarray) -> np.ndarray:
     return 0.5 * x * (1.0 + np.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * x**3)))
+
+def _gelu_grad(x: np.ndarray) -> np.ndarray:
+    k = math.sqrt(2.0 / math.pi)
+    inner = k * (x + 0.044715 * x**3)
+    t = np.tanh(inner)
+    sech2 = 1.0 - t * t
+    inner_grad = k * (1.0 + 3.0 * 0.044715 * x**2)
+    return 0.5 * (1.0 + t) + 0.5 * x * sech2 * inner_grad
 
 # ---------------------------------------------------------------------------
 # Xavier initialiser
@@ -107,7 +117,7 @@ class PINNsOptionPricer:
 
     @staticmethod
     def _get_activation_grad(name: str):
-        return {"tanh": _tanh_grad, "softplus": _softplus_grad, "gelu": _tanh_grad}[name]
+        return {"tanh": _tanh_grad, "softplus": _softplus_grad, "gelu": _gelu_grad}[name]
 
     # ---- build ----
     def build(self, input_dim: int = 4):
@@ -132,9 +142,9 @@ class PINNsOptionPricer:
             z = h @ layer.W + layer.b
             h = self._act(z)
             activations.append(z)
-        # Output layer — ReLU for positivity with full gradient flow
+        # Output layer — softplus for positivity with non-zero gradient everywhere
         z_out = h @ self.layers[-1].W + self.layers[-1].b
-        out = np.maximum(z_out, 0.0)
+        out = np.log1p(np.exp(np.clip(z_out, -20, 20)))
         activations.append(z_out)
         return out, activations
 
@@ -258,10 +268,10 @@ class PINNsOptionPricer:
             pre_acts.append(z)
             h = self._act(z)
             post_acts.append(h)
-        # Output layer — ReLU for positivity
+        # Output layer — softplus for positivity
         z_out = h @ self.layers[-1].W + self.layers[-1].b
         pre_acts.append(z_out)
-        out = np.maximum(z_out, 0.0)
+        out = np.log1p(np.exp(np.clip(z_out, -20, 20)))
         return out, pre_acts, post_acts
 
     def _backprop_data_loss(self, X: np.ndarray, K_batch: np.ndarray,
@@ -281,8 +291,9 @@ class PINNsOptionPricer:
         # dL/d(out) = (2/n) * (out - target)
         d_out = (2.0 / n) * residual
 
-        # Through ReLU output: d/dz max(0,z) = 1 if z>0 else 0
-        d_z = d_out * (pre_acts[-1] > 0).astype(np.float64)
+        # Through softplus output: d/dz log(1+exp(z)) = sigmoid(z)
+        z_clip = np.clip(pre_acts[-1], -20, 20)
+        d_z = d_out * (1.0 / (1.0 + np.exp(-z_clip)))
 
         grads = [None] * len(self.layers)
 
@@ -512,6 +523,92 @@ class PINNsOptionPricer:
         noise = rng.normal(0, 0.01, n_samples) * V
         V_market = np.maximum(V + noise, 0)
 
+        return {"S": S, "K": K, "tau": tau, "sigma": sigma, "r": r_vals, "V_market": V_market}
+
+    def save(self, filepath: str | Path) -> None:
+        """Save PINNs model (layers, config, history) to a pickle file."""
+        filepath = Path(filepath)
+        state = {
+            "config": self.config,
+            "layers": [(l.W.copy(), l.b.copy()) for l in self.layers],
+            "built": self._built,
+            "train_history": self._train_history,
+        }
+        with open(filepath, "wb") as f:
+            pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
+        logger.info("PINNs saved to %s", filepath)
+
+    @classmethod
+    def load(cls, filepath: str | Path) -> "PINNsOptionPricer":
+        """Load PINNs model from pickle file."""
+        filepath = Path(filepath)
+        with open(filepath, "rb") as f:
+            state = pickle.load(f)
+        pricer = cls(config=state["config"])
+        pricer.layers = [PINNLayer(W=w, b=b) for w, b in state["layers"]]
+        pricer._built = state["built"]
+        pricer._train_history = state.get("train_history", [])
+        logger.info("PINNs loaded from %s (%d layers)", filepath, len(pricer.layers))
+        return pricer
+
+    # ---- Generate training data from option chain CSV ----
+    @staticmethod
+    def load_training_data_from_csv(
+        csv_path: str | Path,
+        spot_csv: str | Path | None = None,
+        rate: float = 0.05,
+    ) -> Dict[str, np.ndarray]:
+        """Load training data from option chain CSV (call options only).
+
+        The option_chain CSV has columns:
+          timestamp, strike, expiry, option_type, bid, ask, mid, last,
+          volume, open_interest, implied_vol, delta, gamma, vega, theta
+
+        If spot_csv is provided, spot prices are joined by timestamp.
+        Otherwise spot is estimated from mid/delta of deep ITM calls (fallback).
+        """
+        import csv
+        from datetime import datetime
+
+        # Load spot prices by date if available
+        spot_by_date: Dict[str, float] = {}
+        if spot_csv and Path(spot_csv).exists():
+            with open(spot_csv, newline="") as f:
+                for row in csv.DictReader(f):
+                    spot_by_date[row["timestamp"]] = float(row["spot"])
+
+        rows = []
+        with open(csv_path, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("option_type", "call") != "call":
+                    continue
+                ts = row["timestamp"]
+                # Need spot price
+                if ts not in spot_by_date:
+                    continue
+                # Compute time to expiry in years
+                t0 = datetime.strptime(ts, "%Y-%m-%d")
+                t1 = datetime.strptime(row["expiry"], "%Y-%m-%d")
+                tau_days = (t1 - t0).days
+                if tau_days <= 0:
+                    continue
+                rows.append({
+                    "S": spot_by_date[ts],
+                    "K": float(row["strike"]),
+                    "tau": tau_days / 365.0,
+                    "sigma": float(row["implied_vol"]),
+                    "V_market": float(row["mid"]),
+                })
+
+        S = np.array([r["S"] for r in rows])
+        K = np.array([r["K"] for r in rows])
+        tau = np.array([r["tau"] for r in rows])
+        sigma = np.array([r["sigma"] for r in rows])
+        r_vals = np.full(len(rows), rate)
+        V_market = np.array([r["V_market"] for r in rows])
+
+        logger.info("Loaded %d call options from CSV for PINNs training", len(rows))
         return {"S": S, "K": K, "tau": tau, "sigma": sigma, "r": r_vals, "V_market": V_market}
 
     def get_status(self) -> Dict[str, Any]:

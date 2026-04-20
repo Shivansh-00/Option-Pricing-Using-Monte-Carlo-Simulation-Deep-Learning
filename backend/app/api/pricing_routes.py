@@ -13,10 +13,11 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from .. import pricing
 from ..auth import UserRecord, get_current_user
+from ..pricing_history import save_pricing_result
 from ..schemas import (
     GreeksResponse,
     MCComparisonResponse,
@@ -33,12 +34,20 @@ router = APIRouter(prefix="/api/v1/pricing", tags=["pricing"])
 @router.post("/bs", response_model=PricingResponse)
 async def pricing_bs(
     request: PricingRequest,
+    background_tasks: BackgroundTasks,
     _user: UserRecord = Depends(get_current_user),
 ) -> PricingResponse:
     """Black-Scholes closed-form option pricing."""
     try:
         inputs = pricing.PricingInputs(**request.model_dump())
-        price = pricing.black_scholes(inputs)
+        price = await asyncio.to_thread(pricing.black_scholes, inputs)
+        background_tasks.add_task(
+            save_pricing_result,
+            user_id=_user.id, model="black-scholes",
+            option_type=request.option_type, spot=request.spot,
+            strike=request.strike, expiry=request.maturity, rate=request.rate,
+            volatility=request.volatility, computed_price=round(price, 8),
+        )
         return PricingResponse(
             model="black-scholes",
             price=round(price, 8),
@@ -52,12 +61,20 @@ async def pricing_bs(
 @router.post("/mc", response_model=PricingResponse)
 async def pricing_mc(
     request: PricingRequest,
+    background_tasks: BackgroundTasks,
     _user: UserRecord = Depends(get_current_user),
 ) -> PricingResponse:
     """Standard Monte Carlo GBM pricing."""
     try:
         inputs = pricing.PricingInputs(**request.model_dump())
         result = await asyncio.to_thread(pricing.monte_carlo_engine, inputs, 42)
+        background_tasks.add_task(
+            save_pricing_result,
+            user_id=_user.id, model="monte-carlo-gbm",
+            option_type=request.option_type, spot=request.spot,
+            strike=request.strike, expiry=request.maturity, rate=request.rate,
+            volatility=request.volatility, computed_price=round(result.price, 8),
+        )
         return PricingResponse(
             model="monte-carlo-gbm",
             price=round(result.price, 8),
@@ -143,7 +160,7 @@ async def pricing_greeks(
     """Analytical Black-Scholes Greeks."""
     try:
         inputs = pricing.PricingInputs(**request.model_dump())
-        greeks = pricing.greeks_fd(inputs)
+        greeks = await asyncio.to_thread(pricing.greeks_fd, inputs)
         return GreeksResponse(**greeks)
     except Exception as e:
         logger.error("Greeks error: %s", e, exc_info=True)

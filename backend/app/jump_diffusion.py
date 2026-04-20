@@ -159,16 +159,17 @@ class MertonJumpDiffusion:
         t0 = time.time()
         for step in range(n_steps):
             dW = self.rng.normal(0, math.sqrt(dt), n_paths)
-            # Jumps
+            # Jumps (vectorized)
             n_jumps = self.rng.poisson(lam * dt, n_paths)
+            max_jumps = int(n_jumps.max()) if n_jumps.max() > 0 else 0
             jump_sizes = np.zeros(n_paths)
-            mask = n_jumps > 0
-            if mask.any():
-                for idx in np.where(mask)[0]:
-                    jump_sizes[idx] = sum(
-                        self.rng.normal(mu_j, sig_j)
-                        for _ in range(n_jumps[idx])
-                    )
+            if max_jumps > 0:
+                # Generate all jump magnitudes at once, sum per path
+                all_j = self.rng.normal(mu_j, sig_j, (n_paths, max_jumps))
+                # Mask out jumps beyond each path's count
+                cols = np.arange(max_jumps)[None, :]
+                mask = cols < n_jumps[:, None]
+                jump_sizes = np.where(mask, all_j, 0.0).sum(axis=1)
 
             S_paths = S_paths * np.exp(drift + sigma * dW + jump_sizes)
             all_paths.append(S_paths.copy())
@@ -253,25 +254,25 @@ class EnhancedHMM:
             beta = np.zeros((T, K))
             scale = np.zeros(T)
 
-            # Forward
+            # Pre-compute emission probabilities for all states
+            emit = np.zeros((T, K))
             for k in range(K):
-                alpha[0, k] = self.pi[k] * self._emission_prob(returns[0:1], k)[0]
+                emit[:, k] = self._emission_prob(returns, k)
+
+            # Forward (vectorized over states)
+            alpha[0] = self.pi * emit[0]
             scale[0] = alpha[0].sum()
             alpha[0] /= scale[0] + 1e-300
 
             for t in range(1, T):
-                for k in range(K):
-                    alpha[t, k] = sum(alpha[t-1, j] * self.A[j, k] for j in range(K)) * \
-                                  self._emission_prob(returns[t:t+1], k)[0]
+                alpha[t] = (alpha[t-1] @ self.A) * emit[t]
                 scale[t] = alpha[t].sum()
                 alpha[t] /= scale[t] + 1e-300
 
-            # Backward
+            # Backward (vectorized over states)
             beta[-1] = 1.0
             for t in range(T - 2, -1, -1):
-                for k in range(K):
-                    beta[t, k] = sum(self.A[k, j] * self._emission_prob(returns[t+1:t+2], j)[0] * beta[t+1, j]
-                                     for j in range(K))
+                beta[t] = self.A @ (emit[t+1] * beta[t+1])
                 beta[t] /= scale[t+1] + 1e-300
 
             # Gamma and Xi
@@ -287,15 +288,15 @@ class EnhancedHMM:
                 self.means[k] = (w * returns).sum() / w_sum
                 self.stds[k] = math.sqrt((w * (returns - self.means[k])**2).sum() / w_sum + 1e-8)
 
-                for j in range(K):
-                    xi_sum = 0
-                    for t in range(T - 1):
-                        xi_sum += alpha[t, k] * self.A[k, j] * \
-                                  self._emission_prob(returns[t+1:t+2], j)[0] * beta[t+1, j]
-                    self.A[k, j] = xi_sum / (w[:-1].sum() + 1e-300)
-
-            # Normalise A
-            self.A /= self.A.sum(axis=1, keepdims=True) + 1e-300
+            # Transition matrix update (vectorized)
+            for t in range(T - 1):
+                outer = alpha[t, :, None] * self.A * (emit[t+1][None, :] * beta[t+1][None, :])
+                if t == 0:
+                    xi_accum = outer.copy()
+                else:
+                    xi_accum += outer
+            denom = gamma[:-1].sum(axis=0)[:, None] + 1e-300
+            self.A = xi_accum / denom
 
             ll = np.sum(np.log(scale + 1e-300))
             if iteration % 10 == 0:
