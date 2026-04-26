@@ -13,6 +13,10 @@ build/
 venv/
 env/
 
+# Environment and secrets
+.env
+backend/.env
+
 # IDE
 .vscode/
 .idea/
@@ -64,8 +68,18 @@ test_all_four_output.txt
 test_four_features.py
 e2e_full_test.py
 _token.txt
+quick_test_final.txt
+quick_test_out.txt
+timeout
+{r.status_code}
+{r.status_code}'
+{str(e)[
 backend/training_log.txt
 backend/training_log2.txt
 backend/training_log_final.txt
 backend/pinns_train_log.txt
 
+  
+backend_run.log  
+claude_opus_check.txt  
+*.log  

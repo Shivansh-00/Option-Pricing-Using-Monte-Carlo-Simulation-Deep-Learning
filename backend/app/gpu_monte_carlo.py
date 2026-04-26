@@ -26,8 +26,8 @@ import numpy as np
 import math
 import time
 import logging
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Tuple, Any
+from dataclasses import dataclass
+from typing import Optional, Dict, List, Any
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -262,11 +262,17 @@ class GPUMonteCarloEngine:
     def _apply_antithetic(self, payoffs: np.ndarray, S_final: np.ndarray,
                           S: float, K: float, r: float, sigma: float, T: float,
                           option_type: str) -> np.ndarray:
-        """Antithetic variates using symmetry of log-normal."""
-        # Generate antithetic paths: use -Z
-        rng = np.random.default_rng(self.config.seed + 1)
-        n = len(payoffs)
-        S_anti = S * np.exp((r - 0.5 * sigma**2) * T - sigma * math.sqrt(T) * rng.normal(0, 1, n))
+        """Antithetic variates using mirrored terminal shocks for deterministic pairing."""
+        if sigma <= 0 or T <= 0:
+            return payoffs
+
+        mu = (r - 0.5 * sigma**2) * T
+        denom = sigma * math.sqrt(T)
+        safe_S = max(S, 1e-12)
+        safe_final = np.maximum(S_final, 1e-12)
+        z = (np.log(safe_final / safe_S) - mu) / denom
+        S_anti = S * np.exp(mu - denom * z)
+
         if option_type == "call":
             anti_payoffs = np.maximum(S_anti - K, 0)
         else:
@@ -408,14 +414,13 @@ class GPUMonteCarloEngine:
         eps_v = 0.01
         eps_t = 1 / 365
         eps_r = 0.001
+        Z_shared = np.random.default_rng(self.config.seed).normal(0, 1, (n_sub, n_s))
 
         def _quick_price(s, k, t, rate, vol):
-            rng = np.random.default_rng(self.config.seed)
             dt_step = t / n_s
             drift = (rate - 0.5 * vol**2) * dt_step
             vol_step = vol * math.sqrt(dt_step)
-            Z = rng.normal(0, 1, (n_sub, n_s))
-            log_S = np.cumsum(drift + vol_step * Z, axis=1)
+            log_S = np.cumsum(drift + vol_step * Z_shared, axis=1)
             S_f = s * np.exp(log_S[:, -1])
             payoff = np.maximum(S_f - k, 0) if option_type == "call" else np.maximum(k - S_f, 0)
             return float(np.mean(np.exp(-rate * t) * payoff))

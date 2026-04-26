@@ -25,6 +25,7 @@ from urllib.parse import urlparse
 import requests as _requests  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
+_JSON_CONTENT_TYPE = "application/json"
 
 # ---------------------------------------------------------------------------
 # Transport flag
@@ -116,7 +117,7 @@ def init_pool(minconn: int = 1, maxconn: int = 10) -> bool:
         endpoint, conn_str = _build_http_vars(url)
         resp = _requests.post(
             endpoint,
-            headers={"Content-Type": "application/json",
+            headers={"Content-Type": _JSON_CONTENT_TYPE,
                      "Neon-Connection-String": conn_str},
             json={"query": "SELECT 1"},
             timeout=10,
@@ -126,7 +127,7 @@ def init_pool(minconn: int = 1, maxconn: int = 10) -> bool:
         _HTTP_CONN_STR = conn_str
         _HTTP_SESSION = _requests.Session()
         _HTTP_SESSION.headers.update({
-            "Content-Type": "application/json",
+            "Content-Type": _JSON_CONTENT_TYPE,
             "Neon-Connection-String": conn_str,
         })
         _MODE = "http"
@@ -161,13 +162,25 @@ def is_available() -> bool:
 # ---------------------------------------------------------------------------
 
 def _conn_is_alive(conn) -> bool:
+    cur = None
     try:
         if conn.closed:
             return False
-        conn.cursor().execute("SELECT 1")
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
         return True
     except Exception:
         return False
+    finally:
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 
 @contextmanager
@@ -182,7 +195,12 @@ def _tcp_conn():
             pass
         _pool.putconn(conn, close=True)
         conn = _pool.getconn()
-    conn.autocommit = False
+    try:
+        conn.rollback()
+    except Exception:
+        pass
+    if getattr(conn, "autocommit", False):
+        conn.autocommit = False
     try:
         yield conn
         conn.commit()
@@ -220,7 +238,7 @@ class _HttpCursor:
         resp = session.post(
             _HTTP_ENDPOINT,
             headers={
-                "Content-Type": "application/json",
+                "Content-Type": _JSON_CONTENT_TYPE,
                 "Neon-Connection-String": _HTTP_CONN_STR,
             },
             json={"query": converted, "params": plist},
@@ -253,13 +271,11 @@ class _HttpCursor:
         if params is None:
             return query, []
         plist = list(params)
-        idx = [0]
-
-        def _repl(_m):
-            idx[0] += 1
-            return f"${idx[0]}"
-
-        converted = re.sub(r"%s", _repl, query)
+        parts = query.split("%s")
+        converted = parts[0] + "".join(
+            f"${index}{part}"
+            for index, part in enumerate(parts[1:], start=1)
+        )
         # Serialise non-primitive values (e.g. dicts → JSON strings)
         out: list[Any] = []
         for v in plist:
@@ -270,19 +286,22 @@ class _HttpCursor:
         return converted, out
 
     def close(self):
+        """HTTP cursors are stateless, so there is nothing to release."""
         pass
 
 
 class _HttpConnection:
     """Thin wrapper so ``with get_conn() as conn: conn.cursor(…)`` works."""
 
-    def cursor(self, cursor_factory=None, **kw):
+    def cursor(self, _cursor_factory=None, **_kw):
         return _HttpCursor()
 
     def commit(self):
+        """HTTP transport executes statements eagerly, so commit is a no-op."""
         pass
 
     def rollback(self):
+        """HTTP transport has no open transaction state to roll back."""
         pass
 
 

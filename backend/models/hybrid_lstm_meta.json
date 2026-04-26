@@ -1,0 +1,11 @@
+{
+  "artifact_schema_version": 2,
+  "runtime_fingerprint": {
+    "python": "3.12.10",
+    "platform": "Windows-11-10.0.29565-SP0",
+    "numpy": "2.1.2",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.17.1",
+    "pandas": "3.0.2"
+  }
+}

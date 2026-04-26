@@ -40,6 +40,7 @@ from .vol_models import (
     get_all_models,
     MODEL_REGISTRY,
 )
+from .runtime_lockstep import get_runtime_fingerprint, check_model_runtime_compatibility
 
 logger = logging.getLogger(__name__)
 
@@ -233,8 +234,10 @@ class VolatilityEngine:
 
         # Save metadata (feature names, last result summary)
         meta: dict[str, Any] = {
+            "artifact_schema_version": 2,
             "feature_names": list(self._feature_names),
             "model_names": list(self._trained_models.keys()),
+            "runtime_fingerprint": get_runtime_fingerprint(),
         }
         if self._last_result:
             meta["best_model"] = self._last_result.best_model
@@ -246,7 +249,7 @@ class VolatilityEngine:
 
         return saved
 
-    def load(self, model_dir: str | Path) -> bool:
+    def load(self, model_dir: str | Path, strict_compatibility: bool = True) -> bool:
         """Load pre-trained models from disk. Returns True if successful."""
         model_dir = Path(model_dir)
         meta_fp = model_dir / "vol_engine_meta.json"
@@ -256,6 +259,17 @@ class VolatilityEngine:
 
         with open(meta_fp) as f:
             meta = json.load(f)
+
+        compat = check_model_runtime_compatibility(
+            "vol_engine",
+            meta.get("runtime_fingerprint"),
+            strict=strict_compatibility,
+        )
+        if not compat.ok:
+            for reason in compat.reasons:
+                logger.warning(reason)
+            logger.warning("Volatility models marked incompatible with runtime; rebuild required.")
+            return False
 
         self._feature_names = meta.get("feature_names", [])
         loaded = 0

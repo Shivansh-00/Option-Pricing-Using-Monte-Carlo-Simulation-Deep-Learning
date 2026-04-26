@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import time
 from dataclasses import dataclass, field
 from threading import Lock
@@ -28,6 +29,15 @@ logger = logging.getLogger(__name__)
 # ── Constants ─────────────────────────────────────────────────────────────
 
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+_SUPPORTED_CHAT_FIELDS = {
+    "model",
+    "messages",
+    "max_tokens",
+    "temperature",
+    "top_p",
+    "stop",
+    "stream",
+}
 
 # Approximate chars-per-token ratio for English text
 _CHARS_PER_TOKEN = 4
@@ -265,6 +275,191 @@ class LLMClient:
         self._total_latency = 0.0
         self._total_tokens_est = 0
 
+    def _log_removed_fields(self, removed: list[str]) -> None:
+        if removed:
+            logger.info(
+                "Removed unsupported LLM payload fields for Groq/Claude-compatible chat request: %s",
+                ", ".join(sorted(set(removed))),
+            )
+
+    def _sanitize_payload(self, payload: dict) -> dict:
+        removed = [key for key in payload if key not in _SUPPORTED_CHAT_FIELDS]
+        sanitized = {
+            key: value
+            for key, value in payload.items()
+            if key in _SUPPORTED_CHAT_FIELDS
+        }
+
+        output_config = payload.get("output_config")
+        if isinstance(output_config, dict) and output_config.get("effort") is not None:
+            removed.append("output_config.effort")
+        elif "output_config" in payload:
+            removed.append("output_config")
+
+        self._log_removed_fields(removed)
+        return sanitized
+
+    def _ensure_ready(self) -> None:
+        if not self._api_key:
+            raise LLMError(
+                "GROQ_API_KEY not set. Configure via environment variable.",
+                error_type="config",
+            )
+        if not self._circuit_breaker.can_execute():
+            raise LLMError(
+                f"Circuit breaker OPEN — LLM calls disabled for "
+                f"{self._circuit_breaker.recovery_timeout}s after "
+                f"{self._circuit_breaker.failure_threshold} failures.",
+                error_type="circuit_breaker",
+            )
+
+    def _prepare_user_prompt(self, system_prompt: str, user_prompt: str) -> tuple[str, int]:
+        est_tokens = self._budget.estimate_tokens(user_prompt + system_prompt)
+        wait_time = self._rate_limiter.acquire(est_tokens)
+        if wait_time > 0:
+            logger.info("Rate limited, waiting %.1fs", wait_time)
+            time.sleep(min(wait_time, 10))
+
+        available = self._budget.compute_available_context(self._model, system_prompt, "")
+        if self._budget.estimate_tokens(user_prompt) > available:
+            user_prompt = self._budget.truncate_to_budget(user_prompt, available)
+            logger.info("User prompt truncated to fit context window")
+
+        return user_prompt, est_tokens
+
+    def _build_headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+
+    def _build_payload(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float | None,
+        max_tokens: int | None,
+    ) -> dict:
+        temp = temperature if temperature is not None else self._temperature
+        max_tok = max_tokens or self._max_tokens
+        payload = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": temp,
+            "max_tokens": max_tok,
+        }
+        return self._sanitize_payload(payload)
+
+    def _build_timeout(self) -> httpx.Timeout:
+        return httpx.Timeout(
+            timeout=self._timeout,
+            connect=min(self._timeout, 10.0),
+            read=self._timeout,
+            write=min(self._timeout, 10.0),
+            pool=min(self._timeout, 10.0),
+        )
+
+    def _retry_delay(self, attempt: int) -> float:
+        return min((2 ** attempt) + random.random(), 15)
+
+    def _record_success(self, started_at: float, est_tokens: int) -> None:
+        latency = time.time() - started_at
+        self._total_calls += 1
+        self._total_latency += latency
+        self._total_tokens_est += est_tokens
+        self._circuit_breaker.record_success()
+        logger.info(
+            "LLM response: model=%s, latency=%.0fms, est_tokens=%d",
+            self._model, latency * 1000, est_tokens,
+        )
+
+    def _extract_text(self, response: httpx.Response) -> str:
+        data = response.json()
+        text = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+            .strip()
+        )
+        if not text:
+            raise LLMError(
+                "Empty response from Groq API",
+                error_type="empty_response",
+            )
+        return text
+
+    def _should_retry_response(self, response: httpx.Response, attempt: int) -> bool:
+        if response.status_code == 429:
+            delay = min(int(response.headers.get("retry-after", str(2 ** attempt))), 30)
+            logger.info(
+                "Rate limited (429), retrying in %ds (attempt %d/%d)",
+                delay, attempt + 1, self._max_retries,
+            )
+            time.sleep(delay)
+            return True
+
+        if response.status_code >= 500:
+            delay = self._retry_delay(attempt)
+            logger.warning(
+                "Server error %d, retrying in %.1fs (attempt %d/%d)",
+                response.status_code, delay, attempt + 1, self._max_retries,
+            )
+            time.sleep(delay)
+            return True
+
+        return False
+
+    def _execute_request(self, headers: dict[str, str], payload: dict, est_tokens: int) -> str:
+        started_at = time.time()
+        last_error: Exception | None = None
+
+        with httpx.Client(timeout=self._build_timeout()) as client:
+            for attempt in range(self._max_retries):
+                try:
+                    response = client.post(_GROQ_URL, json=payload, headers=headers)
+                    if self._should_retry_response(response, attempt):
+                        continue
+
+                    response.raise_for_status()
+                    text = self._extract_text(response)
+                    self._record_success(started_at, est_tokens)
+                    return text
+
+                except httpx.HTTPStatusError as exc:
+                    last_error = exc
+                    if exc.response.status_code in (400, 401, 403):
+                        self._circuit_breaker.record_failure()
+                        raise LLMError(
+                            f"Groq API error {exc.response.status_code}: "
+                            f"{exc.response.text[:200]}",
+                            error_type="api_error",
+                        ) from exc
+
+                except (httpx.TimeoutException, httpx.ConnectError) as exc:
+                    last_error = exc
+                    delay = self._retry_delay(attempt)
+                    logger.warning(
+                        "Connection error: %s, retrying in %.1fs (attempt %d/%d)",
+                        type(exc).__name__, delay, attempt + 1, self._max_retries,
+                    )
+                    time.sleep(delay)
+
+                except Exception as exc:
+                    last_error = exc
+                    logger.error("Unexpected LLM error: %s", exc)
+                    break
+
+        self._total_errors += 1
+        self._circuit_breaker.record_failure()
+        raise LLMError(
+            f"Groq API exhausted all {self._max_retries} retries. "
+            f"Last error: {last_error}",
+            error_type="exhausted",
+        )
+
     def generate(
         self,
         system_prompt: str,
@@ -296,147 +491,11 @@ class LLMClient:
         LLMError
             If generation fails after all retries.
         """
-        if not self._api_key:
-            raise LLMError(
-                "GROQ_API_KEY not set. Configure via environment variable.",
-                error_type="config",
-            )
-
-        # Circuit breaker check
-        if not self._circuit_breaker.can_execute():
-            raise LLMError(
-                f"Circuit breaker OPEN — LLM calls disabled for "
-                f"{self._circuit_breaker.recovery_timeout}s after "
-                f"{self._circuit_breaker.failure_threshold} failures.",
-                error_type="circuit_breaker",
-            )
-
-        # Rate limiting
-        est_tokens = self._budget.estimate_tokens(user_prompt + system_prompt)
-        wait_time = self._rate_limiter.acquire(est_tokens)
-        if wait_time > 0:
-            logger.info("Rate limited, waiting %.1fs", wait_time)
-            time.sleep(min(wait_time, 10))
-
-        # Token budget management
-        available = self._budget.compute_available_context(
-            self._model, system_prompt, "",
-        )
-        if self._budget.estimate_tokens(user_prompt) > available:
-            user_prompt = self._budget.truncate_to_budget(user_prompt, available)
-            logger.info("User prompt truncated to fit context window")
-
-        temp = temperature if temperature is not None else self._temperature
-        max_tok = max_tokens or self._max_tokens
-
-        headers = {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "model": self._model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": temp,
-            "max_tokens": max_tok,
-        }
-
-        t0 = time.time()
-        last_error: Exception | None = None
-
-        with httpx.Client(timeout=self._timeout) as client:
-            for attempt in range(self._max_retries):
-                try:
-                    resp = client.post(
-                        _GROQ_URL, json=payload, headers=headers,
-                    )
-
-                    if resp.status_code == 429:
-                        delay = min(
-                            int(resp.headers.get("retry-after", str(2 ** attempt))),
-                            30,
-                        )
-                        logger.info(
-                            "Rate limited (429), retrying in %ds (attempt %d/%d)",
-                            delay, attempt + 1, self._max_retries,
-                        )
-                        time.sleep(delay)
-                        continue
-
-                    if resp.status_code >= 500:
-                        delay = min(2 ** attempt, 15)
-                        logger.warning(
-                            "Server error %d, retrying in %ds (attempt %d/%d)",
-                            resp.status_code, delay, attempt + 1, self._max_retries,
-                        )
-                        time.sleep(delay)
-                        continue
-
-                    resp.raise_for_status()
-                    data = resp.json()
-
-                    # Extract response text (OpenAI-compatible format)
-                    text = (
-                        data.get("choices", [{}])[0]
-                        .get("message", {})
-                        .get("content", "")
-                        .strip()
-                    )
-
-                    if not text:
-                        raise LLMError(
-                            "Empty response from Groq API",
-                            error_type="empty_response",
-                        )
-
-                    # Success
-                    latency = time.time() - t0
-                    self._total_calls += 1
-                    self._total_latency += latency
-                    self._total_tokens_est += est_tokens
-                    self._circuit_breaker.record_success()
-
-                    logger.info(
-                        "LLM response: model=%s, latency=%.0fms, est_tokens=%d",
-                        self._model, latency * 1000, est_tokens,
-                    )
-                    return text
-
-                except httpx.HTTPStatusError as exc:
-                    last_error = exc
-                    if exc.response.status_code in (400, 401, 403):
-                        # Non-retryable
-                        self._circuit_breaker.record_failure()
-                        raise LLMError(
-                            f"Groq API error {exc.response.status_code}: "
-                            f"{exc.response.text[:200]}",
-                            error_type="api_error",
-                        ) from exc
-
-                except (httpx.TimeoutException, httpx.ConnectError) as exc:
-                    last_error = exc
-                    delay = min(2 ** attempt, 15)
-                    logger.warning(
-                        "Connection error: %s, retrying in %ds (attempt %d/%d)",
-                        type(exc).__name__, delay, attempt + 1, self._max_retries,
-                    )
-                    time.sleep(delay)
-
-                except Exception as exc:
-                    last_error = exc
-                    logger.error("Unexpected LLM error: %s", exc)
-                    break
-
-        # All retries exhausted
-        self._total_errors += 1
-        self._circuit_breaker.record_failure()
-        raise LLMError(
-            f"Groq API exhausted all {self._max_retries} retries. "
-            f"Last error: {last_error}",
-            error_type="exhausted",
-        )
+        self._ensure_ready()
+        user_prompt, est_tokens = self._prepare_user_prompt(system_prompt, user_prompt)
+        headers = self._build_headers()
+        payload = self._build_payload(system_prompt, user_prompt, temperature, max_tokens)
+        return self._execute_request(headers, payload, est_tokens)
 
     @property
     def stats(self) -> dict:

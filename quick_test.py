@@ -1,7 +1,7 @@
 """Quick test of market intelligence + AI endpoints."""
 import requests, random, sys
 
-BASE = "http://localhost:8000"
+BASE = "http://127.0.0.1:8000"
 r = requests.post(f"{BASE}/api/v1/auth/login", json={"username": "testuser", "password": "Test1234!"})
 if r.status_code != 200:
     r = requests.post(f"{BASE}/api/v1/auth/signup", json={"username": "testuser", "email": "t@test.com", "password": "Test1234!"})

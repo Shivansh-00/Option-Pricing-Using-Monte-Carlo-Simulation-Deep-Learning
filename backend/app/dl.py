@@ -24,11 +24,17 @@ import math
 import re
 import threading
 import time
+import json
+import logging
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import numpy as np
+
+from .runtime_lockstep import get_runtime_fingerprint, check_model_runtime_compatibility
+
+logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -671,12 +677,38 @@ class HybridDLPredictor:
         model_dir = Path(model_dir)
         model_dir.mkdir(parents=True, exist_ok=True)
         self.lstm.save(model_dir / "hybrid_lstm.npz")
+        meta = {
+            "artifact_schema_version": 2,
+            "runtime_fingerprint": get_runtime_fingerprint(),
+        }
+        (model_dir / "hybrid_lstm_meta.json").write_text(
+            json.dumps(meta, indent=2),
+            encoding="utf-8",
+        )
 
-    def load(self, model_dir: str | Path) -> bool:
+    def load(self, model_dir: str | Path, strict_compatibility: bool = True) -> bool:
         """Load LSTM weights. Returns True if successful."""
         fp = Path(model_dir) / "hybrid_lstm.npz"
         if not fp.exists():
             return False
+
+        meta_fp = Path(model_dir) / "hybrid_lstm_meta.json"
+        if meta_fp.exists():
+            try:
+                meta = json.loads(meta_fp.read_text(encoding="utf-8"))
+                compat = check_model_runtime_compatibility(
+                    "hybrid_lstm",
+                    meta.get("runtime_fingerprint"),
+                    strict=strict_compatibility,
+                )
+                if not compat.ok:
+                    for reason in compat.reasons:
+                        logger.warning(reason)
+                    logger.warning("Hybrid LSTM artifact incompatible with runtime; rebuild required.")
+                    return False
+            except Exception as exc:
+                logger.warning("Failed to parse hybrid_lstm metadata: %s", exc)
+
         self.lstm = FinancialLSTM.load(fp)
         self._trained = self.lstm.trained
         return True

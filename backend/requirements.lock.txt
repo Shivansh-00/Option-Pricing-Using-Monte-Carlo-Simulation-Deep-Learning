@@ -1,0 +1,18 @@
+# Lockstep runtime dependencies validated in this workspace.
+# Keep this file fully pinned and regenerate intentionally when upgrading.
+fastapi==0.115.6
+uvicorn==0.34.0
+websockets==14.1
+pydantic==2.10.4
+python-dotenv==1.0.1
+numpy==2.1.2
+pandas==3.0.2
+scikit-learn==1.8.0
+scipy==1.17.1
+matplotlib==3.10.8
+PyPDF2==3.0.1
+PyJWT==2.12.1
+bcrypt==4.2.1
+httpx==0.28.1
+prometheus-client==0.21.0
+psycopg2-binary==2.9.10

@@ -30,6 +30,7 @@ from .api import auth_routes, dl_routes, explain_routes, ml_routes, pricing_rout
 from .api import pinns_routes
 from .config import settings
 from .database import init_pool, init_db, close_pool
+from .runtime_lockstep import validate_dependency_lock
 from .prometheus_metrics import (
     PROMETHEUS_AVAILABLE,
     get_metrics_output,
@@ -61,7 +62,7 @@ def _load_pretrained_models(model_dir: Path) -> None:
     try:
         from .vol_engine import get_engine
         engine = get_engine()
-        if engine.load(model_dir):
+        if engine.load(model_dir, strict_compatibility=settings.enforce_model_compatibility):
             loaded.append("vol_engine")
     except Exception as e:
         logger.warning("Could not load vol engine models: %s", e)
@@ -70,7 +71,7 @@ def _load_pretrained_models(model_dir: Path) -> None:
     try:
         from .dl import get_predictor
         predictor = get_predictor()
-        if predictor.load(model_dir):
+        if predictor.load(model_dir, strict_compatibility=settings.enforce_model_compatibility):
             loaded.append("dl_lstm")
     except Exception as e:
         logger.warning("Could not load DL models: %s", e)
@@ -80,7 +81,10 @@ def _load_pretrained_models(model_dir: Path) -> None:
         pinns_path = model_dir / "pinns_model.pkl"
         if pinns_path.exists():
             from .pinns import PINNsOptionPricer
-            pricer = PINNsOptionPricer.load(pinns_path)
+            pricer = PINNsOptionPricer.load(
+                pinns_path,
+                strict_compatibility=settings.enforce_model_compatibility,
+            )
             # Replace the singleton
             from . import pinns as pinns_mod
             pinns_mod._pinns_instance = pricer
@@ -97,6 +101,24 @@ def _load_pretrained_models(model_dir: Path) -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Application startup/shutdown lifecycle."""
+    lock_file = (ROOT_DIR / settings.dependency_lock_file).resolve()
+    dep_report = validate_dependency_lock(lock_file)
+    if dep_report.checked == 0:
+        logger.warning("Dependency lock check skipped: no pinned entries in %s", lock_file)
+    elif dep_report.ok:
+        logger.info("Dependency lock check passed (%d pinned packages)", dep_report.checked)
+    else:
+        msg = (
+            f"Dependency lock check failed ({dep_report.checked} checked). "
+            f"Mismatches={len(dep_report.mismatches)}, Missing={len(dep_report.missing)}"
+        )
+        details = dep_report.mismatches + dep_report.missing
+        for item in details:
+            logger.error("Dependency violation: %s", item)
+        if settings.enforce_dependency_pins:
+            raise RuntimeError(msg)
+        logger.warning("%s; continuing because ENFORCE_DEPENDENCY_PINS is disabled", msg)
+
     # Initialize Neon PostgreSQL connection pool and schema
     if init_pool():
         init_db()

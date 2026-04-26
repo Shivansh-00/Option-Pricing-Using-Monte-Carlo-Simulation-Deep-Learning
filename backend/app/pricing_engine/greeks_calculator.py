@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from importlib import import_module, util
 from typing import Any
 
-torch = import_module("torch") if util.find_spec("torch") is not None else None
-
 from .neural_sde_model import NeuralSDE
+
+torch = import_module("torch") if util.find_spec("torch") is not None else None
 
 
 @dataclass
@@ -48,7 +48,7 @@ class NeuralSDEGreeksCalculator:
 
         for step in range(self.steps):
             t_frac = torch.full((self.n_paths,), float(step / max(1, self.steps)), device=dev)
-            mu, sigma = self.model.forward(s, t_frac, None)
+            _, sigma = self.model.forward(s, t_frac, None)
             sigma = sigma * diffusion_scale
             drift = rate.repeat(self.n_paths)
             log_inc = (drift - 0.5 * sigma * sigma) * dt + sigma * sqrtdt * z[:, step]

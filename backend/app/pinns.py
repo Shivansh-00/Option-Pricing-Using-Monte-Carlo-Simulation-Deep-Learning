@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple, Any, Union
 
+from .runtime_lockstep import get_runtime_fingerprint, check_model_runtime_compatibility
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -530,6 +532,8 @@ class PINNsOptionPricer:
         """Save PINNs model (layers, config, history) to a pickle file."""
         filepath = Path(filepath)
         state = {
+            "artifact_schema_version": 2,
+            "runtime_fingerprint": get_runtime_fingerprint(),
             "config": self.config,
             "layers": [(layer.W.copy(), layer.b.copy()) for layer in self.layers],
             "built": self._built,
@@ -540,11 +544,21 @@ class PINNsOptionPricer:
         logger.info("PINNs saved to %s", filepath)
 
     @classmethod
-    def load(cls, filepath: str | Path) -> "PINNsOptionPricer":
+    def load(cls, filepath: str | Path, strict_compatibility: bool = True) -> "PINNsOptionPricer":
         """Load PINNs model from pickle file."""
         filepath = Path(filepath)
         with open(filepath, "rb") as f:
             state = pickle.load(f)
+
+        compat = check_model_runtime_compatibility(
+            "pinns_model",
+            state.get("runtime_fingerprint"),
+            strict=strict_compatibility,
+        )
+        if not compat.ok:
+            reasons = "; ".join(compat.reasons)
+            raise ValueError(f"PINNs artifact incompatible with current runtime: {reasons}")
+
         pricer = cls(config=state["config"])
         pricer.layers = [PINNLayer(W=w, b=b) for w, b in state["layers"]]
         pricer._built = state["built"]

@@ -1,6 +1,7 @@
 """Quick API test covering all key endpoints with short timeouts."""
 import requests
 import time
+import random
 
 BASE = "http://127.0.0.1:8000"
 
@@ -74,8 +75,6 @@ test("Arbitrage Scan",          "POST", "/api/v1/quant/arbitrage/scan",         
 test("Put-Call Parity",         "POST", "/api/v1/quant/arbitrage/put-call-parity", {**BS, "call_price": 12.0, "put_price": 7.0})
 test("Uncertainty Quantify",    "POST", "/api/v1/quant/uncertainty/quantify",   {**BS, "n_samples": 100})
 test("GPU MC Price",            "POST", "/api/v1/quant/gpu-mc/price",           {**BS, "option_type": "call", "model": "gbm", "variance_reduction": "antithetic", "n_paths": 10000, "n_steps": 100})
-
-import random
 returns = [round(random.gauss(0.0005, 0.015), 6) for _ in range(100)]
 test("Regime Calibrate",        "POST", "/api/v1/quant/jump-diffusion/calibrate", {"returns": returns})
 test("Scenario Analysis",       "POST", "/api/v1/quant/jump-diffusion/scenario",  BS)

@@ -20,6 +20,12 @@ def _parse_csv(value: str | None, fallback: list[str]) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _parse_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 _load_env()
 
 
@@ -60,7 +66,7 @@ class Settings:
     # --- Groq LLM for RAG ---
     groq_api_key: str = os.getenv(
         "GROQ_API_KEY",
-        "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",
+        "",
     )
     groq_model: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     groq_max_tokens: int = int(os.getenv("GROQ_MAX_TOKENS", "1024"))
@@ -85,6 +91,20 @@ class Settings:
     llm_max_tpm: int = int(os.getenv("LLM_MAX_TPM", "100000"))
     llm_cb_threshold: int = int(os.getenv("LLM_CB_THRESHOLD", "5"))
     llm_cb_recovery: int = int(os.getenv("LLM_CB_RECOVERY", "60"))
+
+    # --- Runtime Lockstep Controls ---
+    dependency_lock_file: str = os.getenv("DEPENDENCY_LOCK_FILE", "backend/requirements.lock.txt")
+    enforce_dependency_pins: bool = _parse_bool(os.getenv("ENFORCE_DEPENDENCY_PINS"), default=True)
+    enforce_model_compatibility: bool = _parse_bool(os.getenv("ENFORCE_MODEL_COMPATIBILITY"), default=True)
+
+    def __post_init__(self) -> None:
+        # Keep runtime values within safe operational bounds.
+        self.groq_temperature = max(0.0, min(float(self.groq_temperature), 2.0))
+        self.groq_max_tokens = max(1, int(self.groq_max_tokens))
+        self.llm_max_rpm = max(1, int(self.llm_max_rpm))
+        self.llm_max_tpm = max(1000, int(self.llm_max_tpm))
+        self.llm_cb_threshold = max(1, int(self.llm_cb_threshold))
+        self.llm_cb_recovery = max(1, int(self.llm_cb_recovery))
 
 
 settings = Settings()
