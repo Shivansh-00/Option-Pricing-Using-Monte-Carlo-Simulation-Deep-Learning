@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────
+#  OptiQuant — Render Blueprint (Infrastructure as Code)
+#  Deploy with: https://render.com/deploy
+#  Or: git push → Render auto-syncs from this file
+# ─────────────────────────────────────────────────────────────
+services:
+  # ── Backend: FastAPI + static frontend (single Docker image) ──
+  - type: web
+    name: optiquant-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter           # 512MB RAM, $7/mo (free tier also works for demos)
+    region: oregon          # or singapore / frankfurt — pick closest to users
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: PORT
+        value: "8000"
+      - key: APP_ROOT_DIR
+        value: /app
+      - key: ENFORCE_DEPENDENCY_PINS
+        value: "0"
+      - key: CORS_ORIGINS
+        value: "*"
+      # ── Secrets (set in Render dashboard, NOT committed) ──
+      - key: DATABASE_URL
+        sync: false         # set in dashboard → Neon Postgres URL
+      - key: GROQ_API_KEY
+        sync: false         # set in dashboard → Groq API key
+      - key: JWT_SECRET
+        generateValue: true # Render auto-generates 32-byte secret
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GROQ_MAX_TOKENS
+        value: "1024"
+      - key: GROQ_TEMPERATURE
+        value: "0.4"
+      - key: LLM_MAX_RPM
+        value: "30"
+      - key: LLM_MAX_TPM
+        value: "100000"
+      - key: LLM_CB_THRESHOLD
+        value: "5"
+      - key: LLM_CB_RECOVERY
+        value: "60"
+    disk:
+      name: optiquant-data
+      mountPath: /app/backend/data
+      sizeGB: 1             # for SQLite auth DB + KB index persistence
