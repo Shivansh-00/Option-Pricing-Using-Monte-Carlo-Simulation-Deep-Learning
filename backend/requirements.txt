@@ -14,6 +14,7 @@ bcrypt>=4.0.0
 httpx==0.28.1
 prometheus-client==0.21.0
 psycopg2-binary==2.9.10
+requests==2.32.3
 
 # Optional: GPU-accelerated Monte Carlo & deep learning (falls back to NumPy CPU)
 # torch>=2.0.0
