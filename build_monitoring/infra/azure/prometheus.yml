@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: optiquant-azure
+    environment: production
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: optiquant-backend
+    scrape_interval: 15s
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets: ["optiquant.jollyocean-254059a7.eastus.azurecontainerapps.io"]
+        labels:
+          service: optiquant-api
+          tier: backend

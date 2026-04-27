@@ -1,0 +1,8 @@
+FROM prom/prometheus:v2.51.0
+COPY infra/azure/prometheus.yml /etc/prometheus/prometheus.yml
+EXPOSE 9090
+CMD ["--config.file=/etc/prometheus/prometheus.yml", \
+     "--storage.tsdb.path=/prometheus", \
+     "--storage.tsdb.retention.time=15d", \
+     "--web.listen-address=0.0.0.0:9090", \
+     "--web.enable-lifecycle"]
